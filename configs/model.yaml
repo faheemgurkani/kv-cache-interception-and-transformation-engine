@@ -1,0 +1,13 @@
+model_name: Qwen/Qwen3-1.7B
+local_path: models/qwen3_1.7b
+
+context_lengths:
+  - 4096
+  - 8192
+  - 16384
+  - 32768
+
+bitwidths:
+  - 2
+  - 3
+  - 4

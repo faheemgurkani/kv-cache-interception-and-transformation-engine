@@ -1,0 +1,41 @@
+# Environment
+.venv/
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model weights (download via scripts/download_model.py)
+models/*/
+!models/.gitkeep
+
+# Datasets (download via HuggingFace datasets)
+datasets/wikitext2/*
+datasets/c4/*
+!datasets/wikitext2/.gitkeep
+!datasets/c4/.gitkeep
+
+# Experiment outputs
+results/*
+!results/.gitkeep
+plots/*
+!plots/.gitkeep
+wandb/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,22 @@
+datasets:
+  - wikitext
+  - c4
+
+wikitext:
+  name: wikitext
+  config: wikitext-2-raw-v1
+  split: test
+
+c4:
+  name: c4
+  config: en
+  split: validation
+  streaming: true
+
+metrics:
+  - perplexity
+  - memory
+  - throughput
+
+batch_size: 1
+max_samples: null

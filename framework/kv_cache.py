@@ -46,8 +46,8 @@ def apply_compressor(
     compressor: KVCompressor,
 ) -> list[CompressedKV]:
     compressed_layers: list[CompressedKV] = []
-    for key, value in iter_layer_kv(past_key_values):
-        compressed_layers.append(compressor.compress(key, value))
+    for layer_idx, (key, value) in enumerate(iter_layer_kv(past_key_values)):
+        compressed_layers.append(compressor.compress(key, value, layer=layer_idx))
     return compressed_layers
 
 
@@ -60,3 +60,30 @@ def decompress_cache(
     compressor: KVCompressor,
 ) -> list[tuple[torch.Tensor, torch.Tensor]]:
     return [compressor.decompress(item) for item in compressed_layers]
+
+
+def compress_past_key_values(past_key_values, compressor: KVCompressor) -> list[CompressedKV]:
+    return apply_compressor(past_key_values, compressor)
+
+
+def decompress_to_legacy_cache(
+    compressed_layers: list[CompressedKV],
+    compressor: KVCompressor,
+    model_config,
+    device: torch.device | None = None,
+):
+    """Rebuild past_key_values from compressed layers for the next forward pass."""
+    layer_pairs = []
+    for item in compressed_layers:
+        key, value = compressor.decompress(item)
+        if device is not None:
+            key = key.to(device)
+            value = value.to(device)
+        layer_pairs.append((key, value))
+    legacy = tuple(layer_pairs)
+    try:
+        from transformers.cache_utils import DynamicCache
+
+        return DynamicCache(ddp_cache_data=legacy, config=model_config)
+    except (ImportError, TypeError):
+        return legacy

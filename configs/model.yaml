@@ -11,3 +11,9 @@ bitwidths:
   - 2
   - 3
   - 4
+
+turboquant:
+  default_bitwidth: 4
+  default_stage: full
+  attn_implementation: eager
+  torch_dtype: float16

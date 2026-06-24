@@ -1,4 +1,4 @@
-"""Model layer: load Qwen3 and expose KV-cache forward passes."""
+"""Model layer: load Qwen3 with eager attention for KV interception."""
 
 from __future__ import annotations
 
@@ -18,15 +18,22 @@ class ModelLayer:
         self,
         model_path: Path | str | None = None,
         device: torch.device | None = None,
+        torch_dtype: torch.dtype | str = torch.float16,
+        attn_implementation: str = "eager",
     ) -> None:
         config = load_model_config()
         self.model_path = Path(model_path or PROJECT_ROOT / config["local_path"])
         self.device = device or get_device()
+        self.torch_dtype = torch_dtype
+        self.attn_implementation = attn_implementation
+
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
-            torch_dtype="auto",
+            dtype=torch_dtype,
+            attn_implementation=attn_implementation,
         ).to(self.device)
+        self.model.config.use_cache = True
         self.model.eval()
 
     @property
@@ -42,11 +49,13 @@ class ModelLayer:
         input_ids: torch.Tensor,
         past_key_values=None,
         use_cache: bool = True,
+        attention_mask: torch.Tensor | None = None,
     ):
         return self.model(
             input_ids,
             past_key_values=past_key_values,
             use_cache=use_cache,
+            attention_mask=attention_mask,
         )
 
     @torch.no_grad()
@@ -63,3 +72,8 @@ class ModelLayer:
             use_cache=True,
             do_sample=False,
         )
+
+    def make_kv_engine(self, compressor):
+        from framework.kv_engine import KVCacheEngine
+
+        return KVCacheEngine(self.model, compressor)

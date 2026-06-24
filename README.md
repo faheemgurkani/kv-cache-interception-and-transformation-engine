@@ -184,7 +184,36 @@ class KVCompressor:
 | Name | Status | Paper pipeline |
 |---|---|---|
 | `identity` | ✅ working | no compression (baseline) |
-| `turboquant` | 🔜 Phase 1 | WHT → Lloyd-Max → QJL residual |
+| `turboquant` | ✅ Phase 1 | WHT → Lloyd-Max → QJL residual |
+
+### TurboQuant KV compression layer
+
+The compression layer is **distinct** from the model and eval layers:
+
+```text
+quantizers/          # math primitives (WHT, Lloyd-Max, QJL)
+compressors/turboquant.py   # TurboQuantCompressor plug-in
+framework/kv_engine.py      # KVCacheEngine interception
+```
+
+Pipeline per K/V tensor:
+
+```text
+pad(D→2^k) → WHT → normalize(÷√D) → Lloyd-Max → residual → QJL → store
+```
+
+Step-by-step ablation (recommended order):
+
+```bash
+python scripts/validate_turboquant.py --phase stages
+python scripts/validate_turboquant.py --phase intercept
+
+python scripts/run_eval.py --compressor turboquant --stage wht_only --context-length 512
+python scripts/run_eval.py --compressor turboquant --stage wht_quant --context-length 512
+python scripts/run_eval.py --compressor turboquant --stage full --context-length 512
+```
+
+Model layer loads with `attn_implementation="eager"` (required for KV hooks; no FlashAttention).
 | `kivi` | 🔜 Phase 2 | asymmetric INT2 |
 | `qjl` | 🔜 Phase 3 | random projection → 1-bit |
 | `rocketkv` | 🔜 Phase 4 | token selection → eviction |
@@ -230,6 +259,7 @@ kv-cache-compression-benchmark/
 | `scripts/verify_kv_cache.py` | Confirm `past_key_values` access |
 | `scripts/run_eval.py` | Full eval runner (memory + speed + perplexity) |
 | `scripts/run_baseline.py` | Single-baseline eval with JSON output |
+| `scripts/validate_turboquant.py` | TurboQuant stage ablation + KV intercept smoke test |
 
 ### `run_eval.py` flags
 

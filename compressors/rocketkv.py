@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from compressors.base import CompressedKV, KVCompressor
+import torch
+
+from compressors.base import KVCompressor
 
 
 class RocketKVCompressor(KVCompressor):
@@ -13,8 +15,8 @@ class RocketKVCompressor(KVCompressor):
     def __init__(self, bitwidth: int = 16) -> None:
         self.bitwidth = bitwidth
 
-    def compress(self, key, value) -> CompressedKV:
+    def compress_kv(self, tensor: torch.Tensor, layer: int = 0, mode: str = "key"):
         raise NotImplementedError("RocketKV compressor pending implementation.")
 
-    def decompress(self, compressed: CompressedKV):
+    def decompress_kv(self, payload: object, mode: str = "key") -> torch.Tensor:
         raise NotImplementedError("RocketKV decompress pending implementation.")

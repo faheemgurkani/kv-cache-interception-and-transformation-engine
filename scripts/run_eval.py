@@ -24,6 +24,12 @@ def main() -> None:
     )
     parser.add_argument("--bitwidth", type=int, default=None)
     parser.add_argument(
+        "--stage",
+        default=None,
+        choices=["wht_only", "wht_quant", "wht_quant_residual", "full"],
+        help="TurboQuant ablation stage (turboquant only).",
+    )
+    parser.add_argument(
         "--context-length",
         type=int,
         default=None,
@@ -38,7 +44,12 @@ def main() -> None:
     parser.add_argument("--output", default="eval_results", help="Output filename stem.")
     args = parser.parse_args()
 
-    compressor = get_compressor(args.compressor, bitwidth=args.bitwidth)
+    kwargs = {}
+    if args.bitwidth is not None:
+        kwargs["bitwidth"] = args.bitwidth
+    if args.stage is not None:
+        kwargs["stage"] = args.stage
+    compressor = get_compressor(args.compressor, **kwargs)
     runner = EvaluationRunner(compressor=compressor)
 
     if args.all_context_lengths:

@@ -115,7 +115,7 @@ KV cache access verified.
 pytest tests/ -v
 ```
 
-All 5 tests should pass (compressor roundtrip, WikiText-2 loader, KV-cache shapes, eval smoke test).
+All 8 tests should pass (compressor, TurboQuant, WikiText-2 loader, KV-cache shapes, eval smoke test).
 
 ### 7. Run a benchmark
 
@@ -162,11 +162,15 @@ WikiText-2 documents are short; the framework **concatenates samples** until the
 
 ## Architecture
 
-Four-layer research framework — only the compression layer changes per paper:
+Four-layer research framework — only the compression layer changes per paper.
+
+**Full system design (eager attention rationale, KV interception, TurboQuant math, execution order):**
+[docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md)
 
 ```text
 Model Layer          → framework/model.py
-KV Compression Layer → compressors/
+KV Interception      → framework/kv_engine.py
+KV Compression Layer → compressors/ + quantizers/
 Evaluation Layer     → eval/
 Reporting Layer      → reporting/
 ```
@@ -177,7 +181,8 @@ All methods implement `KVCompressor`:
 
 ```python
 class KVCompressor:
-    def compress(self, key, value): ...
+    def compress_kv(self, tensor, layer, mode): ...  # single K or V
+    def compress(self, key, value, layer): ...       # full layer
     def decompress(self, compressed): ...
 ```
 
@@ -185,38 +190,29 @@ class KVCompressor:
 |---|---|---|
 | `identity` | ✅ working | no compression (baseline) |
 | `turboquant` | ✅ Phase 1 | WHT → Lloyd-Max → QJL residual |
+| `kivi` | 🔜 Phase 2 | asymmetric INT2 |
+| `qjl` | 🔜 Phase 3 | random projection → 1-bit |
+| `rocketkv` | 🔜 Phase 4 | token selection → eviction |
 
-### TurboQuant KV compression layer
+### TurboQuant (summary)
 
-The compression layer is **distinct** from the model and eval layers:
+The compression layer is **distinct** from model and eval — see [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) for math and design rationale.
 
 ```text
-quantizers/          # math primitives (WHT, Lloyd-Max, QJL)
+quantizers/                 # WHT, Lloyd-Max, QJL primitives
 compressors/turboquant.py   # TurboQuantCompressor plug-in
 framework/kv_engine.py      # KVCacheEngine interception
 ```
 
-Pipeline per K/V tensor:
-
-```text
-pad(D→2^k) → WHT → normalize(÷√D) → Lloyd-Max → residual → QJL → store
-```
-
-Step-by-step ablation (recommended order):
+Pipeline: `pad → WHT → ÷√D → Lloyd-Max → residual → QJL → store`
 
 ```bash
 python scripts/validate_turboquant.py --phase stages
 python scripts/validate_turboquant.py --phase intercept
-
-python scripts/run_eval.py --compressor turboquant --stage wht_only --context-length 512
-python scripts/run_eval.py --compressor turboquant --stage wht_quant --context-length 512
 python scripts/run_eval.py --compressor turboquant --stage full --context-length 512
 ```
 
-Model layer loads with `attn_implementation="eager"` (required for KV hooks; no FlashAttention).
-| `kivi` | 🔜 Phase 2 | asymmetric INT2 |
-| `qjl` | 🔜 Phase 3 | random projection → 1-bit |
-| `rocketkv` | 🔜 Phase 4 | token selection → eviction |
+Model loads with `attn_implementation="eager"` — required because FlashAttention hides KV internals (see system design doc).
 
 ### Evaluation metrics (paper-independent)
 
@@ -232,6 +228,7 @@ Model layer loads with `attn_implementation="eager"` (required for KV hooks; no 
 
 ```text
 kv-cache-compression-benchmark/
+├── docs/               # SYSTEM_DESIGN.md — architecture & decisions
 ├── configs/            # model.yaml, eval.yaml
 ├── framework/          # model layer, device, kv_cache utilities
 ├── compressors/        # KVCompressor interface + method stubs
@@ -309,7 +306,7 @@ Cache directory: `.cache/huggingface/datasets/` (gitignored).
 
 1. **Phase 0** — Repository setup, model download, KV cache verification ✅
 2. **Phase 0.5** — Generic evaluation framework, WikiText-2 loader, compressor interface ✅
-3. **Phase 1** — TurboQuant implementation
+3. **Phase 1** — TurboQuant implementation ✅
 4. **Phase 2** — KIVI baseline
 5. **Phase 3** — QJL baseline
 6. **Phase 4** — RocketKV baseline

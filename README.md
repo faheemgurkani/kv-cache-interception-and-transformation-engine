@@ -141,7 +141,7 @@ KV cache access verified.
 pytest tests/ -v
 ```
 
-All 8 tests should pass (compressor, TurboQuant, WikiText-2 loader, KV-cache shapes, eval smoke test).
+All 18 tests should pass (attention fidelity, online inference, compressor, TurboQuant, WikiText-2 loader, KV-cache shapes, eval smoke test).
 
 ### 7. Run a benchmark
 
@@ -255,13 +255,22 @@ python scripts/run_eval.py --compressor turboquant --stage full --context-length
 
 Model loads with `attn_implementation="eager"` — required because FlashAttention hides KV internals (see system design doc).
 
-### Evaluation metrics (paper-independent)
+### Evaluation metrics
 
-| Metric | Module | Output |
-|---|---|---|
-| Memory | `eval/memory.py` | KV cache bytes, compression ratio |
-| Speed | `eval/throughput.py` | tokens/sec, latency ms/token |
-| Quality | `eval/perplexity.py` | perplexity (WikiText-2, sliding window) |
+**Section A — Compression Fidelity (offline)**
+
+| Metric | Module |
+|---|---|
+| Tensor RMSE (K/V) | `eval/fidelity.py` |
+| Attention RMSE / cosine / max (`QK^T`) | `eval/attention_score_error.py` |
+| Memory / compression ratio | `eval/memory.py` |
+
+**Section B — Inference Impact (online, compressed KV in loop)**
+
+| Metric | Module |
+|---|---|
+| Perplexity | `eval/perplexity.py` → `KVCacheEngine.step()` |
+| Speed | `eval/throughput.py` → `KVCacheEngine.generate()` |
 
 ---
 

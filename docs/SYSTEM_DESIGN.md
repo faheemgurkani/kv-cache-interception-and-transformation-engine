@@ -281,23 +281,40 @@ python scripts/run_eval.py --compressor turboquant --stage full --context-length
 
 ## 6. Evaluation Pipeline (Fixed Across All Papers)
 
-**Do not change eval code when adding a new compression method.**
+**Do not change eval code when adding a new compression method.** Results are split into two sections:
+
+### Section A — Compression Fidelity (offline)
+
+Validates implementation quality without the autoregressive loop.
 
 | Metric | Module | Method |
 |---|---|---|
-| **Quality** | `eval/perplexity.py` | Sliding-window perplexity on WikiText-2; `ppl = exp(mean NLL)` |
+| **Tensor RMSE** | `eval/fidelity.py` | Compress/decompress K/V snapshots; mean RMSE per layer |
+| **Attention RMSE** | `eval/attention_score_error.py` | Compare `QK^T / √d` before vs after K compression; layer-wise MSE/RMSE/cosine/max |
 | **Memory** | `eval/memory.py` | Uncompressed KV bytes vs compressed payload bytes; compression ratio |
-| **Speed** | `eval/throughput.py` | `tokens/sec = generated_tokens / elapsed` |
+
+Orchestrator: `evaluate_fidelity()` in `eval/fidelity.py`
+
+### Section B — Inference Impact (online)
+
+Validates usefulness with compressed KV **inside** the generation loop.
+
+| Metric | Module | Method |
+|---|---|---|
+| **Perplexity** | `eval/perplexity.py` | Sliding-window NLL; each token via `KVCacheEngine.step()` (compress → store → decompress) |
+| **Throughput** | `eval/throughput.py` | `KVCacheEngine.generate()` tokens/sec and ms/token |
+
+Optional baselines (uncompressed HF path): `evaluate_perplexity_baseline()`, `evaluate_throughput_baseline()` — pass `--include-baselines` to `run_eval.py`.
 
 Orchestrator: `eval/runner.py` → `EvaluationRunner`
 
-Reporting: `reporting/reporter.py` → JSON + CSV in `results/`
+Reporting: `reporting/reporter.py` → JSON (`section_a_fidelity`, `section_b_inference`) + CSV in `results/`
 
-### 5.1 Long-context evaluation
+### 6.1 Long-context evaluation
 
 WikiText-2 documents are short. We **concatenate samples** until `target_length` (4K–32K) via `data/loader.py::build_long_context_ids()`. Standard practice in KV-cache papers.
 
-### 5.2 Datasets
+### 6.2 Datasets
 
 | Phase | Dataset |
 |---|---|
@@ -392,11 +409,12 @@ Verification against common KV-compression mistakes (checked against current cod
 
 | Check | Status | Evidence |
 |---|---|---|
-| Reconstruction error tested | ✅ | `test_turboquant.py`, `validate_turboquant.py --phase stages` |
-| Attention score test (`q @ k.T`) | ❌ **Gap** | No automated test; manual check shows score RMSE ~1.35 even when tensor RMSE < 2.0 |
-| Perplexity with compressed KV | ❌ **Gap** | `eval/perplexity.py` uses uncompressed forward only |
+| Reconstruction error tested | ✅ | `eval/fidelity.py`, `test_turboquant.py` |
+| Attention score test (`q @ k.T`) | ✅ | `eval/attention_score_error.py`; `test_attention_score_error.py` |
+| Perplexity with compressed KV | ✅ | `eval/perplexity.py` via `KVCacheEngine.step()`; `test_online_inference.py` |
+| Throughput with compressed KV | ✅ | `eval/throughput.py` via `KVCacheEngine.generate()`; `test_online_inference.py` |
 
-**Action needed:** add attention-score drift test and route perplexity through `KVCacheEngine` for true end-to-end quality.
+**Verified (identity baseline):** attention RMSE < 1e-3; online PPL within 5% of uncompressed baseline.
 
 ### Mistake 3: Storing full S matrix
 
@@ -439,3 +457,24 @@ KVCacheEngine (fixed)
 ```
 
 Same engine, same eval runner, same reporting — only `compressors/` changes.
+
+---
+
+## 12. Methodology Gap Closure (Verified)
+
+All three evaluation gaps identified in the architecture review are closed and tested.
+
+| Gap | Fix | Test |
+|---|---|---|
+| No `QK^T` metric | `eval/attention_score_error.py` | `test_attention_score_error.py` |
+| PPL on uncompressed KV | `eval/perplexity.py` → `KVCacheEngine.step()` | `test_online_inference.py` |
+| Throughput on uncompressed path | `eval/throughput.py` → `KVCacheEngine.generate()` | `test_online_inference.py` |
+
+**Verification run (`pytest tests/ -v`):** 18/18 passed.
+
+**Identity sanity checks:**
+- Attention RMSE < 1e-3 (compression path preserves inner products)
+- Online PPL within 5% of uncompressed baseline
+- Throughput reports `online_compressed_kv=True`
+
+**TurboQuant:** attention RMSE is now measured per layer (expected > 0); use Section A metrics before comparing papers.

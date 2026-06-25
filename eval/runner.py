@@ -3,18 +3,36 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from pathlib import Path
 
 import torch
 
 from compressors.base import KVCompressor
 from compressors.registry import get_compressor
 from data.loader import build_long_context_ids, load_wikitext2
-from eval.memory import MemoryMetrics, evaluate_memory
-from eval.perplexity import evaluate_perplexity
-from eval.throughput import ThroughputMetrics, evaluate_throughput
+from eval.fidelity import FidelityMetrics, evaluate_fidelity
+from eval.memory import MemoryMetrics
+from eval.perplexity import evaluate_perplexity, evaluate_perplexity_baseline
+from eval.throughput import ThroughputMetrics, evaluate_throughput, evaluate_throughput_baseline
 from framework.config import load_eval_config, load_model_config
 from framework.model import ModelLayer
+
+
+@dataclass
+class InferenceMetrics:
+    """Section B: online inference impact with compressed KV in the loop."""
+
+    perplexity: float | None
+    perplexity_baseline: float | None
+    throughput: ThroughputMetrics | None
+    throughput_baseline: ThroughputMetrics | None
+
+    def to_dict(self) -> dict:
+        return {
+            "perplexity": self.perplexity,
+            "perplexity_baseline": self.perplexity_baseline,
+            "throughput": asdict(self.throughput) if self.throughput else None,
+            "throughput_baseline": asdict(self.throughput_baseline) if self.throughput_baseline else None,
+        }
 
 
 @dataclass
@@ -22,23 +40,37 @@ class EvaluationResult:
     compressor: str
     bitwidth: int | None
     context_length: int
-    perplexity: float | None
-    memory: MemoryMetrics
-    throughput: ThroughputMetrics
+    fidelity: FidelityMetrics
+    inference: InferenceMetrics | None
+
+    @property
+    def perplexity(self) -> float | None:
+        if self.inference is None:
+            return None
+        return self.inference.perplexity
+
+    @property
+    def memory(self) -> MemoryMetrics:
+        return self.fidelity.memory
+
+    @property
+    def throughput(self) -> ThroughputMetrics | None:
+        if self.inference is None:
+            return None
+        return self.inference.throughput
 
     def to_dict(self) -> dict:
         return {
             "compressor": self.compressor,
             "bitwidth": self.bitwidth,
             "context_length": self.context_length,
-            "perplexity": self.perplexity,
-            "memory": asdict(self.memory),
-            "throughput": asdict(self.throughput),
+            "section_a_fidelity": self.fidelity.to_dict(),
+            "section_b_inference": None if self.inference is None else self.inference.to_dict(),
         }
 
 
 class EvaluationRunner:
-    """Runs memory, throughput, and quality metrics for any compressor."""
+    """Runs Section A (offline fidelity) and Section B (online inference) metrics."""
 
     def __init__(
         self,
@@ -63,9 +95,10 @@ class EvaluationRunner:
     def run(
         self,
         context_length: int,
+        run_fidelity: bool = True,
         run_perplexity: bool = True,
-        run_memory: bool = True,
         run_throughput: bool = True,
+        include_baselines: bool = False,
         perplexity_stride: int | None = None,
         generated_tokens: int | None = None,
     ) -> EvaluationResult:
@@ -73,24 +106,51 @@ class EvaluationRunner:
         stride = perplexity_stride or self.eval_config.get("perplexity_stride", 512)
         num_new_tokens = generated_tokens or self.eval_config.get("generated_tokens", 64)
 
-        ppl = evaluate_perplexity(self.model_layer, input_ids, stride=stride) if run_perplexity else None
-        memory = evaluate_memory(self.model_layer, input_ids, self.compressor) if run_memory else None
-        throughput = (
-            evaluate_throughput(self.model_layer, input_ids, num_new_tokens=num_new_tokens)
-            if run_throughput
-            else None
-        )
+        if not run_fidelity:
+            raise ValueError("Section A fidelity metrics are required for every evaluation run.")
 
-        if memory is None or throughput is None:
-            raise ValueError("Memory and throughput metrics are required for a complete evaluation run.")
+        fidelity = evaluate_fidelity(self.model_layer, input_ids, self.compressor)
+
+        inference: InferenceMetrics | None = None
+        if run_perplexity or run_throughput:
+            inference = InferenceMetrics(
+                perplexity=(
+                    evaluate_perplexity(self.model_layer, input_ids, self.compressor, stride=stride)
+                    if run_perplexity
+                    else None
+                ),
+                perplexity_baseline=(
+                    evaluate_perplexity_baseline(self.model_layer, input_ids, stride=stride)
+                    if include_baselines and run_perplexity
+                    else None
+                ),
+                throughput=(
+                    evaluate_throughput(
+                        self.model_layer,
+                        input_ids,
+                        self.compressor,
+                        num_new_tokens=num_new_tokens,
+                    )
+                    if run_throughput
+                    else None
+                ),
+                throughput_baseline=(
+                    evaluate_throughput_baseline(
+                        self.model_layer,
+                        input_ids,
+                        num_new_tokens=num_new_tokens,
+                    )
+                    if include_baselines and run_throughput
+                    else None
+                ),
+            )
 
         return EvaluationResult(
             compressor=self.compressor.name,
             bitwidth=getattr(self.compressor, "bitwidth", None),
             context_length=context_length,
-            perplexity=ppl,
-            memory=memory,
-            throughput=throughput,
+            fidelity=fidelity,
+            inference=inference,
         )
 
     def run_all_context_lengths(

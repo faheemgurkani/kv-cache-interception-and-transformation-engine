@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,33 +31,48 @@ class ResultReporter:
         import csv
 
         path = self.output_dir / f"{name}.csv"
-        rows = [item.to_dict() for item in results]
         fieldnames = [
             "compressor",
             "bitwidth",
             "context_length",
-            "perplexity",
+            "key_rmse",
+            "value_rmse",
+            "attention_rmse",
+            "attention_cosine",
+            "attention_max_error",
             "uncompressed_bytes",
             "compressed_bytes",
             "compression_ratio",
+            "perplexity_compressed",
+            "perplexity_baseline",
             "tokens_per_second",
             "latency_ms_per_token",
+            "online_compressed_kv",
         ]
         with path.open("w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            for row in rows:
+            for result in results:
+                fidelity = result.fidelity
+                inference = result.inference
                 writer.writerow(
                     {
-                        "compressor": row["compressor"],
-                        "bitwidth": row["bitwidth"],
-                        "context_length": row["context_length"],
-                        "perplexity": row["perplexity"],
-                        "uncompressed_bytes": row["memory"]["uncompressed_bytes"],
-                        "compressed_bytes": row["memory"]["compressed_bytes"],
-                        "compression_ratio": row["memory"]["compression_ratio"],
-                        "tokens_per_second": row["throughput"]["tokens_per_second"],
-                        "latency_ms_per_token": row["throughput"]["latency_ms_per_token"],
+                        "compressor": result.compressor,
+                        "bitwidth": result.bitwidth,
+                        "context_length": result.context_length,
+                        "key_rmse": fidelity.tensor.key_rmse,
+                        "value_rmse": fidelity.tensor.value_rmse,
+                        "attention_rmse": fidelity.attention.rmse,
+                        "attention_cosine": fidelity.attention.cosine_similarity,
+                        "attention_max_error": fidelity.attention.max_error,
+                        "uncompressed_bytes": fidelity.memory.uncompressed_bytes,
+                        "compressed_bytes": fidelity.memory.compressed_bytes,
+                        "compression_ratio": fidelity.memory.compression_ratio,
+                        "perplexity_compressed": inference.perplexity if inference else None,
+                        "perplexity_baseline": inference.perplexity_baseline if inference else None,
+                        "tokens_per_second": inference.throughput.tokens_per_second if inference and inference.throughput else None,
+                        "latency_ms_per_token": inference.throughput.latency_ms_per_token if inference and inference.throughput else None,
+                        "online_compressed_kv": inference.throughput.online_compressed_kv if inference and inference.throughput else None,
                     }
                 )
         return path
@@ -66,9 +80,15 @@ class ResultReporter:
     @staticmethod
     def print_summary(results: list[EvaluationResult]) -> None:
         for result in results:
-            print(
-                f"[{result.compressor}] ctx={result.context_length} "
-                f"ppl={result.perplexity:.4f} "
-                f"ratio={result.memory.compression_ratio:.2f}x "
-                f"tok/s={result.throughput.tokens_per_second:.2f}"
-            )
+            fidelity = result.fidelity
+            inference = result.inference
+            parts = [
+                f"[{result.compressor}] ctx={result.context_length}",
+                f"attn_rmse={fidelity.attention.rmse:.4f}",
+                f"ratio={fidelity.memory.compression_ratio:.2f}x",
+            ]
+            if inference and inference.perplexity is not None:
+                parts.append(f"ppl={inference.perplexity:.4f}")
+            if inference and inference.throughput is not None:
+                parts.append(f"tok/s={inference.throughput.tokens_per_second:.2f}")
+            print(" ".join(parts))

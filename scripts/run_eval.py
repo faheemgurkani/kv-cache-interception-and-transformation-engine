@@ -41,6 +41,8 @@ def main() -> None:
         help="Run all context lengths from configs/model.yaml.",
     )
     parser.add_argument("--skip-perplexity", action="store_true")
+    parser.add_argument("--skip-throughput", action="store_true")
+    parser.add_argument("--include-baselines", action="store_true", help="Also run uncompressed baseline PPL/throughput.")
     parser.add_argument("--output", default="eval_results", help="Output filename stem.")
     args = parser.parse_args()
 
@@ -56,6 +58,8 @@ def main() -> None:
         results = runner.run_all_context_lengths(
             context_lengths=model_config["context_lengths"],
             run_perplexity=not args.skip_perplexity,
+            run_throughput=not args.skip_throughput,
+            include_baselines=args.include_baselines,
         )
     else:
         context_length = args.context_length or eval_config.get("default_context_length", 512)
@@ -63,6 +67,8 @@ def main() -> None:
             runner.run(
                 context_length,
                 run_perplexity=not args.skip_perplexity,
+                run_throughput=not args.skip_throughput,
+                include_baselines=args.include_baselines,
             )
         ]
 

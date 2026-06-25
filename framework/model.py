@@ -50,12 +50,14 @@ class ModelLayer:
         past_key_values=None,
         use_cache: bool = True,
         attention_mask: torch.Tensor | None = None,
+        **kwargs,
     ):
         return self.model(
             input_ids,
             past_key_values=past_key_values,
             use_cache=use_cache,
             attention_mask=attention_mask,
+            **kwargs,
         )
 
     @torch.no_grad()

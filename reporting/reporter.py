@@ -43,6 +43,8 @@ class ResultReporter:
             "uncompressed_bytes",
             "compressed_bytes",
             "compression_ratio",
+            "effective_bits_per_kv_element",
+            "shared_metadata_bytes",
             "perplexity_compressed",
             "perplexity_baseline",
             "tokens_per_second",
@@ -68,6 +70,8 @@ class ResultReporter:
                         "uncompressed_bytes": fidelity.memory.uncompressed_bytes,
                         "compressed_bytes": fidelity.memory.compressed_bytes,
                         "compression_ratio": fidelity.memory.compression_ratio,
+                        "effective_bits_per_kv_element": fidelity.memory.effective_bits_per_kv_element,
+                        "shared_metadata_bytes": fidelity.memory.shared_metadata_bytes,
                         "perplexity_compressed": inference.perplexity if inference else None,
                         "perplexity_baseline": inference.perplexity_baseline if inference else None,
                         "tokens_per_second": inference.throughput.tokens_per_second if inference and inference.throughput else None,
@@ -86,6 +90,7 @@ class ResultReporter:
                 f"[{result.compressor}] ctx={result.context_length}",
                 f"attn_rmse={fidelity.attention.rmse:.4f}",
                 f"ratio={fidelity.memory.compression_ratio:.2f}x",
+                f"bits/kv={fidelity.memory.effective_bits_per_kv_element:.2f}",
             ]
             if inference and inference.perplexity is not None:
                 parts.append(f"ppl={inference.perplexity:.4f}")

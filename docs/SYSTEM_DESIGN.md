@@ -246,15 +246,18 @@ decompress: QJL decode → add MSE → ×√D → inverse WHT → unpad
 
 ```python
 {
-    "indices": int8,      # Lloyd-Max cluster indices
-    "qjl_bits": int8,     # sign(Sr) ∈ {-1, +1}
-    "norm_r": float32,    # ||r|| per vector (for QJL decode)
-    "original_dim": int,  # before padding
-    "padded_dim": int,
+    "indices": int8 container,   # accounted as bitwidth bits each (not 8 bits)
+    "qjl_bits": int8 container,  # accounted as 1 bit per sign (not 8 bits)
+    "norm_r": float32,           # residual norms (32 bits each)
+    "metadata": 32 bytes/tensor, # dims, stage, bitwidth, shape
 }
 ```
 
-Centroids are shared (cached per bitwidth), not stored per layer.
+Shared once per compressor (not per layer): Lloyd-Max **centroid table** (`shared_storage_bytes()`).
+
+Size accounting: `framework/storage_accounting.py` → `storage_bits()` / `storage_bytes()` on payload.
+
+Reported metrics (`eval/memory.py`): raw KV bytes, compressed bytes, compression ratio, **effective bits/KV element**.
 
 ### 4.4 Stage ablation (do not skip)
 
@@ -291,7 +294,7 @@ Validates implementation quality without the autoregressive loop.
 |---|---|---|
 | **Tensor RMSE** | `eval/fidelity.py` | Compress/decompress K/V snapshots; mean RMSE per layer |
 | **Attention RMSE** | `eval/attention_score_error.py` | Compare `QK^T / √d` before vs after K compression; layer-wise MSE/RMSE/cosine/max |
-| **Memory** | `eval/memory.py` | Uncompressed KV bytes vs compressed payload bytes; compression ratio |
+| **Memory** | `eval/memory.py` | Raw KV bytes vs bit-accurate payload + shared metadata; ratio + effective bits/KV |
 
 Orchestrator: `evaluate_fidelity()` in `eval/fidelity.py`
 

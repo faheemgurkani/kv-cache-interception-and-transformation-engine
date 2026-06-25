@@ -141,7 +141,7 @@ KV cache access verified.
 pytest tests/ -v
 ```
 
-All 18 tests should pass (attention fidelity, online inference, compressor, TurboQuant, WikiText-2 loader, KV-cache shapes, eval smoke test).
+All 23 tests should pass (memory accounting, attention fidelity, online inference, compressor, TurboQuant, WikiText-2 loader, KV-cache shapes, eval smoke test).
 
 ### 7. Run a benchmark
 

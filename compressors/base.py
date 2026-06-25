@@ -64,10 +64,16 @@ class KVCompressor(ABC):
 
     @staticmethod
     def _payload_bytes(payload: object) -> int:
+        if hasattr(payload, "storage_bytes"):
+            return int(payload.storage_bytes())
         if hasattr(payload, "nbytes"):
             return int(payload.nbytes)
         if isinstance(payload, torch.Tensor):
             return payload.numel() * payload.element_size()
+        return 0
+
+    def shared_storage_bytes(self) -> int:
+        """Optional shared tables (centroids, codebooks) counted once per model run."""
         return 0
 
     def compression_ratio(self, key: torch.Tensor, value: torch.Tensor) -> float:

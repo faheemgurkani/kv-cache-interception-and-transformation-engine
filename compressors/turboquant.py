@@ -38,6 +38,11 @@ class TurboQuantCompressor(KVCompressor):
             raise TypeError(f"Expected TurboQuantTensorPayload, got {type(payload)}")
         return self.pipeline.decompress_tensor(payload)
 
+    def shared_storage_bytes(self) -> int:
+        """Shared Lloyd-Max centroid table (one copy per compressor, not per layer)."""
+        centroids = self.pipeline.centroids
+        return centroids.numel() * centroids.element_size()
+
     def reconstruction_error(self, key: torch.Tensor, value: torch.Tensor) -> dict[str, float]:
         return {
             "key_rmse": self.pipeline.reconstruction_error(key),

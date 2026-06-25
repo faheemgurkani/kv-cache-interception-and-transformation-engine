@@ -41,6 +41,14 @@ def get_cache_size_bytes(past_key_values) -> int:
     return total
 
 
+def count_kv_elements(past_key_values) -> int:
+    """Total scalar count across all K and V tensors."""
+    total = 0
+    for key, value in iter_layer_kv(past_key_values):
+        total += key.numel() + value.numel()
+    return total
+
+
 def apply_compressor(
     past_key_values,
     compressor: KVCompressor,

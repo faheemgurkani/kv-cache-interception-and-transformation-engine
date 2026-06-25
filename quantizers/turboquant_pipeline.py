@@ -8,6 +8,12 @@ from enum import Enum
 
 import torch
 
+from framework.storage_accounting import (
+    bits_to_bytes,
+    float32_storage_bits,
+    index_storage_bits,
+    sign_storage_bits,
+)
 from quantizers.hadamard import (
     hadamard_transform,
     inverse_hadamard_transform,
@@ -25,6 +31,10 @@ class TurboQuantStage(str, Enum):
     FULL = "full"
 
 
+# Fixed per-tensor metadata: dims, stage, bitwidth, shape (conservative packed estimate).
+TURBOQUANT_METADATA_BYTES = 32
+
+
 @dataclass
 class TurboQuantTensorPayload:
     """Compressed payload for a single K or V tensor."""
@@ -40,18 +50,25 @@ class TurboQuantTensorPayload:
     bitwidth: int
     wht_only: torch.Tensor | None = None
 
+    def storage_bits(self) -> int:
+        """True bits stored (bit-packed QJL signs, bitwidth-sized indices, metadata)."""
+        bits = TURBOQUANT_METADATA_BYTES * 8
+        if self.indices is not None:
+            bits += index_storage_bits(self.indices.numel(), self.bitwidth)
+        if self.qjl_bits is not None:
+            bits += sign_storage_bits(self.qjl_bits.numel())
+        if self.norm_r is not None:
+            bits += float32_storage_bits(self.norm_r.numel())
+        if self.wht_only is not None:
+            bits += float32_storage_bits(self.wht_only.numel())
+        return bits
+
+    def storage_bytes(self) -> int:
+        return bits_to_bytes(self.storage_bits())
+
     @property
     def nbytes(self) -> int:
-        total = 0
-        if self.indices is not None:
-            total += self.indices.numel() * self.indices.element_size()
-        if self.qjl_bits is not None:
-            total += self.qjl_bits.numel() * self.qjl_bits.element_size()
-        if self.norm_r is not None:
-            total += self.norm_r.numel() * self.norm_r.element_size()
-        if self.wht_only is not None:
-            total += self.wht_only.numel() * self.wht_only.element_size()
-        return total
+        return self.storage_bytes()
 
 
 class TurboQuantPipeline:

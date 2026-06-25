@@ -1,5 +1,6 @@
 # ── Local planning notes (not for public repo) ────────────────────────────────
-docs/PLAN.md
+docs/IMPLEMENTATION_PLAN.md
+docs/EVALUATION_PLAN.md
 
 # ── Secrets & local environment ──────────────────────────────────────────────
 .venv/

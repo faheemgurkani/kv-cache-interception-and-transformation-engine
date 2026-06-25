@@ -156,22 +156,24 @@ class KVCacheEngine:
 
 The compressor is a **plug-in**. TurboQuant, KIVI, QJL, and RocketKV all implement the same interface.
 
-### 2.3 Forward interception loop
+### 2.3 Forward interception loop (incremental)
+
+Online steps **append** one compressed payload per new token. Old tokens are never re-compressed.
 
 ```python
 def step(self, input_ids, compressed_cache):
-    # 1. Decompress stored cache → float K/V for the model
+    prev_seq = compressed_cache.seq_length if compressed_cache else 0
     past_kv = decompress_to_legacy_cache(compressed_cache, compressor, config, device)
-
-    # 2. Standard forward
     outputs = model(input_ids, past_key_values=past_kv, use_cache=True)
 
-    # 3. Compress updated cache after forward
+    # Only compress newly appended positions [prev_seq : total_seq)
     for layer_idx, (k, v) in enumerate(iter_layer_kv(outputs.past_key_values)):
-        compressed_layers.append(compressor.compress(k, v, layer=layer_idx))
+        append compress_token_slice(k, v, token_idx, ...) for token_idx in range(prev_seq, k.shape[2])
 
-    return outputs.logits, CompressedCache(layers=compressed_layers)
+    return outputs.logits, CompressedCache(layers=incremental_payload_lists)
 ```
+
+**Critical:** Re-compressing the full cache every step caused error accumulation → KV norm explosion → NaN perplexity. Incremental storage fixes this.
 
 ### 2.4 Key insight
 

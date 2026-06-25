@@ -62,7 +62,7 @@ def evaluate_memory(
     uncompressed_bytes = get_cache_size_bytes(past_key_values)
     num_kv_elements = count_kv_elements(past_key_values)
     compressed_layers = apply_compressor(past_key_values, compressor)
-    payload_bytes = compressed_size_bytes(compressed_layers)
+    payload_bytes = compressed_size_bytes(compressed_layers, compressor)
     shared_metadata_bytes = compressor.shared_storage_bytes()
     compressed_bytes = payload_bytes + shared_metadata_bytes
     ratio = uncompressed_bytes / compressed_bytes if compressed_bytes > 0 else 1.0

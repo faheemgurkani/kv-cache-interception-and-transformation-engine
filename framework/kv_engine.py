@@ -7,7 +7,13 @@ from dataclasses import dataclass, field
 import torch
 
 from compressors.base import CompressedKV, KVCompressor
-from framework.kv_cache import compress_past_key_values, decompress_to_legacy_cache, iter_layer_kv
+from framework.kv_cache import (
+    build_incremental_layer,
+    compress_token_slice,
+    decompress_to_legacy_cache,
+    incremental_seq_length,
+    iter_layer_kv,
+)
 
 
 @dataclass
@@ -20,17 +26,63 @@ class CompressedCache:
     def nbytes(self) -> int:
         return sum(layer.nbytes for layer in self.layers)
 
+    @property
+    def seq_length(self) -> int:
+        return incremental_seq_length(self.layers)
+
 
 class KVCacheEngine:
     """
     Intercepts past_key_values after each forward pass, runs the plug-in
     compressor, and decompresses before the next step.
+
+    Online mode stores **incremental** compressed payloads: each token's K/V is
+    compressed once when it is produced and never re-compressed on later steps.
     """
 
     def __init__(self, model, compressor: KVCompressor) -> None:
         self.model = model
         self.compressor = compressor
         self.compressed_cache: CompressedCache | None = None
+
+    def _compress_new_tokens(
+        self,
+        past_key_values,
+        prev_seq: int,
+        prior_layers: list[CompressedKV] | None,
+    ) -> list[CompressedKV]:
+        """Compress only newly appended token positions (incremental append)."""
+        new_layers: list[CompressedKV] = []
+        for layer_idx, (key, value) in enumerate(iter_layer_kv(past_key_values)):
+            total_seq = key.shape[2]
+            if prior_layers is None:
+                key_payloads: list[object] = []
+                value_payloads: list[object] = []
+                start = 0
+            else:
+                prior = prior_layers[layer_idx]
+                key_payloads = list(prior.keys)  # type: ignore[arg-type]
+                value_payloads = list(prior.values)  # type: ignore[arg-type]
+                start = prev_seq
+
+            for token_idx in range(start, total_seq):
+                key_payload, value_payload = compress_token_slice(
+                    key, value, token_idx, layer_idx, self.compressor
+                )
+                key_payloads.append(key_payload)
+                value_payloads.append(value_payload)
+
+            new_layers.append(
+                build_incremental_layer(
+                    key,
+                    value,
+                    key_payloads,
+                    value_payloads,
+                    layer_idx,
+                    self.compressor,
+                )
+            )
+        return new_layers
 
     @torch.no_grad()
     def step(
@@ -39,8 +91,10 @@ class KVCacheEngine:
         attention_mask: torch.Tensor | None = None,
         compressed_cache: CompressedCache | None = None,
     ) -> tuple[torch.Tensor, CompressedCache]:
-        past_kv = None
         cache = compressed_cache or self.compressed_cache
+        prev_seq = cache.seq_length if cache is not None else 0
+
+        past_kv = None
         if cache is not None and cache.layers:
             past_kv = decompress_to_legacy_cache(
                 cache.layers, self.compressor, self.model.config, device=input_ids.device
@@ -53,10 +107,8 @@ class KVCacheEngine:
             use_cache=True,
         )
 
-        new_layers: list[CompressedKV] = []
-        for layer_idx, (key, value) in enumerate(iter_layer_kv(outputs.past_key_values)):
-            new_layers.append(self.compressor.compress(key, value, layer=layer_idx))
-
+        prior_layers = cache.layers if cache is not None else None
+        new_layers = self._compress_new_tokens(outputs.past_key_values, prev_seq, prior_layers)
         new_cache = CompressedCache(layers=new_layers)
         self.compressed_cache = new_cache
         return outputs.logits, new_cache
@@ -83,6 +135,7 @@ class KVCacheEngine:
         return generated
 
     def compress_existing_cache(self, past_key_values) -> CompressedCache:
-        layers = compress_past_key_values(past_key_values, self.compressor)
+        """Compress a full KV snapshot incrementally (one payload per token)."""
+        layers = self._compress_new_tokens(past_key_values, prev_seq=0, prior_layers=None)
         self.compressed_cache = CompressedCache(layers=layers)
         return self.compressed_cache

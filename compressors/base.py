@@ -58,6 +58,10 @@ class KVCompressor(ABC):
         )
 
     def decompress(self, compressed: CompressedKV) -> tuple[torch.Tensor, torch.Tensor]:
+        if isinstance(compressed.keys, list):
+            key_parts = [self.decompress_kv(item, mode="key") for item in compressed.keys]
+            value_parts = [self.decompress_kv(item, mode="value") for item in compressed.values]
+            return torch.cat(key_parts, dim=2), torch.cat(value_parts, dim=2)
         key = self.decompress_kv(compressed.keys, mode="key")
         value = self.decompress_kv(compressed.values, mode="value")
         return key, value

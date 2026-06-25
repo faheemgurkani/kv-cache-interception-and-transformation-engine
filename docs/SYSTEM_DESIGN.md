@@ -4,9 +4,27 @@ This document records the engineering decisions behind the KV-cache compression 
 
 ---
 
-## 0. Global Architecture (Non-Negotiable)
+## 0. Mental Model (Read This First)
 
-The system is organized into four layers. **Only the compression layer changes between papers.**
+**This project is NOT:** a TurboQuant script, a single-paper reimplementation, or a model modification toolkit.
+
+**This project IS:** a **KV-cache interception + transformation engine** inside an LLM forward pass.
+
+```text
+Tokenizer → Model Forward → KV Cache → (intercept here) → Attention → Next tokens
+                                              │
+                                    KVCompressor (plug-in)
+```
+
+- **`KVCacheEngine`** (`framework/kv_engine.py`) owns the intercept point: decompress stored KV → model step → compress new KV.
+- **`KVCompressor`** (`compressors/base.py`) is the only swap-in surface per paper.
+- **TurboQuant** is the first fully implemented `KVCompressor`; KIVI, QJL, and RocketKV are additional plug-ins, not separate systems.
+
+---
+
+## 1. Global Architecture (Non-Negotiable)
+
+The system is organized into four fixed layers plus one pluggable compression layer. **Only the compression layer changes between papers.**
 
 ```text
                 ┌──────────────────────────┐
@@ -54,7 +72,7 @@ The system is organized into four layers. **Only the compression layer changes b
 
 ---
 
-## 1. Model Layer (Fixed)
+## 2. Model Layer (Fixed)
 
 ### 1.1 Model choice
 
@@ -104,7 +122,7 @@ This is a **hard requirement** for KV-cache interception research.
 
 ---
 
-## 2. KV Cache Interception System
+## 3. KV Cache Interception System
 
 The core engine is `KVCacheEngine` in `framework/kv_engine.py`.
 
@@ -167,7 +185,7 @@ Transformers 5.x requires `DynamicCache(ddp_cache_data=layer_pairs, config=model
 
 ---
 
-## 3. Compression Layer Interface
+## 4. Compression Layer Interface
 
 All methods implement `KVCompressor` in `compressors/base.py`:
 
@@ -185,7 +203,7 @@ class KVCompressor(ABC):
 
 ---
 
-## 4. TurboQuant Compression Layer
+## 5. TurboQuant Compression Layer
 
 TurboQuant is **isolated** from the model and eval layers:
 
@@ -261,7 +279,7 @@ python scripts/run_eval.py --compressor turboquant --stage full --context-length
 
 ---
 
-## 5. Evaluation Pipeline (Fixed Across All Papers)
+## 6. Evaluation Pipeline (Fixed Across All Papers)
 
 **Do not change eval code when adding a new compression method.**
 
@@ -288,7 +306,7 @@ WikiText-2 documents are short. We **concatenate samples** until `target_length`
 
 ---
 
-## 6. Execution Order
+## 7. Execution Order
 
 Follow this order to avoid getting stuck:
 
@@ -303,7 +321,7 @@ Follow this order to avoid getting stuck:
 
 ---
 
-## 7. Explicit Non-Goals
+## 8. Explicit Non-Goals
 
 | Technology | Why excluded (for now) |
 |---|---|
@@ -315,7 +333,7 @@ Follow this order to avoid getting stuck:
 
 ---
 
-## 8. File Map
+## 9. File Map
 
 ```text
 framework/
@@ -342,7 +360,7 @@ reporting/          JSON/CSV export
 
 ---
 
-## 9. System Guarantees
+## 10. System Guarantees
 
 If you follow this design:
 

@@ -1,10 +1,36 @@
 # KV-Cache Compression Benchmark
 
-Reproduction and benchmarking framework for KV-cache compression methods:
-
-**TurboQuant → KIVI → QJL → RocketKV**
+A **KV-cache interception + transformation engine** inside an LLM forward pass, with a fixed evaluation stack for comparing compression methods.
 
 Built on **Qwen3-1.7B** ([Hugging Face](https://huggingface.co/Qwen/Qwen3-1.7B)) with PyTorch and HuggingFace Transformers, optimized for Apple Silicon (MPS).
+
+---
+
+## What You Are Building (Mental Model)
+
+**You are NOT building:** a TurboQuant script (or any single-paper reimplementation).
+
+**You ARE building:** a KV-cache interception + transformation engine that sits inside the model forward loop.
+
+```text
+Tokenizer → Model Forward → KV Cache → (YOU intercept here) → Attention → Next tokens
+                                              │
+                                    KVCompressor (plug-in)
+                                              │
+                         TurboQuant | KIVI | QJL | RocketKV | identity
+```
+
+| Component | Role | Changes per paper? |
+|---|---|---|
+| `framework/kv_engine.py` | Intercepts `past_key_values` between steps | No |
+| `compressors/*` | `KVCompressor` plug-ins (transform KV tensors) | **Yes** |
+| `eval/` + `reporting/` | Fixed metrics (memory, speed, perplexity) | No |
+
+**TurboQuant is one implementation of `KVCompressor`**, not the project itself. KIVI, QJL, and RocketKV plug into the same engine and eval pipeline without touching model or metric code.
+
+See [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) for the full architecture.
+
+**Methods benchmarked (compression layer only):** TurboQuant → KIVI → QJL → RocketKV
 
 ---
 
@@ -162,18 +188,33 @@ WikiText-2 documents are short; the framework **concatenates samples** until the
 
 ## Architecture
 
-Four-layer research framework — only the compression layer changes per paper.
-
-**Full system design (eager attention rationale, KV interception, TurboQuant math, execution order):**
-[docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md)
+Four fixed layers + one pluggable compression layer. **Only `compressors/` changes between papers.**
 
 ```text
-Model Layer          → framework/model.py
-KV Interception      → framework/kv_engine.py
-KV Compression Layer → compressors/ + quantizers/
-Evaluation Layer     → eval/
-Reporting Layer      → reporting/
+Tokenizer
+    │
+Model Forward                    ← framework/model.py (fixed)
+    │
+KV Cache (past_key_values)
+    │
+KVCacheEngine                    ← framework/kv_engine.py (fixed) — intercept here
+    │
+KVCompressor (plug-in)           ← compressors/ (variable)
+    │
+Attention → Next tokens
+    │
+Evaluation + Reporting           ← eval/ + reporting/ (fixed)
 ```
+
+**Full system design:** [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) (eager attention rationale, interception flow, TurboQuant math, execution order)
+
+| Layer | Directory |
+|---|---|
+| Model | `framework/model.py` |
+| KV interception | `framework/kv_engine.py`, `framework/kv_cache.py` |
+| Compression (plug-in) | `compressors/`, `quantizers/` |
+| Evaluation | `eval/` |
+| Reporting | `reporting/` |
 
 ### Compressors
 

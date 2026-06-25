@@ -229,11 +229,13 @@ Operations apply along the **last dimension D** (head dimension). Qwen3 uses D=1
 |---|---|---|---|
 | 0 | Pad D → 2^k | `pad_to_power_of_two()` | Required for WHT when D is not power of 2 |
 | 1 | Walsh-Hadamard | `hadamard_transform()` | y = Hx, H orthogonal; scipy fallback on MPS |
-| 2 | Normalize | `x / √D` | **Critical** — preserves variance; valid Lloyd-Max centroids |
+| 2 | Normalize | `x / √D` on unit-norm vectors after WHT | Preserves variance in rotated domain |
+| 2b | Gamma scale | `γ = amax(y) / max(centroid)` | Per-vector dynamic range for Lloyd-Max |
+| 2c | Vector norm | store `‖x‖`, normalize before WHT | PolarQuant-style magnitude preservation |
 | 3 | Lloyd-Max quantize | KMeans centroids + nearest index | Offline Gaussian fit, k = 2^bitwidth |
 | 4 | Dequantize | `centroids[indices]` | MSE reconstruction x̂ |
 | 5 | Residual | r = x − x̂ | TurboQuant's two-part encoding |
-| 6 | QJL encode | b = sign(Sr) | Fixed-seed Gaussian S ∈ R^{d×d}, reused |
+| 6 | QJL encode | b = sign(Sr) | **Values only** in FULL stage; QJL on keys hurts attention |
 | 7 | QJL decode | r̂ = √(π/2)/d · Sᵀb · ‖r‖ | Unbiased sign estimator |
 | 8 | Reconstruct | x_final = x̂ + r̂ → inverse WHT → unpad | Return to original space |
 

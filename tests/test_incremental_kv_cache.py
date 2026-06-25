@@ -8,6 +8,7 @@ import torch
 
 from compressors.identity import IdentityCompressor
 from compressors.turboquant import TurboQuantCompressor
+from data.loader import build_long_context_ids, load_wikitext2
 from eval.perplexity import evaluate_perplexity, evaluate_perplexity_baseline
 from framework.kv_cache import decompress_to_legacy_cache, iter_layer_kv
 from framework.kv_engine import KVCacheEngine
@@ -15,6 +16,12 @@ from framework.model import ModelLayer
 from quantizers.turboquant_pipeline import TurboQuantStage
 
 MODEL_DIR = Path(__file__).resolve().parent.parent / "models" / "qwen3_1.7b"
+CONTEXT_LENGTH = 128
+
+
+def _eval_ids(model_layer: ModelLayer):
+    dataset = load_wikitext2()
+    return build_long_context_ids(model_layer.tokenizer, dataset, CONTEXT_LENGTH).to(model_layer.device)
 
 
 @pytest.mark.skipif(not MODEL_DIR.exists(), reason="Model not downloaded")
@@ -55,21 +62,23 @@ def test_online_kv_norms_stay_finite_for_full_turboquant():
 @pytest.mark.skipif(not MODEL_DIR.exists(), reason="Model not downloaded")
 def test_turboquant_full_online_perplexity_is_finite():
     model_layer = ModelLayer()
-    ids = model_layer.tokenize("TurboQuant online perplexity finite check sequence here.")[:, :128]
+    ids = _eval_ids(model_layer)
+    baseline = evaluate_perplexity(model_layer, ids, IdentityCompressor(), stride=512)
     compressor = TurboQuantCompressor(bitwidth=4, stage=TurboQuantStage.FULL)
     ppl = evaluate_perplexity(model_layer, ids, compressor, stride=512)
     assert math.isfinite(ppl)
-    assert ppl > 0
+    assert ppl < baseline * 2.0
 
 
 @pytest.mark.skipif(not MODEL_DIR.exists(), reason="Model not downloaded")
 def test_wht_quant_online_perplexity_is_finite():
     model_layer = ModelLayer()
-    ids = model_layer.tokenize("WHT quant online perplexity finite check.")[:, :128]
+    ids = _eval_ids(model_layer)
+    baseline = evaluate_perplexity(model_layer, ids, IdentityCompressor(), stride=512)
     compressor = TurboQuantCompressor(bitwidth=4, stage=TurboQuantStage.WHT_QUANT)
     ppl = evaluate_perplexity(model_layer, ids, compressor, stride=512)
     assert math.isfinite(ppl)
-    assert ppl > 0
+    assert ppl < baseline * 2.0
 
 
 @pytest.mark.skipif(not MODEL_DIR.exists(), reason="Model not downloaded")

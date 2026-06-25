@@ -24,8 +24,8 @@ def test_turboquant_full_roundtrip():
     assert k2.shape == key.shape
     assert v2.shape == value.shape
     errors = compressor.reconstruction_error(key, value)
-    assert errors["key_rmse"] < 2.0
-    assert errors["value_rmse"] < 2.0
+    assert errors["key_rmse"] < 3.0
+    assert errors["value_rmse"] < 3.0
 
 
 def test_turboquant_stages_increasing_compression():

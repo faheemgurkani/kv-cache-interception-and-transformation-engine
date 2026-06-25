@@ -27,6 +27,13 @@ def normalize_features(x: torch.Tensor, dim: int = -1) -> torch.Tensor:
     return x / math.sqrt(d)
 
 
+def compute_gamma(y: torch.Tensor, centroids: torch.Tensor, dim: int = -1) -> torch.Tensor:
+    """Per-vector amax scale so rotated coefficients fit the Lloyd-Max codebook."""
+    c_max = centroids.abs().max().item()
+    amax = y.abs().amax(dim=dim, keepdim=True).clamp(min=1e-8)
+    return amax / c_max
+
+
 def quantize(x: torch.Tensor, centroids: torch.Tensor) -> torch.Tensor:
     """Nearest-centroid Lloyd-Max quantization; returns int32 indices."""
     c = centroids.to(device=x.device, dtype=x.dtype)
@@ -37,3 +44,9 @@ def quantize(x: torch.Tensor, centroids: torch.Tensor) -> torch.Tensor:
 def dequantize(indices: torch.Tensor, centroids: torch.Tensor) -> torch.Tensor:
     c = centroids.to(device=indices.device, dtype=torch.float32)
     return c[indices.long()]
+
+
+def correct_rotated_norm(y: torch.Tensor, dim: int = -1) -> torch.Tensor:
+    """Renormalize reconstructed rotated coefficients to unit L2 norm."""
+    norm = y.norm(dim=dim, keepdim=True).clamp(min=1e-8)
+    return y / norm

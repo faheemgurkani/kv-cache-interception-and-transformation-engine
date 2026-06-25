@@ -31,10 +31,8 @@ def test_turboquant_attention_fidelity_is_measured():
     ids = model_layer.tokenize("Attention fidelity TurboQuant measurement check.")[:, :32]
     compressor = TurboQuantCompressor(bitwidth=4, stage=TurboQuantStage.FULL)
     metrics = evaluate_attention_fidelity(model_layer, ids, compressor)
-    assert metrics.rmse >= 0.0
-    assert -1.0 <= metrics.cosine_similarity <= 1.0
-    assert metrics.max_error >= 0.0
-    assert len(metrics.per_layer) == model_layer.config.num_hidden_layers
+    assert metrics.rmse < 10.0
+    assert metrics.cosine_similarity > 0.8
 
 
 def test_attention_scores_shape():

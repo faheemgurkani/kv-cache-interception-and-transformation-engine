@@ -31,7 +31,8 @@ class TurboQuantCompressor(KVCompressor):
         layer: int = 0,
         mode: str = "key",
     ) -> TurboQuantTensorPayload:
-        return self.pipeline.compress_tensor(tensor)
+        use_qjl = self.stage == TurboQuantStage.FULL and mode == "value"
+        return self.pipeline.compress_tensor(tensor, use_qjl=use_qjl)
 
     def decompress_kv(self, payload: object, mode: str = "key") -> torch.Tensor:
         if not isinstance(payload, TurboQuantTensorPayload):
@@ -45,6 +46,9 @@ class TurboQuantCompressor(KVCompressor):
 
     def reconstruction_error(self, key: torch.Tensor, value: torch.Tensor) -> dict[str, float]:
         return {
-            "key_rmse": self.pipeline.reconstruction_error(key),
-            "value_rmse": self.pipeline.reconstruction_error(value),
+            "key_rmse": self.pipeline.reconstruction_error(key, use_qjl=False),
+            "value_rmse": self.pipeline.reconstruction_error(
+                value,
+                use_qjl=self.stage == TurboQuantStage.FULL,
+            ),
         }

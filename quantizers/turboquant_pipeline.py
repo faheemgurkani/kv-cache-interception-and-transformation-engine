@@ -20,7 +20,14 @@ from quantizers.hadamard import (
     pad_to_power_of_two,
     unpad,
 )
-from quantizers.lloyd_max import build_centroids, dequantize, normalize_features, quantize
+from quantizers.lloyd_max import (
+    build_centroids,
+    compute_gamma,
+    correct_rotated_norm,
+    dequantize,
+    normalize_features,
+    quantize,
+)
 from quantizers.qjl import projection_matrix, qjl_decode, qjl_encode
 
 
@@ -31,7 +38,6 @@ class TurboQuantStage(str, Enum):
     FULL = "full"
 
 
-# Fixed per-tensor metadata: dims, stage, bitwidth, shape (conservative packed estimate).
 TURBOQUANT_METADATA_BYTES = 32
 
 
@@ -42,6 +48,8 @@ class TurboQuantTensorPayload:
     indices: torch.Tensor | None
     qjl_bits: torch.Tensor | None
     norm_r: torch.Tensor | None
+    vector_norm: torch.Tensor | None
+    gamma: torch.Tensor | None
     original_dim: int
     padded_dim: int
     original_shape: tuple[int, ...]
@@ -51,7 +59,6 @@ class TurboQuantTensorPayload:
     wht_only: torch.Tensor | None = None
 
     def storage_bits(self) -> int:
-        """True bits stored (bit-packed QJL signs, bitwidth-sized indices, metadata)."""
         bits = TURBOQUANT_METADATA_BYTES * 8
         if self.indices is not None:
             bits += index_storage_bits(self.indices.numel(), self.bitwidth)
@@ -59,6 +66,10 @@ class TurboQuantTensorPayload:
             bits += sign_storage_bits(self.qjl_bits.numel())
         if self.norm_r is not None:
             bits += float32_storage_bits(self.norm_r.numel())
+        if self.vector_norm is not None:
+            bits += float32_storage_bits(self.vector_norm.numel())
+        if self.gamma is not None:
+            bits += float32_storage_bits(self.gamma.numel())
         if self.wht_only is not None:
             bits += float32_storage_bits(self.wht_only.numel())
         return bits
@@ -91,21 +102,48 @@ class TurboQuantPipeline:
             self._projections[dim] = projection_matrix(dim, seed=self.seed, device=device)
         return self._projections[dim]
 
-    def compress_tensor(self, x: torch.Tensor) -> TurboQuantTensorPayload:
+    def _to_rotated(self, x_pad: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Unit-norm + WHT + feature normalize; returns y, vector_norm, gamma."""
+        vector_norm = x_pad.norm(dim=-1, keepdim=True).clamp(min=1e-8)
+        x_unit = x_pad / vector_norm
+        y = normalize_features(hadamard_transform(x_unit, dim=-1), dim=-1)
+        gamma = compute_gamma(y, self.centroids, dim=-1)
+        return y, vector_norm, gamma
+
+    def _from_rotated(
+        self,
+        y: torch.Tensor,
+        vector_norm: torch.Tensor,
+        padded_dim: int,
+        original_dim: int,
+        original_shape: tuple[int, ...],
+        original_dtype: torch.dtype,
+        apply_norm_correction: bool = False,
+    ) -> torch.Tensor:
+        if apply_norm_correction:
+            y = correct_rotated_norm(y, dim=-1)
+        x_unit_pad = inverse_hadamard_transform(y * math.sqrt(padded_dim), dim=-1)
+        x_pad = x_unit_pad * vector_norm
+        x_pad = unpad(x_pad, original_dim, dim=-1)
+        return x_pad.to(original_dtype).reshape(original_shape)
+
+    def compress_tensor(self, x: torch.Tensor, use_qjl: bool = True) -> TurboQuantTensorPayload:
         original_shape = tuple(x.shape)
         original_dtype = x.dtype
         x = x.float()
         x_pad, original_dim = pad_to_power_of_two(x, dim=-1)
         padded_dim = x_pad.shape[-1]
 
-        y = hadamard_transform(x_pad, dim=-1)
-        y = normalize_features(y, dim=-1)
+        y, vector_norm, gamma = self._to_rotated(x_pad)
+        y_scaled = y / gamma
 
         if self.stage == TurboQuantStage.WHT_ONLY:
             return TurboQuantTensorPayload(
                 indices=None,
                 qjl_bits=None,
                 norm_r=None,
+                vector_norm=vector_norm.detach().cpu(),
+                gamma=None,
                 original_dim=original_dim,
                 padded_dim=padded_dim,
                 original_shape=original_shape,
@@ -115,14 +153,16 @@ class TurboQuantPipeline:
                 wht_only=y.detach().cpu(),
             )
 
-        indices = quantize(y, self.centroids).to(torch.int8)
-        y_mse = dequantize(indices, self.centroids)
+        indices = quantize(y_scaled, self.centroids).to(torch.int8)
+        y_mse = dequantize(indices, self.centroids) * gamma
 
         if self.stage == TurboQuantStage.WHT_QUANT:
             return TurboQuantTensorPayload(
                 indices=indices.detach().cpu(),
                 qjl_bits=None,
                 norm_r=None,
+                vector_norm=vector_norm.detach().cpu(),
+                gamma=gamma.detach().cpu(),
                 original_dim=original_dim,
                 padded_dim=padded_dim,
                 original_shape=original_shape,
@@ -138,11 +178,28 @@ class TurboQuantPipeline:
                 indices=indices.detach().cpu(),
                 qjl_bits=None,
                 norm_r=residual.norm(dim=-1, keepdim=True).detach().cpu(),
+                vector_norm=vector_norm.detach().cpu(),
+                gamma=gamma.detach().cpu(),
                 original_dim=original_dim,
                 padded_dim=padded_dim,
                 original_shape=original_shape,
                 original_dtype=original_dtype,
                 stage=self.stage,
+                bitwidth=self.bitwidth,
+            )
+
+        if not use_qjl:
+            return TurboQuantTensorPayload(
+                indices=indices.detach().cpu(),
+                qjl_bits=None,
+                norm_r=None,
+                vector_norm=vector_norm.detach().cpu(),
+                gamma=gamma.detach().cpu(),
+                original_dim=original_dim,
+                padded_dim=padded_dim,
+                original_shape=original_shape,
+                original_dtype=original_dtype,
+                stage=TurboQuantStage.WHT_QUANT,
                 bitwidth=self.bitwidth,
             )
 
@@ -154,6 +211,8 @@ class TurboQuantPipeline:
             indices=indices.detach().cpu(),
             qjl_bits=bits.detach().cpu(),
             norm_r=norm_r.detach().cpu(),
+            vector_norm=vector_norm.detach().cpu(),
+            gamma=gamma.detach().cpu(),
             original_dim=original_dim,
             padded_dim=padded_dim,
             original_shape=original_shape,
@@ -168,15 +227,23 @@ class TurboQuantPipeline:
 
         if payload.stage == TurboQuantStage.WHT_ONLY:
             y = payload.wht_only
-            assert y is not None
-            y = y.float().to(cpu)
-            x_pad = inverse_hadamard_transform(y * math.sqrt(payload.padded_dim), dim=-1)
-            x_pad = unpad(x_pad, payload.original_dim, dim=-1)
-            return x_pad.to(payload.original_dtype).reshape(payload.original_shape)
+            assert y is not None and payload.vector_norm is not None
+            return self._from_rotated(
+                y.float().to(cpu),
+                payload.vector_norm.to(cpu),
+                payload.padded_dim,
+                payload.original_dim,
+                payload.original_shape,
+                payload.original_dtype,
+                apply_norm_correction=False,
+            )
 
         assert payload.indices is not None
+        assert payload.vector_norm is not None and payload.gamma is not None
         indices = payload.indices.to(cpu)
-        y_mse = dequantize(indices, self.centroids.to(cpu))
+        vector_norm = payload.vector_norm.to(cpu)
+        gamma = payload.gamma.to(cpu)
+        y_mse = dequantize(indices, self.centroids.to(cpu)) * gamma
 
         if payload.stage == TurboQuantStage.WHT_QUANT:
             y = y_mse
@@ -185,15 +252,19 @@ class TurboQuantPipeline:
         else:
             assert payload.qjl_bits is not None and payload.norm_r is not None
             proj = self._get_projection(payload.padded_dim, cpu)
-            bits = payload.qjl_bits.to(cpu)
-            norm_r = payload.norm_r.to(cpu)
-            r_hat = qjl_decode(bits, proj, norm_r)
+            r_hat = qjl_decode(payload.qjl_bits.to(cpu), proj, payload.norm_r.to(cpu))
             y = y_mse + r_hat
 
-        x_pad = inverse_hadamard_transform(y * math.sqrt(payload.padded_dim), dim=-1)
-        x_pad = unpad(x_pad, payload.original_dim, dim=-1)
-        return x_pad.to(payload.original_dtype).reshape(payload.original_shape)
+        return self._from_rotated(
+            y,
+            vector_norm,
+            payload.padded_dim,
+            payload.original_dim,
+            payload.original_shape,
+            payload.original_dtype,
+            apply_norm_correction=False,
+        )
 
-    def reconstruction_error(self, x: torch.Tensor) -> float:
-        restored = self.decompress_tensor(self.compress_tensor(x))
+    def reconstruction_error(self, x: torch.Tensor, use_qjl: bool = True) -> float:
+        restored = self.decompress_tensor(self.compress_tensor(x, use_qjl=use_qjl))
         return (x.float() - restored.float()).pow(2).mean().sqrt().item()

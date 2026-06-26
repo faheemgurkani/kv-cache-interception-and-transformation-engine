@@ -1,4 +1,4 @@
-"""Run a baseline KV-cache compression method via the generic evaluation runner."""
+"""Run a baseline compressor via the shared evaluation runner."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from reporting.reporter import ResultReporter
 
 def main() -> None:
     eval_config = load_eval_config()
-    parser = argparse.ArgumentParser(description="Run a KV-cache compression baseline.")
+    parser = argparse.ArgumentParser(description="Run a baseline evaluation for the KV-cache engine.")
     parser.add_argument(
         "--baseline",
         choices=["identity", "turboquant", "kivi", "qjl", "rocketkv"],

@@ -1,4 +1,4 @@
-# KV-Cache Compression Benchmark
+# KV-Cache Interception + Transformation Engine
 
 A **KV-cache interception + transformation engine** inside an LLM forward pass, with a fixed evaluation stack for comparing compression methods.
 
@@ -6,14 +6,12 @@ Built on **Qwen3-1.7B** ([Hugging Face](https://huggingface.co/Qwen/Qwen3-1.7B))
 
 ---
 
-## What You Are Building (Mental Model)
+## Overview
 
-**You are NOT building:** a TurboQuant script (or any single-paper reimplementation).
-
-**You ARE building:** a KV-cache interception + transformation engine that sits inside the model forward loop.
+This repository is **not** a TurboQuant script or a single-paper reimplementation. It provides a **KV-cache interception + transformation engine** that sits inside the model forward loop, with pluggable compressors and a shared evaluation pipeline.
 
 ```text
-Tokenizer → Model Forward → KV Cache → (YOU intercept here) → Attention → Next tokens
+Tokenizer → Model Forward → KV Cache → (intercept here) → Attention → Next tokens
                                               │
                                     KVCompressor (plug-in)
                                               │
@@ -26,17 +24,17 @@ Tokenizer → Model Forward → KV Cache → (YOU intercept here) → Attention 
 | `compressors/*` | `KVCompressor` plug-ins (transform KV tensors) | **Yes** |
 | `eval/` + `reporting/` | Fixed metrics (memory, speed, perplexity) | No |
 
-**TurboQuant is one implementation of `KVCompressor`**, not the project itself. KIVI, QJL, and RocketKV plug into the same engine and eval pipeline without touching model or metric code.
+**TurboQuant** is one implementation of `KVCompressor`, not the project itself. KIVI, QJL, and RocketKV plug into the same engine and eval pipeline without touching model or metric code.
 
 See [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) for the full architecture.
 
-**Methods benchmarked (compression layer only):** TurboQuant → KIVI → QJL → RocketKV
+**Methods supported (compression layer):** TurboQuant → KIVI → QJL → RocketKV
 
 ---
 
-## What Is (and Is Not) in This Repo
+## Repository Contents
 
-This repository contains **code, configs, and scripts only**. Large artifacts are downloaded locally and are **gitignored**:
+The repository ships **code, configs, and scripts only**. Large artifacts are downloaded locally and are **gitignored**:
 
 | Artifact | Location | Approx. size | How to obtain |
 |---|---|---:|---|
@@ -45,7 +43,7 @@ This repository contains **code, configs, and scripts only**. Large artifacts ar
 | Virtual environment | `.venv/` | ~2 GB | `pip install -r requirements.txt` |
 | Experiment results | `results/`, `plots/` | varies | produced by eval scripts |
 
-Never commit `.env` (contains your HuggingFace token).
+Do not commit `.env` (contains HuggingFace tokens).
 
 ---
 
@@ -62,15 +60,15 @@ Never commit `.env` (contains your HuggingFace token).
 
 ---
 
-## Reproduction Guide
+## Quick Start
 
 Follow these steps in order on a fresh clone.
 
 ### 1. Clone and create the virtual environment
 
 ```bash
-git clone https://github.com/<your-username>/kv-cache-compression-benchmark.git
-cd kv-cache-compression-benchmark
+git clone https://github.com/<your-username>/<repository>.git
+cd <repository>
 
 python3.11 -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
@@ -97,12 +95,12 @@ pip install -r requirements.txt --ignore-installed fast-hadamard-transform 2>/de
 
 ```bash
 conda env create -f environment.yml
-conda activate kv-cache-compression-benchmark
+conda activate kv-cache-engine
 ```
 
 ### 3. Configure HuggingFace authentication
 
-Copy the example env file and add your token ([create one here](https://huggingface.co/settings/tokens)):
+Copy the example env file and add a token ([create one here](https://huggingface.co/settings/tokens)):
 
 ```bash
 cp .env.example .env
@@ -141,9 +139,9 @@ KV cache access verified.
 pytest tests/ -v
 ```
 
-All 23 tests should pass (memory accounting, attention fidelity, online inference, compressor, TurboQuant, WikiText-2 loader, KV-cache shapes, eval smoke test).
+All 32 tests should pass (memory accounting, attention fidelity, online inference, incremental KV cache, compressor, TurboQuant quality, WikiText-2 loader, KV-cache shapes, eval runner).
 
-### 7. Run a benchmark
+### 7. Run an evaluation
 
 ```bash
 # Quick smoke test (~512 tokens)
@@ -188,7 +186,7 @@ WikiText-2 documents are short; the framework **concatenates samples** until the
 
 ## Architecture
 
-Four fixed layers + one pluggable compression layer. **Only `compressors/` changes between papers.**
+Four fixed layers plus one pluggable compression layer. **Only `compressors/` changes between papers.**
 
 ```text
 Tokenizer
@@ -253,7 +251,7 @@ python scripts/validate_turboquant.py --phase intercept
 python scripts/run_eval.py --compressor turboquant --stage full --context-length 512
 ```
 
-Model loads with `attn_implementation="eager"` — required because FlashAttention hides KV internals (see system design doc).
+The model loads with `attn_implementation="eager"` — required because FlashAttention hides KV internals (see system design doc).
 
 ### Evaluation metrics
 
@@ -277,7 +275,7 @@ Model loads with `attn_implementation="eager"` — required because FlashAttenti
 ## Project Structure
 
 ```text
-kv-cache-compression-benchmark/
+.
 ├── docs/               # SYSTEM_DESIGN.md — architecture & decisions
 ├── configs/            # model.yaml, eval.yaml
 ├── framework/          # model layer, device, kv_cache utilities

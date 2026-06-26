@@ -1,4 +1,4 @@
-"""Run the generic KV-cache compression evaluation framework."""
+"""Run evaluations for the KV-Cache Interception + Transformation Engine."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def main() -> None:
     eval_config = load_eval_config()
     model_config = load_model_config()
 
-    parser = argparse.ArgumentParser(description="Run KV-cache compression benchmarks.")
+    parser = argparse.ArgumentParser(description="Run KV-cache interception engine evaluations.")
     parser.add_argument(
         "--compressor",
         choices=sorted(COMPRESSORS),

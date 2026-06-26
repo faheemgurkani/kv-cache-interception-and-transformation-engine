@@ -1,4 +1,4 @@
-"""Core infrastructure for KV-cache compression benchmarking."""
+"""Core infrastructure for the KV-Cache Interception + Transformation Engine."""
 
 from framework.config import load_eval_config, load_model_config
 from framework.device import get_device

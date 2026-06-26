@@ -1,6 +1,6 @@
-# System Design
+# System Design — KV-Cache Interception + Transformation Engine
 
-This document records the engineering decisions behind the KV-cache compression benchmark. The goal is a **NeurIPS-style systems replication**: a fixed model and evaluation stack, with pluggable compression methods.
+This document records the engineering decisions behind the **KV-Cache Interception + Transformation Engine**. The goal is a **NeurIPS-style systems replication**: a fixed model and evaluation stack, with pluggable compression methods.
 
 ---
 
@@ -109,10 +109,10 @@ This is a **hard requirement** for KV-cache interception research.
 
 | Backend | Problem for this project |
 |---|---|
-| **FlashAttention / SDPA (fused)** | KV tensors are fused inside optimized kernels; you cannot reliably read or replace K/V between steps |
+| **FlashAttention / SDPA (fused)** | KV tensors are fused inside optimized kernels; K/V cannot be reliably read or replaced between steps |
 | **Eager attention** | Standard PyTorch matmuls; `past_key_values` is materialized as explicit tensors per layer |
 
-**Consequences if you skip eager mode:**
+**Consequences without eager mode:**
 
 1. `outputs.past_key_values` may be incomplete, opaque, or backend-specific.
 2. Compression hooks that read `(K, V)` after each forward pass break silently or produce wrong shapes.
@@ -177,7 +177,7 @@ def step(self, input_ids, compressed_cache):
 
 ### 2.4 Key insight
 
-> **You are NOT modifying the model. You are modifying KV flow between the forward pass and the next token step.**
+> **The model is not modified. The engine modifies KV flow between the forward pass and the next token step.**
 
 The model always sees decompressed float16 K/V. Compression affects **storage and bandwidth**, not the model architecture. This keeps the design paper-agnostic: swap `TurboQuantCompressor` for `KIVICompressor` and the engine unchanged.
 
@@ -386,9 +386,9 @@ reporting/          JSON/CSV export
 
 ## 10. System Guarantees
 
-If you follow this design:
+This design provides:
 
-- Clean modular research engine with one plug-in point (`KVCompressor`)
+- A clean modular research engine with one plug-in point (`KVCompressor`)
 - Zero eval duplication across TurboQuant, KIVI, QJL, RocketKV
 - True KV-level control of LLM inference without model surgery
 - Publication-grade metric structure (quality / memory / throughput)

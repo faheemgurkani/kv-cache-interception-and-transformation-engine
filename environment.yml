@@ -1,4 +1,4 @@
-name: kv-cache-compression-benchmark
+name: kv-cache-engine
 channels:
   - pytorch
   - conda-forge

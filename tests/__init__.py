@@ -1,1 +1,1 @@
-"""Tests for KV-cache compression benchmark."""
+"""Tests for the KV-Cache Interception + Transformation Engine."""

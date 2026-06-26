@@ -1,4 +1,4 @@
-"""Generic KV-cache compressor interface."""
+"""KVCompressor plug-in interface for the KV-cache interception engine."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ class CompressedKV:
 
 
 class KVCompressor(ABC):
-    """Paper-independent interface for KV-cache compression methods."""
+    """Paper-independent interface for KV-cache compression plug-ins."""
 
     name: str = "base"
     bitwidth: int = 16

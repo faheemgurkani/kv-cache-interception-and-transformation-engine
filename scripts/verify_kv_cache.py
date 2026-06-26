@@ -1,4 +1,4 @@
-"""Verify direct access to past_key_values for KV-cache compression research."""
+"""Verify direct access to past_key_values for the KV-cache engine."""
 
 from pathlib import Path
 

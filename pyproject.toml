@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kv-cache-compression-benchmark"
+name = "kv-cache-engine"
 version = "0.1.0"
-description = "Generic KV-cache compression research framework"
+description = "KV-cache interception + transformation engine with pluggable compressors"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []

@@ -1,4 +1,4 @@
-"""Reporting layer for benchmark results."""
+"""Reporting layer for KV-cache engine evaluation results."""
 
 from __future__ import annotations
 

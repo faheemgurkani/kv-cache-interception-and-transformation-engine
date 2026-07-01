@@ -139,7 +139,7 @@ KV cache access verified.
 pytest tests/ -v
 ```
 
-All 32 tests should pass (memory accounting, attention fidelity, online inference, incremental KV cache, compressor, TurboQuant quality, WikiText-2 loader, KV-cache shapes, eval runner).
+All 43 tests should pass (memory accounting, attention fidelity, online inference, incremental KV cache, compressor, TurboQuant quality, QJL, RocketKV, WikiText-2 loader, KV-cache shapes, eval runner).
 
 ### 7. Run an evaluation
 
@@ -206,6 +206,8 @@ Evaluation + Reporting           ← eval/ + reporting/ (fixed)
 
 **Full system design:** [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) (eager attention rationale, interception flow, TurboQuant math, execution order)
 
+**QJL + RocketKV implementation:** [docs/QJL_AND_ROCKETKV.md](docs/QJL_AND_ROCKETKV.md)
+
 | Layer | Directory |
 |---|---|
 | Model | `framework/model.py` |
@@ -230,8 +232,8 @@ class KVCompressor:
 | `identity` | ✅ working | no compression (baseline) |
 | `turboquant` | ✅ Phase 1 | WHT → Lloyd-Max → QJL residual |
 | `kivi` | 🔜 Phase 2 | asymmetric INT2 |
-| `qjl` | 🔜 Phase 3 | random projection → 1-bit |
-| `rocketkv` | 🔜 Phase 4 | token selection → eviction |
+| `qjl` | ✅ Phase 3 | random projection → 1-bit sign (keys only) |
+| `rocketkv` | ✅ Phase 4 | token selection → eviction |
 
 ### TurboQuant (summary)
 
@@ -252,6 +254,42 @@ python scripts/run_eval.py --compressor turboquant --stage full --context-length
 ```
 
 The model loads with `attn_implementation="eager"` — required because FlashAttention hides KV internals (see system design doc).
+
+### QJL (summary)
+
+Standalone QJL compresses **keys only** via random Gaussian projection and 1-bit sign quantization. Values are stored uncompressed. The goal is inner-product preservation, not vector reconstruction.
+
+```text
+quantizers/qjl_pipeline.py   → QJLPipeline, QJLTensorPayload
+compressors/qjl.py           → QJLCompressor plug-in
+```
+
+Pipeline: `k → sign(S @ k) + ||k||` — no WHT, Lloyd-Max, or centroids.
+
+Attention uses the asymmetric estimator `estimate_attention_scores()` (see [docs/QJL_AND_ROCKETKV.md](docs/QJL_AND_ROCKETKV.md)). The engine still calls `decompress_kv()` for online inference, which returns an approximate key reconstruction.
+
+```bash
+pytest tests/test_qjl.py -v
+python scripts/run_eval.py --compressor qjl --context-length 512
+```
+
+### RocketKV (summary)
+
+RocketKV **drops tokens** instead of quantizing vectors. Stage 1 permanently filters tokens via a SnapKV-inspired `TokenSelector`; Stage 2 selects dynamic top-k tokens via `HybridSparseAttention` at decode time.
+
+```text
+quantizers/rocketkv.py       → TokenSelector, HybridSparseAttention
+compressors/rocketkv.py      → RocketKVCompressor plug-in
+```
+
+Output per layer: `{selected_indices, kept_K, kept_V}` — no quantization codes.
+
+```bash
+pytest tests/test_rocketkv.py -v
+python scripts/run_eval.py --compressor rocketkv --context-length 512
+```
+
+Full implementation details, configuration, and known limitations: [docs/QJL_AND_ROCKETKV.md](docs/QJL_AND_ROCKETKV.md).
 
 ### Evaluation metrics
 
@@ -276,11 +314,11 @@ The model loads with `attn_implementation="eager"` — required because FlashAtt
 
 ```text
 .
-├── docs/               # SYSTEM_DESIGN.md — architecture & decisions
+├── docs/               # SYSTEM_DESIGN.md, QJL_AND_ROCKETKV.md
 ├── configs/            # model.yaml, eval.yaml
 ├── framework/          # model layer, device, kv_cache utilities
-├── compressors/        # KVCompressor interface + method stubs
-├── quantizers/         # TurboQuant building blocks (WHT, Lloyd-Max)
+├── compressors/        # KVCompressor plug-ins (TurboQuant, QJL, RocketKV, …)
+├── quantizers/         # Compression primitives (WHT, Lloyd-Max, QJL, RocketKV)
 ├── baselines/          # re-exports of compressor implementations
 ├── eval/               # perplexity, memory, throughput, runner
 ├── data/               # WikiText-2 loader + long-context builder
@@ -356,8 +394,9 @@ Cache directory: `.cache/huggingface/datasets/` (gitignored).
 2. **Phase 0.5** — Generic evaluation framework, WikiText-2 loader, compressor interface ✅
 3. **Phase 1** — TurboQuant implementation ✅
 4. **Phase 2** — KIVI baseline
-5. **Phase 3** — QJL baseline
-6. **Phase 4** — RocketKV baseline
+5. **Phase 3** — QJL baseline ✅
+6. **Phase 4** — RocketKV baseline ✅
+7. **Phase 5** — Full evaluation sweep across all methods (pending)
 
 See [docs/SYSTEM_DESIGN.md §11](docs/SYSTEM_DESIGN.md#11-design-verification-checklist) for verification against common KV-compression mistakes (granularity, attention, QJL storage, Hadamard scaling, paper reusability).
 

@@ -286,6 +286,100 @@ python scripts/run_eval.py --compressor turboquant --stage full --context-length
 
 ---
 
+## 5.1 QJL Compression Layer
+
+QJL is **independent** of TurboQuant — it applies random projection directly to key vectors without WHT or Lloyd-Max.
+
+```text
+quantizers/qjl.py              → projection_matrix, qjl_encode, qjl_decode (shared primitives)
+quantizers/qjl_pipeline.py     → QJLPipeline, QJLTensorPayload
+compressors/qjl.py             → QJLCompressor plug-in
+```
+
+### Pipeline
+
+| Step | Operation | Notes |
+|---|---|---|
+| 1 | `k̃ = sign(S @ k)` | Random Gaussian S regenerated from seed |
+| 2 | Store | sign bits + `‖k‖` only |
+| 3 | Values | Uncompressed fp16 passthrough |
+| 4 | Attention | Asymmetric estimator: `q·k ≈ √(π/2) · (‖k‖/m) · ⟨Sq, k̃⟩` |
+
+Full forward:
+
+```text
+compress:  k → sign(S @ k) + ||k||     (keys)
+           v → passthrough              (values)
+attention: estimate_attention_scores()  (preferred)
+decompress: approximate k̂ via sign estimator  (engine compatibility)
+```
+
+### Storage format (`QJLTensorPayload`)
+
+```python
+{
+    "sign_bits": int8 container,   # 1 bit per sign (not 8)
+    "vector_norm": float32,        # ||k|| (32 bits)
+    "metadata": 24 bytes/tensor,
+}
+```
+
+Projection matrix S is **never stored** — regenerated from `(seed, head_dim)`.
+
+### Eval integration
+
+`eval/attention_score_error.py` calls `compressor.estimate_attention_scores()` when available, giving paper-faithful inner-product measurement for Section A metrics.
+
+**Full reference:** [docs/QJL_AND_ROCKETKV.md](QJL_AND_ROCKETKV.md)
+
+---
+
+## 5.2 RocketKV Compression Layer
+
+RocketKV **drops tokens** rather than quantizing vectors. It is fully independent of TurboQuant and QJL.
+
+```text
+quantizers/rocketkv.py         → TokenSelector, HybridSparseAttention, RocketKVLayerPayload
+compressors/rocketkv.py        → RocketKVCompressor plug-in
+```
+
+### Stage 1 — Permanent filtering
+
+```text
+[prefix tokens | observation window]
+     ↓
+TokenSelector: score prefix by dot-product with mean window key
+     ↓
+Keep top keep_ratio of prefix + all window tokens
+     ↓
+{selected_indices, kept_K, kept_V}
+```
+
+### Stage 2 — Hybrid Sparse Attention (HSA)
+
+```text
+query → approximate scores (head reduction) → top-k → union permanent indices
+```
+
+Exposed via `RocketKVCompressor.select_dynamic_tokens()`. Stage 2 is implemented but not yet wired into `KVCacheEngine.generate()` — online eval currently uses Stage 1 filtering via decompress.
+
+### Storage format (`RocketKVLayerPayload`)
+
+```python
+{
+    "selected_indices": int64,
+    "keys": float16,           # retained K tensor
+    "values": float16,         # retained V tensor
+    "original_seq_len": int,
+}
+```
+
+No quantization. Memory savings = `T' / T` reduction in sequence length.
+
+**Full reference:** [docs/QJL_AND_ROCKETKV.md](QJL_AND_ROCKETKV.md)
+
+---
+
 ## 6. Evaluation Pipeline (Fixed Across All Papers)
 
 **Do not change eval code when adding a new compression method.** Results are split into two sections:
@@ -341,7 +435,9 @@ Follow this order to avoid getting stuck:
 | **3 — Baseline** | Identity compressor, perplexity | `run_eval.py --compressor identity` |
 | **4 — TurboQuant** | WHT → quant → QJL step-by-step | `validate_turboquant.py --phase stages` |
 | **5 — Full eval** | Memory + speed + perplexity | `run_eval.py --compressor turboquant --stage full` |
-| **6 — Other papers** | Plug KIVI/QJL/RocketKV into same engine | Implement `compressors/{method}.py` |
+| **6 — QJL** | Key sign-projection compressor | `pytest tests/test_qjl.py`; `run_eval.py --compressor qjl` |
+| **7 — RocketKV** | Token selection compressor | `pytest tests/test_rocketkv.py`; `run_eval.py --compressor rocketkv` |
+| **8 — Sweep** | Compare all methods | `run_eval.py` across compressors + context lengths |
 
 ---
 
@@ -369,14 +465,21 @@ framework/
 compressors/
   base.py           KVCompressor ABC
   turboquant.py     TurboQuant plug-in
+  qjl.py            QJL plug-in
+  rocketkv.py       RocketKV plug-in
   identity.py       No-compression baseline
   registry.py       Factory: get_compressor(name, bitwidth, stage)
 
 quantizers/
   hadamard.py       WHT + pad/unpad
   lloyd_max.py      Lloyd-Max centroids
-  qjl.py            QJL encode/decode
+  qjl.py            Sign-projection primitives (shared)
+  qjl_pipeline.py   Standalone QJL pipeline
+  rocketkv.py       TokenSelector + HSA
   turboquant_pipeline.py  Stage enum + per-tensor pipeline
+
+docs/
+  QJL_AND_ROCKETKV.md   QJL + RocketKV implementation reference
 
 eval/               Paper-independent metrics
 reporting/          JSON/CSV export
@@ -450,8 +553,8 @@ The `KVCompressor` interface is the single swap point. Other methods plug in wit
 | Paper | How it maps | Status |
 |---|---|---|
 | **KIVI** | Replace `compress_kv()` with asymmetric scalar INT quant only (skip WHT/QJL) | 🔜 stub in `compressors/kivi.py` |
-| **QJL** | Replace residual stage: skip Lloyd-Max, keep `sign(Sx)` projection codec | 🔜 stub in `compressors/qjl.py`; math in `quantizers/qjl.py` |
-| **RocketKV** | Replace whole compressor: top-k token selection + eviction | 🔜 stub in `compressors/rocketkv.py` |
+| **QJL** | Standalone key sign-projection; `estimate_attention_scores()` for inner products | ✅ `compressors/qjl.py`, `quantizers/qjl_pipeline.py` |
+| **RocketKV** | Token selection + eviction; no vector quantization | ✅ `compressors/rocketkv.py`, `quantizers/rocketkv.py` |
 | **TurboQuant** | Full pipeline in `quantizers/turboquant_pipeline.py` | ✅ implemented |
 
 ```text

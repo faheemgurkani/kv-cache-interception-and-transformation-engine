@@ -127,11 +127,16 @@ def evaluate_attention_fidelity(
         query = _compute_layer_queries(model_layer, layer_idx, hidden_states[layer_idx], position_embeddings)
         key_exp = expand_kv_heads(key, num_q_heads, num_kv_heads)
 
-        key_hat = compressor.decompress_kv(compressor.compress_kv(key, layer=layer_idx, mode="key"), mode="key")
-        key_hat_exp = expand_kv_heads(key_hat, num_q_heads, num_kv_heads)
+        key_payload = compressor.compress_kv(key, layer=layer_idx, mode="key")
 
         scores_fp = attention_scores(query, key_exp, head_dim)
-        scores_quant = attention_scores(query, key_hat_exp, head_dim)
+
+        if hasattr(compressor, "estimate_attention_scores"):
+            scores_quant = compressor.estimate_attention_scores(query, key_payload, head_dim)
+        else:
+            key_hat = compressor.decompress_kv(key_payload, mode="key")
+            key_hat_exp = expand_kv_heads(key_hat, num_q_heads, num_kv_heads)
+            scores_quant = attention_scores(query, key_hat_exp, head_dim)
 
         mse, rmse, cosine, layer_max = _score_distortion(scores_fp, scores_quant)
         per_layer.append(

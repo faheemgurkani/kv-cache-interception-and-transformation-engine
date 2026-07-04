@@ -8,7 +8,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from framework.config import PROJECT_ROOT, load_model_config
-from framework.device import get_device
+from framework.device import get_device, get_eval_device
 
 
 class ModelLayer:
@@ -23,7 +23,7 @@ class ModelLayer:
     ) -> None:
         config = load_model_config()
         self.model_path = Path(model_path or PROJECT_ROOT / config["local_path"])
-        self.device = device or get_device()
+        self.device = device or get_eval_device()
         self.torch_dtype = torch_dtype
         self.attn_implementation = attn_implementation
 

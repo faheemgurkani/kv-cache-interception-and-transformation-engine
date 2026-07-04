@@ -6,18 +6,42 @@ Based on Modal docs (Context7: `/websites/modal`) and profiling of the current e
 
 ---
 
-## 1. Problem Summary
+## 1. Problem Summary (and fixes applied)
 
-| Bottleneck | Where | Impact |
+| Bottleneck | Where | Status |
 |---|---|---|
-| Token-by-token online PPL | `eval/perplexity.py` | Dominates runtime; scales O(ctx × windows × steps) |
-| Prefix re-processed every window | `evaluate_perplexity()` starts `cache=None` per window | **O(n²)** at long context — hidden multiplier |
-| TurboQuant on CPU | `turboquant_pipeline.py` stores payloads on CPU | GPU idle during compress/decompress |
-| Eager attention | `framework/model.py` | Required for KV intercept; slower than fused attn |
-| No CUDA Hadamard on Mac | `quantizers/hadamard.py` | Slow fallback on MPS |
-| Serial sweep | `scripts/run_turboquant_sweep.py` | One config × one context at a time |
+| Missing attention mask in online loop | `eval/perplexity.py`, `framework/kv_engine.py` | **Fixed** — explicit mask + auto mask in `step()` |
+| Cache reset every stride window | `eval/perplexity.py` | **Fixed** — single incremental cache across windows |
+| TurboQuant payloads forced to CPU | `quantizers/turboquant_pipeline.py` | **Fixed on CUDA** — GPU-resident payloads when input is CUDA |
+| No CUDA device path | `framework/device.py` | **Fixed** — `KV_EVAL_DEVICE=cuda` for Modal |
+| Serial sweep | local scripts | Modal `.map()` added in `modal_app/` |
+| Eager attention | `framework/model.py` | Unchanged (required for KV intercept) |
 
-Modal fixes **hardware speed** and **job-level parallelism**. Code changes fix **algorithmic waste** and **device placement**.
+Modal fixes **hardware speed** and **job-level parallelism**. Code changes fix **correctness** and **device placement**.
+
+---
+
+## 1b. Modal storage: what to persist vs live inference
+
+This is **batch offline evaluation**, not a serving API. Each Modal container runs one job and exits.
+
+| Artifact | Store on Modal Volume? | Why |
+|---|---|---|
+| **Qwen3-1.7B weights** (~3.2 GB) | **Yes** — `kv-engine-qwen3` | Download once; avoid 3 GB pull per job |
+| **Eval JSON/CSV results** | **Yes** — `kv-engine-results` | Collect outputs after parallel sweep |
+| **HF_TOKEN** | **Secret** — `huggingface-secret` | First-time model download only |
+| **WikiText-2 cache** | **No** (optional HF cache in container) | Rebuilt cheaply; ~10 MB |
+| **TurboQuant centroids** | **No** | Deterministic from `seed` + `bitwidth` |
+| **Compressed KV caches** | **No** | Ephemeral per job; not reusable across configs |
+| **Live inference endpoint** | **No** | Not needed — eval workers are stateless batch jobs |
+| **Full repo / venv** | **Baked in image** | Via `add_local_dir` in `modal_app/image.py` |
+
+**Verdict:** Modal needs **model weights + result storage + secrets**. Everything else is **live inference inside a short-lived worker** — load model, run eval, write JSON, exit.
+
+```bash
+modal secret create huggingface-secret HF_TOKEN=hf_...
+modal run modal_app/sweep.py --context-lengths 128,512,4096
+```
 
 ---
 

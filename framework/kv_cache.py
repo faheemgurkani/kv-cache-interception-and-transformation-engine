@@ -150,6 +150,40 @@ def build_incremental_layer(
     )
 
 
+def trim_compressed_cache(
+    compressed_cache,
+    drop_tokens: int,
+    compressor: KVCompressor,
+):
+    """Drop oldest token payloads and refresh byte counts."""
+    from compressors.base import CompressedKV
+    from framework.kv_engine import CompressedCache
+
+    if drop_tokens <= 0:
+        return compressed_cache
+
+    trimmed_layers: list[CompressedKV] = []
+    for layer in compressed_cache.layers:
+        if not is_incremental_compressed(layer):
+            raise ValueError("trim_compressed_cache requires incremental payload lists.")
+        key_payloads = list(layer.keys)[drop_tokens:]  # type: ignore[index]
+        value_payloads = list(layer.values)[drop_tokens:]  # type: ignore[index]
+        if not key_payloads:
+            raise ValueError("Cannot trim entire compressed cache.")
+        nbytes = payload_list_bytes(key_payloads, compressor) + payload_list_bytes(value_payloads, compressor)
+        trimmed_layers.append(
+            CompressedKV(
+                keys=key_payloads,
+                values=value_payloads,
+                original_shape=layer.original_shape,
+                nbytes=nbytes,
+                bitwidth=layer.bitwidth,
+                layer=layer.layer,
+            )
+        )
+    return CompressedCache(layers=trimmed_layers)
+
+
 def decompress_to_legacy_cache(
     compressed_layers: list[CompressedKV],
     compressor: KVCompressor,

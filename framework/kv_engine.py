@@ -94,6 +94,14 @@ class KVCacheEngine:
         cache = compressed_cache or self.compressed_cache
         prev_seq = cache.seq_length if cache is not None else 0
 
+        if attention_mask is None:
+            attention_mask = torch.ones(
+                input_ids.shape[0],
+                prev_seq + input_ids.shape[1],
+                device=input_ids.device,
+                dtype=torch.long,
+            )
+
         past_kv = None
         if cache is not None and cache.layers:
             past_kv = decompress_to_legacy_cache(

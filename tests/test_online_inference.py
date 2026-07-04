@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from compressors.identity import IdentityCompressor
+from data.loader import build_long_context_ids, load_wikitext2
 from eval.perplexity import evaluate_perplexity, evaluate_perplexity_baseline
 from eval.throughput import evaluate_throughput, evaluate_throughput_baseline
 from framework.kv_engine import KVCacheEngine
@@ -19,6 +20,16 @@ def test_online_perplexity_matches_baseline_for_identity():
     ids = model_layer.tokenize("Online compressed KV perplexity identity check sequence.")[:, :64]
     ppl_online = evaluate_perplexity(model_layer, ids, IdentityCompressor(), stride=32)
     ppl_baseline = evaluate_perplexity_baseline(model_layer, ids, stride=32)
+    assert abs(ppl_online - ppl_baseline) / ppl_baseline < 0.05
+
+
+@pytest.mark.skipif(not MODEL_DIR.exists(), reason="Model not downloaded")
+def test_identity_online_perplexity_matches_baseline_at_512_context():
+    model_layer = ModelLayer()
+    dataset = load_wikitext2()
+    ids = build_long_context_ids(model_layer.tokenizer, dataset, 512).to(model_layer.device)
+    ppl_online = evaluate_perplexity(model_layer, ids, IdentityCompressor(), stride=512)
+    ppl_baseline = evaluate_perplexity_baseline(model_layer, ids, stride=512)
     assert abs(ppl_online - ppl_baseline) / ppl_baseline < 0.05
 
 

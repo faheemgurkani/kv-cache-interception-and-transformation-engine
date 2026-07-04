@@ -1,0 +1,25 @@
+# Modal GPU eval configuration (see docs/MODAL_GPU_EVAL_DESIGN.md)
+
+gpu: A10G
+gpu_fallbacks:
+  - A10G
+  - L4
+  - any
+
+timeout_hours: 4
+
+volumes:
+  model: kv-engine-qwen3      # persist Qwen3-1.7B weights (~3.2 GB)
+  results: kv-engine-results  # persist per-job JSON outputs
+
+secrets:
+  huggingface: huggingface-secret  # HF_TOKEN for first-time model download
+
+# What NOT to store on Modal (rebuilt each job):
+# - TurboQuant Lloyd-Max centroids (built in-memory from seed)
+# - WikiText-2 tokenized windows (built from HF cache on first load)
+# - Python venv (baked into Modal image)
+
+# Live inference only:
+# - Each worker loads model once, runs eval, exits
+# - No persistent serving endpoint required

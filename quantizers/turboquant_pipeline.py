@@ -102,6 +102,34 @@ class TurboQuantPipeline:
             self._projections[dim] = projection_matrix(dim, seed=self.seed, device=device)
         return self._projections[dim]
 
+    @staticmethod
+    def _store_tensor(tensor: torch.Tensor, reference: torch.Tensor) -> torch.Tensor:
+        """Keep payloads on CUDA; use CPU for MPS/CPU for cross-device stability."""
+        pinned = tensor.detach()
+        if reference.device.type == "cuda":
+            return pinned.to(reference.device)
+        return pinned.cpu()
+
+    @staticmethod
+    def _payload_device(payload: TurboQuantTensorPayload) -> torch.device:
+        for field in (
+            payload.indices,
+            payload.vector_norm,
+            payload.gamma,
+            payload.qjl_bits,
+            payload.norm_r,
+            payload.wht_only,
+        ):
+            if field is not None:
+                return field.device
+        return torch.device("cpu")
+
+    def _decompress_device(self, payload: TurboQuantTensorPayload, target_device: torch.device | None) -> torch.device:
+        device = target_device or self._payload_device(payload)
+        if device.type == "mps":
+            return torch.device("cpu")
+        return device
+
     def _to_rotated(self, x_pad: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Unit-norm + WHT + feature normalize; returns y, vector_norm, gamma."""
         vector_norm = x_pad.norm(dim=-1, keepdim=True).clamp(min=1e-8)
@@ -142,7 +170,7 @@ class TurboQuantPipeline:
                 indices=None,
                 qjl_bits=None,
                 norm_r=None,
-                vector_norm=vector_norm.detach().cpu(),
+                vector_norm=self._store_tensor(vector_norm, x),
                 gamma=None,
                 original_dim=original_dim,
                 padded_dim=padded_dim,
@@ -150,7 +178,7 @@ class TurboQuantPipeline:
                 original_dtype=original_dtype,
                 stage=self.stage,
                 bitwidth=self.bitwidth,
-                wht_only=y.detach().cpu(),
+                wht_only=self._store_tensor(y, x),
             )
 
         indices = quantize(y_scaled, self.centroids).to(torch.int8)
@@ -158,11 +186,11 @@ class TurboQuantPipeline:
 
         if self.stage == TurboQuantStage.WHT_QUANT:
             return TurboQuantTensorPayload(
-                indices=indices.detach().cpu(),
+                indices=self._store_tensor(indices, x),
                 qjl_bits=None,
                 norm_r=None,
-                vector_norm=vector_norm.detach().cpu(),
-                gamma=gamma.detach().cpu(),
+                vector_norm=self._store_tensor(vector_norm, x),
+                gamma=self._store_tensor(gamma, x),
                 original_dim=original_dim,
                 padded_dim=padded_dim,
                 original_shape=original_shape,
@@ -175,11 +203,11 @@ class TurboQuantPipeline:
 
         if self.stage == TurboQuantStage.WHT_QUANT_RESIDUAL:
             return TurboQuantTensorPayload(
-                indices=indices.detach().cpu(),
+                indices=self._store_tensor(indices, x),
                 qjl_bits=None,
-                norm_r=residual.norm(dim=-1, keepdim=True).detach().cpu(),
-                vector_norm=vector_norm.detach().cpu(),
-                gamma=gamma.detach().cpu(),
+                norm_r=self._store_tensor(residual.norm(dim=-1, keepdim=True), x),
+                vector_norm=self._store_tensor(vector_norm, x),
+                gamma=self._store_tensor(gamma, x),
                 original_dim=original_dim,
                 padded_dim=padded_dim,
                 original_shape=original_shape,
@@ -190,11 +218,11 @@ class TurboQuantPipeline:
 
         if not use_qjl:
             return TurboQuantTensorPayload(
-                indices=indices.detach().cpu(),
+                indices=self._store_tensor(indices, x),
                 qjl_bits=None,
                 norm_r=None,
-                vector_norm=vector_norm.detach().cpu(),
-                gamma=gamma.detach().cpu(),
+                vector_norm=self._store_tensor(vector_norm, x),
+                gamma=self._store_tensor(gamma, x),
                 original_dim=original_dim,
                 padded_dim=padded_dim,
                 original_shape=original_shape,
@@ -208,11 +236,11 @@ class TurboQuantPipeline:
         bits = qjl_encode(residual, proj)
 
         return TurboQuantTensorPayload(
-            indices=indices.detach().cpu(),
-            qjl_bits=bits.detach().cpu(),
-            norm_r=norm_r.detach().cpu(),
-            vector_norm=vector_norm.detach().cpu(),
-            gamma=gamma.detach().cpu(),
+            indices=self._store_tensor(indices, x),
+            qjl_bits=self._store_tensor(bits, x),
+            norm_r=self._store_tensor(norm_r, x),
+            vector_norm=self._store_tensor(vector_norm, x),
+            gamma=self._store_tensor(gamma, x),
             original_dim=original_dim,
             padded_dim=padded_dim,
             original_shape=original_shape,
@@ -221,16 +249,20 @@ class TurboQuantPipeline:
             bitwidth=self.bitwidth,
         )
 
-    def decompress_tensor(self, payload: TurboQuantTensorPayload) -> torch.Tensor:
-        """Decompress on CPU for cross-device stability (MPS/CUDA/CPU)."""
-        cpu = torch.device("cpu")
+    def decompress_tensor(
+        self,
+        payload: TurboQuantTensorPayload,
+        target_device: torch.device | None = None,
+    ) -> torch.Tensor:
+        """Decompress on CPU for MPS; stay on CUDA when payloads are GPU-resident."""
+        device = self._decompress_device(payload, target_device)
 
         if payload.stage == TurboQuantStage.WHT_ONLY:
             y = payload.wht_only
             assert y is not None and payload.vector_norm is not None
             return self._from_rotated(
-                y.float().to(cpu),
-                payload.vector_norm.to(cpu),
+                y.float().to(device),
+                payload.vector_norm.to(device),
                 payload.padded_dim,
                 payload.original_dim,
                 payload.original_shape,
@@ -240,10 +272,10 @@ class TurboQuantPipeline:
 
         assert payload.indices is not None
         assert payload.vector_norm is not None and payload.gamma is not None
-        indices = payload.indices.to(cpu)
-        vector_norm = payload.vector_norm.to(cpu)
-        gamma = payload.gamma.to(cpu)
-        y_mse = dequantize(indices, self.centroids.to(cpu)) * gamma
+        indices = payload.indices.to(device)
+        vector_norm = payload.vector_norm.to(device)
+        gamma = payload.gamma.to(device)
+        y_mse = dequantize(indices, self.centroids.to(device)) * gamma
 
         if payload.stage == TurboQuantStage.WHT_QUANT:
             y = y_mse
@@ -251,8 +283,8 @@ class TurboQuantPipeline:
             y = y_mse
         else:
             assert payload.qjl_bits is not None and payload.norm_r is not None
-            proj = self._get_projection(payload.padded_dim, cpu)
-            r_hat = qjl_decode(payload.qjl_bits.to(cpu), proj, payload.norm_r.to(cpu))
+            proj = self._get_projection(payload.padded_dim, device)
+            r_hat = qjl_decode(payload.qjl_bits.to(device), proj, payload.norm_r.to(device))
             y = y_mse + r_hat
 
         return self._from_rotated(

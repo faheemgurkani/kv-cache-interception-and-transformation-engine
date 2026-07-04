@@ -13,4 +13,4 @@ if [[ -n "$LABELS" ]]; then
   ARGS+=(--labels "$LABELS")
 fi
 
-modal run --detach modal_app/sweep.py "${ARGS[@]}"
+modal run --detach modal_app/sweep.py::main "${ARGS[@]}"

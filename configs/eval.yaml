@@ -22,6 +22,7 @@ batch_size: 1
 max_samples: null
 perplexity_stride: 512
 generated_tokens: 64
+attention_fidelity_tokens: 512
 
 # Phase 1 default; full sweeps use configs/model.yaml context_lengths
 default_context_length: 512

@@ -43,8 +43,7 @@ def _ensure_model_weights() -> Path:
 
 
 @app.function(
-    gpu=gpu_spec(),
-    timeout=timeout_seconds(),
+    timeout=60 * 60,
     volumes=_VOLUMES,
     secrets=[_HF_SECRET],
 )

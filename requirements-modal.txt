@@ -15,4 +15,3 @@ safetensors
 pyyaml
 python-dotenv
 huggingface_hub
-fast-hadamard-transform

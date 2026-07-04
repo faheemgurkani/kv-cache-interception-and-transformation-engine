@@ -90,11 +90,25 @@ def _compute_layer_queries(
     return query
 
 
+def _slice_score_window(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    score_tokens: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Use the trailing token window for QK^T fidelity to avoid O(n^2) VRAM blowup."""
+    seq_len = query.shape[-2]
+    if score_tokens <= 0 or seq_len <= score_tokens:
+        return query, key
+    return query[..., -score_tokens:, :], key[..., -score_tokens:, :]
+
+
 @torch.no_grad()
 def evaluate_attention_fidelity(
     model_layer: ModelLayer,
     input_ids: torch.Tensor,
     compressor: KVCompressor,
+    outputs=None,
+    score_tokens: int = 512,
 ) -> AttentionMetrics:
     """
     Offline inner-product preservation: compare QK^T before and after K compression.
@@ -106,7 +120,9 @@ def evaluate_attention_fidelity(
     device = model_layer.device
     input_ids = input_ids.to(device)
 
-    outputs = model(input_ids, use_cache=True, output_hidden_states=True, return_dict=True)
+    if outputs is None:
+        outputs = model(input_ids, use_cache=True, output_hidden_states=True, return_dict=True)
+
     hidden_states = outputs.hidden_states
     position_ids = torch.arange(input_ids.shape[1], device=device).unsqueeze(0)
     position_embeddings = model.model.rotary_emb(hidden_states[0], position_ids)
@@ -126,6 +142,7 @@ def evaluate_attention_fidelity(
     for layer_idx, (key, _value) in enumerate(iter_layer_kv(outputs.past_key_values)):
         query = _compute_layer_queries(model_layer, layer_idx, hidden_states[layer_idx], position_embeddings)
         key_exp = expand_kv_heads(key, num_q_heads, num_kv_heads)
+        query, key_exp = _slice_score_window(query, key_exp, score_tokens)
 
         key_payload = compressor.compress_kv(key, layer=layer_idx, mode="key")
 
@@ -136,6 +153,8 @@ def evaluate_attention_fidelity(
         else:
             key_hat = compressor.decompress_kv(key_payload, mode="key").to(device=query.device)
             key_hat_exp = expand_kv_heads(key_hat, num_q_heads, num_kv_heads)
+            if score_tokens > 0 and key_hat_exp.shape[-2] > score_tokens:
+                key_hat_exp = key_hat_exp[..., -score_tokens:, :]
             scores_quant = attention_scores(query, key_hat_exp, head_dim)
 
         mse, rmse, cosine, layer_max = _score_distortion(scores_fp, scores_quant)
@@ -153,6 +172,10 @@ def evaluate_attention_fidelity(
         cosine_sum += cosine
         max_error = max(max_error, layer_max)
         layers += 1
+
+        del query, key_exp, key_payload, scores_fp, scores_quant
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     if layers == 0:
         raise RuntimeError("No KV layers available for attention fidelity evaluation.")

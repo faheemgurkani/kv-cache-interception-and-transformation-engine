@@ -70,8 +70,8 @@ def main(
                 print(f"  ERROR {item.get('label')} ctx={item['job']['context_length']}: {item.get('error')}")
         return
 
-    handles = list(eval_worker.spawn_map(job_dicts))
-    print(f"Spawned {len(handles)} jobs on Modal GPUs.")
+    eval_worker.spawn_map(job_dicts)
+    print(f"Spawned {len(job_dicts)} jobs on Modal GPUs.")
     print("Results persist to volume: kv-engine-results")
     print("Fetch locally: bash scripts/modal_fetch_results.sh")
     print("Or re-run with --sync after jobs finish to merge locally.")

@@ -21,6 +21,18 @@ cuda_image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install("torch", index_url="https://download.pytorch.org/whl/cu124")
     .pip_install_from_requirements(str(PROJECT_ROOT / "requirements-modal.txt"))
+    .env(
+        {
+            "KV_EVAL_DEVICE": "cuda",
+            "HF_HUB_CACHE": HF_CACHE,
+            "HF_HUB_ENABLE_HF_TRANSFER": "1",
+            "TRANSFORMERS_NO_ADVISORY_WARNINGS": "1",
+            "PYTHONPATH": CODE_MOUNT,
+            "KV_PROJECT_ROOT": CODE_MOUNT,
+            "TOKENIZERS_PARALLELISM": "false",
+            "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:True",
+        }
+    )
     .add_local_dir(
         str(PROJECT_ROOT),
         remote_path=CODE_MOUNT,
@@ -35,16 +47,6 @@ cuda_image = (
             ".pytest_cache",
             ".env",
         ],
-    )
-    .env(
-        {
-            "KV_EVAL_DEVICE": "cuda",
-            "HF_HUB_CACHE": HF_CACHE,
-            "HF_HUB_ENABLE_HF_TRANSFER": "1",
-            "TRANSFORMERS_NO_ADVISORY_WARNINGS": "1",
-            "PYTHONPATH": CODE_MOUNT,
-            "TOKENIZERS_PARALLELISM": "false",
-        }
     )
 )
 

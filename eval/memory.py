@@ -58,7 +58,15 @@ def evaluate_memory(
     past_key_values = outputs.past_key_values
     if past_key_values is None:
         raise RuntimeError("Model did not return past_key_values.")
+    return evaluate_memory_from_cache(model_layer, input_ids, compressor, past_key_values)
 
+
+def evaluate_memory_from_cache(
+    model_layer: ModelLayer,
+    input_ids: torch.Tensor,
+    compressor: KVCompressor,
+    past_key_values,
+) -> MemoryMetrics:
     uncompressed_bytes = get_cache_size_bytes(past_key_values)
     num_kv_elements = count_kv_elements(past_key_values)
     compressed_layers = apply_compressor(past_key_values, compressor)

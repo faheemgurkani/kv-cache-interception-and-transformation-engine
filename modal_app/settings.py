@@ -2,13 +2,39 @@
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
 import yaml
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_MODAL_CONFIG = PROJECT_ROOT / "configs" / "modal.yaml"
+DEFAULT_MODAL_CONFIG_NAME = Path("configs") / "modal.yaml"
+
+
+def project_root() -> Path:
+    """Resolve repo root in local dev and Modal container mounts."""
+    for key in ("KV_PROJECT_ROOT", "PYTHONPATH"):
+        raw = os.environ.get(key, "").strip()
+        if not raw:
+            continue
+        for part in raw.split(":"):
+            candidate = Path(part)
+            if (candidate / DEFAULT_MODAL_CONFIG_NAME).exists():
+                return candidate
+
+    candidate = Path(__file__).resolve().parent.parent
+    if (candidate / DEFAULT_MODAL_CONFIG_NAME).exists():
+        return candidate
+
+    code_mount = Path("/root/kv-cache-engine")
+    if (code_mount / DEFAULT_MODAL_CONFIG_NAME).exists():
+        return code_mount
+
+    return candidate
+
+
+PROJECT_ROOT = project_root()
+DEFAULT_MODAL_CONFIG = PROJECT_ROOT / DEFAULT_MODAL_CONFIG_NAME
 
 
 @lru_cache(maxsize=1)

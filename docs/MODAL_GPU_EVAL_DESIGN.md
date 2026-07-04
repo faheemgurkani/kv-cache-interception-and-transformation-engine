@@ -1,420 +1,383 @@
-# Modal GPU Evaluation Design
+# Modal GPU Evaluation — Implemented System Design
 
-Redesign for running the TurboQuant evaluation sweep on **Modal NVIDIA GPUs**, while keeping the existing **Mac M4 (MPS) local path** unchanged.
+NVIDIA CUDA evaluation for the **KV-Cache Interception + Transformation Engine**, deployed on [Modal](https://modal.com). The Mac M4 (MPS) local path is unchanged for development; **full Phase 5 sweeps run on Modal**.
 
-Based on Modal docs (Context7: `/websites/modal`) and profiling of the current eval loop.
-
----
-
-## 1. Problem Summary (and fixes applied)
-
-| Bottleneck | Where | Status |
-|---|---|---|
-| Missing attention mask in online loop | `eval/perplexity.py`, `framework/kv_engine.py` | **Fixed** — explicit mask + auto mask in `step()` |
-| Cache reset every stride window | `eval/perplexity.py` | **Fixed** — single incremental cache across windows |
-| TurboQuant payloads forced to CPU | `quantizers/turboquant_pipeline.py` | **Fixed on CUDA** — GPU-resident payloads when input is CUDA |
-| No CUDA device path | `framework/device.py` | **Fixed** — `KV_EVAL_DEVICE=cuda` for Modal |
-| Serial sweep | local scripts | Modal `.map()` added in `modal_app/` |
-| Eager attention | `framework/model.py` | Unchanged (required for KV intercept) |
-
-Modal fixes **hardware speed** and **job-level parallelism**. Code changes fix **correctness** and **device placement**.
+This document describes what is **actually implemented and running today**, including parallelization strategy, storage, and known limits.
 
 ---
 
-## 1b. Modal storage: what to persist vs live inference
+## 1. Executive Summary
 
-This is **batch offline evaluation**, not a serving API. Each Modal container runs one job and exits.
-
-| Artifact | Store on Modal Volume? | Why |
-|---|---|---|
-| **Qwen3-1.7B weights** (~3.2 GB) | **Yes** — `kv-engine-qwen3` | Download once; avoid 3 GB pull per job |
-| **Eval JSON/CSV results** | **Yes** — `kv-engine-results` | Collect outputs after parallel sweep |
-| **HF_TOKEN** | **Secret** — `huggingface-secret` | First-time model download only |
-| **WikiText-2 cache** | **No** (optional HF cache in container) | Rebuilt cheaply; ~10 MB |
-| **TurboQuant centroids** | **No** | Deterministic from `seed` + `bitwidth` |
-| **Compressed KV caches** | **No** | Ephemeral per job; not reusable across configs |
-| **Live inference endpoint** | **No** | Not needed — eval workers are stateless batch jobs |
-| **Full repo / venv** | **Baked in image** | Via `add_local_dir` in `modal_app/image.py` |
-
-**Verdict:** Modal needs **model weights + result storage + secrets**. Everything else is **live inference inside a short-lived worker** — load model, run eval, write JSON, exit.
-
-```bash
-# Secret already created as huggingface-secret (HF_TOKEN)
-bash scripts/modal_setup_model.sh
-bash scripts/modal_run_sweep.sh          # detached spawn_map (30 jobs)
-bash scripts/modal_fetch_results.sh      # pull JSON from kv-engine-results
-modal run modal_app/sweep.py::merge_local --input-dir results/modal_volume
-```
-
----
-
-## 2. Recommended Modal GPU
-
-For **Qwen3-1.7B** (~3.2 GB fp16) with KV-cache eval up to **32K context**:
-
-| GPU | VRAM | Best for | Notes |
-|---|---:|---|---|
-| **L4** | 24 GB | Cost-effective parallel sweep | Enough for 1.7B + 32K KV on one worker |
-| **A10G** | 24 GB | **Recommended default** | Good inference $/hr; widely available on Modal |
-| **L40S** | 48 GB | Chunked/batched forwards | Headroom for `chunk_size=32–64` experiments |
-| **A100** | 40–80 GB | Overkill for single job | Use only if batching many sequences |
-| **H100** | 80 GB | Not cost-effective here | Model is too small to justify |
-
-### Verdict
-
-**Primary choice: `gpu="A10G"`** per eval worker.
-
-- Fits 1.7B + 32K uncompressed KV (~3.6 GB) with comfortable margin on 24 GB.
-- Modal supports `gpu="A10G"`, fallbacks via `gpu=["A10G", "L4", "any"]`.
-- For the full sweep grid, run **many A10G workers in parallel** via `.map()` / `.spawn_map()` — cheaper than one H100 serially.
-
-**Secondary choice: `gpu="L40S"`** if implementing **multi-token chunk forwards** (Section 4.2) with larger activation memory.
-
----
-
-## 3. Architecture: Two Runtimes, One Codebase
+| Aspect | Design |
+|---|---|
+| **Platform** | Modal serverless GPU containers |
+| **GPU** | **A10G (24 GB)** per eval worker; fallbacks `L4`, `any` (`configs/modal.yaml`) |
+| **Model** | Qwen3-1.7B (~3.2 GB), cached on Modal Volume |
+| **Parallelism model** | **One sweep job = one GPU container** via `spawn_map()` (up to 30 concurrent jobs) |
+| **Within-job eval** | Online PPL remains **sequential** (one token per step); Section A uses **one forward + windowed attention** |
+| **Orchestration** | `modal_app/sweep.py::main` → `eval_worker.spawn_map(jobs)` |
+| **Results** | Per-job JSON on `kv-engine-results` volume; merged locally to CSV/JSON |
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│  LOCAL (unchanged)          │  MODAL (new)                      │
-│  Mac M4 / MPS / CPU         │  NVIDIA CUDA workers              │
-├─────────────────────────────┼───────────────────────────────────┤
-│  scripts/run_eval.py        │  modal_app/sweep.py               │
-│  scripts/run_turboquant_    │    @app.local_entrypoint()        │
-│    sweep.py                 │    → spawn_map(eval_worker, jobs) │
-│  framework/device.py        │  modal_app/worker.py              │
-│    prefer_mps=True          │    @app.function(gpu="A10G")      │
-│                             │    → run_single_eval(job)         │
-├─────────────────────────────┴───────────────────────────────────┤
-│  SHARED (paper-independent)                                       │
-│  eval/runner.py  framework/kv_engine.py  compressors/*            │
-│  eval/perplexity.py (optimized)  quantizers/* (GPU path)        │
-└─────────────────────────────────────────────────────────────────┘
+Local Mac (M4)                         Modal (NVIDIA A10G × N)
+─────────────────                      ─────────────────────────
+pytest, smoke, dev                     Full eval sweep (30 jobs)
+scripts/run_eval.py @ ctx=128          modal_app/sweep.py::main
+MPS / CPU                              CUDA via KV_EVAL_DEVICE=cuda
+models/qwen3_1.7b/                     Volume /models/qwen3_1.7b/
+results/ (local)                       Volume /results/*.json
 ```
 
-**Rule:** Modal is an **orchestration + CUDA runtime layer**. No changes to `KVCompressor` interface or metric definitions.
+**Rule:** Modal is an **orchestration + CUDA runtime layer**. The `KVCompressor` interface and metric definitions are shared with local eval.
 
 ---
 
-## 4. Code Changes (Required)
+## 2. Architecture
 
-### 4.1 Device abstraction (`framework/device.py`)
-
-Add CUDA detection without breaking MPS default:
-
-```python
-def get_device(prefer_mps: bool = True, prefer_cuda: bool = False) -> torch.device:
-    if prefer_cuda and torch.cuda.is_available():
-        return torch.device("cuda")
-    if prefer_mps and torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
-
-def get_eval_device() -> torch.device:
-    """Modal sets MODAL_GPU=CUDA; local default stays MPS."""
-    import os
-    if os.environ.get("KV_EVAL_DEVICE") == "cuda" or os.environ.get("MODAL_GPU"):
-        return get_device(prefer_cuda=True, prefer_mps=False)
-    return get_device(prefer_mps=True)
-```
-
-`ModelLayer` reads `get_eval_device()` instead of hard-coded MPS.
-
----
-
-### 4.2 Fix sliding-window PPL (highest impact, all platforms)
-
-**Current bug:** each stride window restarts `cache=None` and re-steps through the **entire** window token-by-token. At ctx=4096, stride=512 → 8 windows × thousands of redundant steps.
-
-**Fix:** carry compressed cache across windows; only evaluate loss on new `trg_len` tokens.
+### 2.1 Component diagram
 
 ```text
-Before (per window):
-  cache = None
-  for t in 0..window_len:          # re-processes prefix every window
-      step(token_t)
-
-After:
-  cache persists across begin_loc
-  for t in prev_end..end_loc:      # only NEW tokens
-      step(token_t)
-  compute loss on t in [eval_start, end_loc)
+┌──────────────────────────────────────────────────────────────────────────┐
+│  LOCAL MACHINE                                                           │
+│  modal run --detach modal_app/sweep.py::main                             │
+│       │                                                                  │
+│       ▼                                                                  │
+│  build_sweep_jobs()  ──►  filter_existing_jobs()  ──►  spawn_map()     │
+└──────────────────────────────┬───────────────────────────────────────────┘
+                               │  one remote call per job
+         ┌─────────────────────┼─────────────────────┐
+         ▼                     ▼                     ▼
+   ┌───────────┐         ┌───────────┐         ┌───────────┐
+   │ A10G #1   │         │ A10G #2   │   ...   │ A10G #30  │
+   │ eval_worker│        │ eval_worker│        │ eval_worker│
+   └─────┬─────┘         └─────┬─────┘         └─────┬─────┘
+         │                     │                     │
+         └─────────────────────┼─────────────────────┘
+                               ▼
+              ┌────────────────────────────────────┐
+              │  SHARED EVAL CODE (same as local)  │
+              │  eval/runner.py                    │
+              │  eval/perplexity.py  (cache carry) │
+              │  framework/kv_engine.py            │
+              │  compressors/*  quantizers/*       │
+              └────────────────────────────────────┘
+                               │
+         ┌─────────────────────┴─────────────────────┐
+         ▼                                           ▼
+  Volume: kv-engine-qwen3                    Volume: kv-engine-results
+  /models/qwen3_1.7b/                        /results/{label}_ctx*.json
 ```
 
-**Expected speedup:** ~2–8× at 4K+ context (removes O(n²) prefix replay).
-
-Files: `eval/perplexity.py`
-
----
-
-### 4.3 Chunk forward within incremental loop (CUDA path)
-
-Still **online** (compress after each new token), but amortize decompress + forward:
-
-| Mode | Behavior | Valid for online PPL? |
-|---|---|---|
-| **Current** | 1 token forward per step | Yes (baseline) |
-| **Chunk warm-up** | Batch-forward prefix once, then 1-token steps for eval region | Yes, if prefix tokens are not scored |
-| **Multi-token eval** | Forward `chunk_size` new tokens per step, compress each | Approximate; use only for smoke tests |
-
-**Recommended:** prefix warm-up (above) + optional `chunk_size=1` for scored region.
-
-Do **not** batch all 4096 tokens in one forward — that bypasses per-step compression semantics.
-
----
-
-### 4.4 GPU-native TurboQuant (`quantizers/turboquant_pipeline.py`)
-
-Current path forces CPU for cross-device stability:
-
-```python
-vector_norm=vector_norm.detach().cpu()   # ← kills GPU pipeline
-```
-
-**Change:** device-aware payloads:
-
-```python
-def _store_tensor(t: torch.Tensor, device: torch.device) -> torch.Tensor:
-    if device.type == "cuda":
-        return t.detach()          # stay on GPU
-    return t.detach().cpu()        # MPS/CPU path unchanged
-```
-
-`decompress_tensor`: use `payload.vector_norm.to(device=target_device)` instead of always CPU.
-
-**CUDA-only:** enable `fast-hadamard-transform` in Modal image (builds with nvcc).
-
-Files: `quantizers/turboquant_pipeline.py`, `quantizers/hadamard.py`, `requirements-cuda.txt`
-
----
-
-### 4.5 Batched Section A fidelity (offline metrics)
-
-Attention RMSE and tensor RMSE can batch across layers on GPU:
-
-```python
-# eval/attention_score_error.py — optional batched path
-for layer_batch in chunks(layers, batch_size=4):
-    scores = vectorized_attention_fidelity(layer_batch)
-```
-
-Section A is cheap vs PPL; lower priority than 4.2–4.4.
-
----
-
-### 4.6 Identity engine PPL regression (fix before trusting long-ctx PPL)
-
-At ctx=512, identity online PPL was 46 vs baseline 14 — caused by missing attention mask in the online loop.
-
-**Fixed:** explicit mask in `eval/perplexity.py` + auto mask in `framework/kv_engine.py`. Confirm on Modal with the `identity_baseline` job at ctx=512 before trusting long-ctx numbers.
-
----
-
-## 5. Modal Setup
-
-### 5.1 Project layout (implemented)
+### 2.2 File layout
 
 ```text
 modal_app/
-  __init__.py
-  image.py          # CUDA image + volumes + add_local_dir
-  settings.py       # loads configs/modal.yaml
-  worker.py         # ensure_model + eval_worker (A10G)
-  sweep.py          # local_entrypoint: spawn_map / sync merge
-  job_spec.py       # EvalJobSpec + 5-config grid
-  merge.py          # flatten worker JSON → CSV/JSON
-configs/modal.yaml  # GPU, timeout, volume names, secret name
+  image.py          CUDA container image, volumes, env
+  settings.py       Loads configs/modal.yaml; resolves project root in container
+  worker.py         ensure_model (CPU), eval_worker (A10G), list_completed_jobs
+  sweep.py          Local entrypoints: main (spawn/sync), merge_local
+  job_spec.py       EvalJobSpec + 5-config × N-context grid
+  merge.py          Flatten worker JSON → CSV/JSON reports
+configs/modal.yaml  GPU type, timeout, volume/secret names
 scripts/
   modal_setup_model.sh
   modal_run_sweep.sh
   modal_fetch_results.sh
-requirements-modal.txt  # CUDA deps (torch via cu124 index in image)
+requirements-modal.txt   Python deps (torch installed separately with cu124)
 ```
 
-### 5.2 Container image
+### 2.3 Container image (`modal_app/image.py`)
 
-```python
-# modal_app/image.py
-import modal
+Built from `debian_slim` + PyTorch **cu124**:
 
-cuda_image = (
-    modal.Image.debian_slim(python_version="3.11")
-    .pip_install("torch", index_url="https://download.pytorch.org/whl/cu124")
-    .pip_install_from_requirements("requirements.txt")
-    .pip_install("fast-hadamard-transform")  # CUDA builds on Modal
-    .env({
-        "KV_EVAL_DEVICE": "cuda",
-        "HF_HUB_CACHE": "/models",
-        "TRANSFORMERS_NO_ADVISORY_WARNINGS": "1",
-    })
-)
-```
+| Step | Purpose |
+|---|---|
+| `pip_install("torch", index_url=...cu124)` | CUDA PyTorch |
+| `pip_install_from_requirements(requirements-modal.txt)` | transformers, datasets, scipy, … |
+| `.env({...})` | `KV_EVAL_DEVICE=cuda`, `PYTHONPATH`, `KV_PROJECT_ROOT`, alloc conf |
+| `.add_local_dir(repo → /root/kv-cache-engine)` | **Must be last** — mounts code at container start |
 
-Use Modal **Volume** for model weights (avoid re-download per job):
+**Not in image:** `fast-hadamard-transform` (no prebuilt wheel for torch 2.6; source build failed on Modal). WHT uses **scipy fallback** on CUDA (`quantizers/hadamard.py`).
 
-```python
-model_vol = modal.Volume.from_name("kv-engine-qwen3", create_if_missing=True)
+### 2.4 Workers (`modal_app/worker.py`)
 
-@app.function(
-    gpu="A10G",
-    image=cuda_image,
-    volumes={"/models": model_vol},
-    secrets=[modal.Secret.from_name("huggingface-secret")],
-    timeout=4 * 60 * 60,  # 4 hours per long-ctx job
-)
-def eval_worker(job: dict) -> dict:
-    ...
-    model_vol.commit()  # after first download
-```
-
-### 5.3 Secrets & env
-
-| Item | Local (M4) | Modal |
+| Function | GPU | Role |
 |---|---|---|
-| `HF_TOKEN` | `.env` | `modal.Secret.from_name("huggingface-secret")` |
-| Device | MPS auto | `KV_EVAL_DEVICE=cuda` |
-| Model path | `models/qwen3_1.7b/` | Volume `/models/qwen3_1.7b/` |
+| `ensure_model` | None (CPU) | Idempotent Qwen3 download into model volume |
+| `eval_worker` | A10G (+ fallbacks) | One `(compressor, context_length)` eval; writes JSON |
+| `list_completed_jobs` | None | List result stems on volume (for resume) |
 
-Setup once:
+Each `eval_worker` run:
 
-```bash
-modal secret create huggingface-secret HF_TOKEN=hf_...   # already exists
-bash scripts/modal_setup_model.sh
-modal run --detach modal_app/sweep.py
-# or: bash scripts/modal_run_sweep.sh
-```
+1. `model_volume.reload()` / `results_volume.reload()`
+2. Load model from `/models/qwen3_1.7b/`
+3. `EvaluationRunner.run(context_length, …)` — same code as local
+4. Write `{result_stem}.json` or `.error.json` to `/results/`
+5. `results_volume.commit()`
+
+Timeout: **4 hours** per job (`configs/modal.yaml`).
 
 ---
 
-## 6. Parallel Sweep on Modal
+## 3. Parallelizability — What Is and Is Not Parallel
 
-### 6.1 Job grid (one GPU per job)
+Modal parallelism is **job-level** (multiple checkout lanes). Within each job, online PPL stays **sequential by design**.
+
+### 3.1 Analogy
+
+```text
+Current eval (within one job)  = one cashier, one item at a time
+Modal spawn_map (across jobs)  = 30 checkout lanes open at once
+A10G GPU                       = a faster cashier in each lane
+```
+
+NVIDIA helps most when you add **lanes** (Modal) and **keep data on GPU**; batched online PPL would change what the metric measures.
+
+### 3.2 Parallelism matrix
+
+| Strategy | Implemented? | How | Speedup |
+|---|---|---|---|
+| **Different configs in parallel** | ✅ **Yes** | `eval_worker.spawn_map()` — identity, tq_b2, tq_b3, tq_b4, tq_mse | **Main win** (~linear with GPU count) |
+| **Different context lengths in parallel** | ✅ **Yes** | Same grid: 128 … 32768 each get their own container | **Main win** |
+| **Keep compress/decompress on GPU** | ✅ **Yes** | `turboquant_pipeline._store_tensor()` stays on CUDA when input is CUDA | High per job |
+| **Sliding-window cache carry (PPL)** | ✅ **Yes** | `eval/perplexity.py` — no O(n²) prefix replay across strides | 2–8× at 4K+ |
+| **Identity PPL fix (attention mask)** | ✅ **Yes** | `eval/perplexity.py` + `framework/kv_engine.py` | Correctness |
+| **Section A: single forward pass** | ✅ **Yes** | `eval/fidelity.py` — one model forward for tensor + attention + memory | Cuts VRAM vs 3× forward |
+| **Section A: windowed QK^T fidelity** | ✅ **Yes** | Last 512 tokens (`attention_fidelity_tokens` in `configs/eval.yaml`) | Avoids O(n²) VRAM on A10G |
+| **Resume / skip completed jobs** | ✅ **Yes** | `list_completed_jobs()` + `filter_existing_jobs()` | Saves re-work |
+| **Batched multi-token PPL forwards** | ❌ No | Still 1 token → decompress → forward → compress per step | Would approximate metric |
+| **Batched Section A across layers** | ❌ No | Per-layer loop; tensors freed + `empty_cache()` each layer | Minor gain; not done |
+| **CUDA `fast-hadamard-transform`** | ❌ No | Scipy WHT on GPU tensors instead | Medium; blocked by wheel/build |
+| **Multi-GPU layer split** | ❌ No | One model copy per job | Hard; not needed for 1.7B |
+| **Multiple sequences batched** | ❌ No | `batch_size: 1` in eval config | N/A for current metrics |
+
+### 3.3 Job grid (30 checkout lanes)
 
 Each job = one `(compressor, bitwidth, stage, context_length)` tuple.
 
-Full TurboQuant grid from `EVALUATION_PLAN.md`:
-
 ```text
 5 configs × 6 context lengths = 30 jobs
-(identity, tq_b2, tq_b3, tq_b4, tq_mse) × (128, 512, 4096, 8192, 16384, 32768)
+
+Configs:
+  identity_baseline
+  tq_full_b2, tq_full_b3, tq_full_b4
+  tq_mse_b4
+
+Context lengths:
+  128, 512, 4096, 8192, 16384, 32768
 ```
 
-### 6.2 Orchestrator
+Orchestrator (`modal_app/sweep.py::main`):
 
 ```python
-# modal_app/sweep.py
-import modal
-from modal_app.worker import app, eval_worker
-from modal_app.job_spec import build_sweep_jobs
+jobs = build_sweep_jobs(context_lengths=[...], labels=...)
+if resume:
+    completed = set(list_completed_jobs.remote())
+    jobs = filter_existing_jobs(jobs, completed)
 
-@app.local_entrypoint()
-def main(detach: bool = False):
-    jobs = build_sweep_jobs(
-        context_lengths=[128, 512, 4096, 8192, 16384, 32768],
-    )
-    # Parallel: up to 30 concurrent A10G containers
-    if detach:
-        for result in eval_worker.spawn_map(jobs):
-            print(result.object_id)
-    else:
-        results = list(eval_worker.map(jobs))
-        merge_and_write_results(results)
+job_dicts = [job.to_dict() for job in jobs]
+
+# Detached (default for full sweep):
+eval_worker.spawn_map(job_dicts)
+
+# Blocking + local merge:
+results = list(eval_worker.map(job_dicts))
+write_merged_reports(ok, Path("results"), output)
 ```
 
-Modal `.map()` / `.spawn_map()` runs jobs on **separate containers** — natural multi-GPU parallelism without writing distributed PyTorch.
+Modal runs each job in a **separate container with its own GPU** — no distributed PyTorch required.
 
-### 6.3 Expected wall-clock (rough)
+### 3.4 Expected wall-clock
 
-| Setup | ctx=4096 full grid (30 jobs) |
+| Setup | Full 30-job sweep |
 |---|---|
-| Mac M4 serial | ~3–7 days |
-| Modal 30× A10G parallel | ~3–8 hours (longest single job dominates) |
-| Mac + algorithm fix (4.2) alone | ~1–2 days serial |
+| Mac M4 serial | Days |
+| Mac + cache-carry fix only | ~1–2 days serial |
+| **Modal 30× A10G parallel** | **~3–8 hours** (longest single job dominates) |
+
+Longest jobs: ctx=32768 online PPL (many sequential steps). Use `--detach` so the local client can disconnect without killing workers.
 
 ---
 
-## 7. What Stays on Mac M4
+## 4. Storage and Secrets
 
-| Use case | Runtime |
+Batch evaluation only — **no live serving endpoint**.
+
+| Artifact | Persist on Modal? | Name / path |
+|---|---|---|
+| Qwen3-1.7B weights | ✅ Yes | Volume `kv-engine-qwen3` → `/models/qwen3_1.7b/` |
+| Per-job eval JSON | ✅ Yes | Volume `kv-engine-results` → `/results/{stem}.json` |
+| HF token | ✅ Secret | `huggingface-secret` (`HF_TOKEN`) |
+| WikiText-2 cache | ❌ No | Rebuilt per job (~10 MB) |
+| TurboQuant centroids | ❌ No | Deterministic from seed + bitwidth |
+| Compressed KV (runtime) | ❌ No | Ephemeral inside worker |
+| Repo / Python deps | Image + mount | `add_local_dir` → `/root/kv-cache-engine` |
+
+Result filename pattern: `{label}_ctx{length}_b{bitwidth}_{stage}.json`
+
+Failed jobs write `{stem}.error.json` with traceback; resume **retries** failed jobs (only successful `.json` stems are skipped).
+
+---
+
+## 5. Shared CUDA Code Path (Local + Modal)
+
+These changes apply on **both** platforms where noted.
+
+### 5.1 Device selection (`framework/device.py`)
+
+| Environment | Device |
 |---|---|
-| Unit tests (`pytest`) | Local MPS/CPU |
-| Quick smoke (ctx=128) | Local |
-| TurboQuant stage debugging | Local |
-| Code development | Local |
-| Full production sweep | **Modal** |
+| Local (default) | MPS on Apple Silicon, else CPU |
+| Modal | `KV_EVAL_DEVICE=cuda` → CUDA |
 
-No requirement to remove MPS path. `get_eval_device()` selects backend automatically.
+`ModelLayer` uses `get_eval_device()`.
 
----
+### 5.2 Online PPL fixes (`eval/perplexity.py`, `framework/kv_engine.py`)
 
-## 8. Implementation Order
+| Fix | Status |
+|---|---|
+| Carry compressed cache across stride windows | ✅ |
+| Explicit / auto attention mask in online loop | ✅ |
+| Cache trim at `max_length` | ✅ |
 
-| Phase | Work | Platform | Status |
-|---|---|---|---|
-| **A** | Fix sliding-window cache carry (`perplexity.py`) | Local + Modal | ✅ |
-| **B** | Fix identity PPL regression at ctx≥512 (attention mask) | Local + Modal | ✅ (verify on Modal) |
-| **C** | GPU-native TurboQuant payloads (CUDA branch) | Modal (+ local CPU fallback) | ✅ |
-| **D** | `framework/device.py` + `ModelLayer` CUDA path | Both | ✅ |
-| **E** | Modal image, volume, worker, secrets | Modal only | ✅ |
-| **F** | `spawn_map` sweep orchestrator + merge | Modal only | ✅ |
-| **G** | Re-run full grid; merge into `results/` | Modal | Run on Modal |
+**Verified on Modal:** identity @ ctx=512 → PPL **~14.12** vs baseline **~14.11** (not the old ~46 bug).
 
----
+### 5.3 GPU-native TurboQuant (`quantizers/turboquant_pipeline.py`)
 
-## 9. Modal GPU utilization checklist
+On CUDA, compression payloads stay on GPU (`_store_tensor`). MPS still uses CPU payloads for stability.
 
-To **fully leverage** NVIDIA on Modal:
+### 5.4 Section A memory strategy (`eval/fidelity.py`, `eval/attention_score_error.py`)
 
-- [x] All compress/decompress tensors stay on **CUDA** (no `.cpu()` in hot path on CUDA)
-- [x] `fast-hadamard-transform` installed in Modal image
-- [x] Model loaded **once per worker** via `ensure_model()` + volume cache
-- [x] Sliding-window cache **carried** across strides (Section 4.2)
-- [x] One sweep job per GPU via `.spawn_map()` — 30 configs parallel, not serial in one container
-- [x] Volume for model weights + `volume.commit()` after download
-- [x] `timeout` = 4 h per job (`configs/modal.yaml`)
-- [x] `gpu=["A10G", "L4", "any"]` fallback in `configs/modal.yaml`
-- [x] Resume: skip jobs whose JSON already exists on results volume
-- [x] Merge results to CSV/JSON via `merge.py` + `modal_fetch_results.sh`
+Long context OOM on A10G was caused by:
+
+- Three separate full forwards (tensor, attention, memory)
+- Full `seq_len × seq_len` attention score matrices at 8K+
+
+**Fixes applied:**
+
+1. **Single forward** in `evaluate_fidelity()` — shared `past_key_values` + `hidden_states`
+2. **Windowed QK^T fidelity** — last `attention_fidelity_tokens` (default **512**) from `configs/eval.yaml`
+3. Per-layer tensor cleanup + `torch.cuda.empty_cache()`
+4. `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` in Modal image env
+
+Online PPL at 32K still needs sequential steps and significant VRAM; Section A no longer builds full 8K×8K matrices.
 
 ---
 
-## 10. What Modal does **not** solve
+## 6. Configuration
 
-- **Autoregressive order** — scored tokens still processed sequentially (by design)
-- **Eager attention overhead** — still required for KV intercept (acceptable on CUDA)
-- **Correctness** — faster hardware does not fix identity PPL bug or bad metrics
+### 6.1 `configs/modal.yaml`
+
+```yaml
+gpu: A10G
+gpu_fallbacks: [A10G, L4, any]
+timeout_hours: 4
+volumes:
+  model: kv-engine-qwen3
+  results: kv-engine-results
+secrets:
+  huggingface: huggingface-secret
+```
+
+### 6.2 `configs/eval.yaml` (Modal-relevant)
+
+```yaml
+perplexity_stride: 512
+generated_tokens: 64
+attention_fidelity_tokens: 512   # Section A QK^T window for long ctx
+```
+
+### 6.3 Container path resolution (`modal_app/settings.py`)
+
+Workers mount code at `/root/kv-cache-engine` but import `modal_app` from `/root/modal_app`. Settings resolves config via:
+
+1. `KV_PROJECT_ROOT` / `PYTHONPATH`
+2. Fallback `/root/kv-cache-engine`
 
 ---
 
-## 11. References
-
-- Modal GPU types: `gpu="A10G"`, `gpu="A100:2"`, `gpu=["H100", "A100", "any"]` — [Modal GPU guide](https://modal.com/docs/guide/gpu)
-- Parallel jobs: `Function.map()`, `Function.spawn_map()` — [Modal scale guide](https://modal.com/docs/guide/scale)
-- Volumes + secrets: [Modal volumes guide](https://modal.com/docs/guide/volumes)
-- CUDA PyTorch on Modal: [Modal CUDA guide](https://modal.com/docs/guide/cuda)
-
----
-
-## 12. Runbook (copy-paste)
+## 7. Operational Runbook
 
 ```bash
 cd /path/to/kv-cache-compression-benchmark
 source .venv/bin/activate
 pip install modal
 
-# One-time model cache on Modal Volume
+# One-time: cache model on Modal Volume (~3.2 GB)
 bash scripts/modal_setup_model.sh
+# equivalent: modal run modal_app/worker.py::ensure_model
 
-# Full 30-job sweep (detached)
+# Full 30-job sweep (detached — recommended)
 bash scripts/modal_run_sweep.sh
+# equivalent: modal run --detach modal_app/sweep.py::main
 
-# Monitor in Modal dashboard; when done:
+# Subset example
+modal run --detach modal_app/sweep.py::main \
+  --context-lengths 128,512 --labels identity_baseline
+
+# Sync smoke (blocks until done; merges locally)
+modal run modal_app/sweep.py::main --sync \
+  --context-lengths 128 --labels identity_baseline --no-resume
+
+# After jobs finish — fetch + merge
 bash scripts/modal_fetch_results.sh
 modal run modal_app/sweep.py::merge_local --input-dir results/modal_volume
 
-# Resume after partial run (skips JSON already on volume)
-modal run --detach modal_app/sweep.py --resume
-
-# Sync subset and merge locally (blocks until done)
-modal run modal_app/sweep.py --sync --context-lengths 128,512 --labels identity_baseline
+# Resume partial sweep (skips successful .json on volume)
+modal run --detach modal_app/sweep.py::main
 ```
+
+Monitor runs in the [Modal dashboard](https://modal.com/apps).
+
+---
+
+## 8. Implementation Status
+
+| Phase | Work | Status |
+|---|---|---|
+| **A** | Sliding-window cache carry | ✅ Done |
+| **B** | Identity PPL @ ctx≥512 (attention mask) | ✅ Verified on Modal @ 512 |
+| **C** | GPU TurboQuant payloads on CUDA | ✅ Done (scipy WHT, not FHT CUDA) |
+| **D** | `framework/device.py` CUDA path | ✅ Done |
+| **E** | Modal image, volumes, worker, secrets | ✅ Done |
+| **F** | `spawn_map` orchestrator + merge | ✅ Done |
+| **G** | Full 30-job grid complete | ⚠️ In progress — long-ctx jobs may need re-run after OOM fixes |
+
+### Provisioning issues encountered (resolved)
+
+| Issue | Resolution |
+|---|---|
+| `fast-hadamard-transform` build / 404 wheel | Dropped from image; scipy WHT fallback |
+| `configs/modal.yaml` not found in worker | `KV_PROJECT_ROOT` + `settings.project_root()` |
+| `add_local_dir` after build steps | Moved `add_local_dir` to last image step |
+| `spawn_map` returned `None` | Do not iterate return value; fire-and-forget |
+| Section A OOM @ 8K+ on A10G | Single forward + 512-token attention window |
+| Local client timeout on long sync jobs | Use `--detach` for production sweeps |
+
+---
+
+## 9. What Modal Does Not Solve
+
+| Limitation | Reason |
+|---|---|
+| **Autoregressive PPL order** | Scored tokens must be processed sequentially for correct online metric |
+| **Eager attention** | Required for KV intercept; acceptable on CUDA |
+| **Instant 32K PPL** | Still many sequential steps per job |
+| **Batched PPL without metric change** | Would skip per-step compress semantics |
+
+Future optional work (not implemented):
+
+- Prefix warm-up batch forwards (non-scored tokens only)
+- Batched Section A across layer groups
+- `fast-hadamard-transform` when torch 2.6 wheels exist, or pinned torch version
+- L40S workers if full-sequence Section A is required without windowing
+
+---
+
+## 10. References
+
+- [Modal GPU guide](https://modal.com/docs/guide/gpu)
+- [Modal scale / map / spawn_map](https://modal.com/docs/guide/scale)
+- [Modal volumes](https://modal.com/docs/guide/volumes)
+- [Modal CUDA](https://modal.com/docs/guide/cuda)
+- Local dual-runtime overview: [SYSTEM_DESIGN.md §7.5](SYSTEM_DESIGN.md#75-dual-runtime-local-mps--modal-nvidia-cuda)

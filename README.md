@@ -337,9 +337,9 @@ Full implementation details, configuration, and known limitations: [docs/QJL_AND
 
 ## Modal GPU Evaluation (NVIDIA)
 
-Full design: [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md)
+Full design: [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md) — implemented NVIDIA runtime, job-level parallelism, storage, runbook.
 
-Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run on Modal** — one **A10G GPU per job**, 30 parallel workers for the default grid (5 configs × 6 context lengths).
+Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run on Modal** — one **A10G GPU per job**, up to **30 parallel workers** (5 configs × 6 context lengths) via `spawn_map()`.
 
 **Prerequisites:** [Modal account](https://modal.com), `pip install modal`, and the existing secret `huggingface-secret` (`HF_TOKEN`).
 
@@ -349,6 +349,7 @@ bash scripts/modal_setup_model.sh
 
 # 2. Launch detached parallel sweep (default: 30 jobs)
 bash scripts/modal_run_sweep.sh
+# equivalent: modal run --detach modal_app/sweep.py::main
 
 # Subset example
 CONTEXT_LENGTHS=128,512 LABELS=tq_full_b4 bash scripts/modal_run_sweep.sh

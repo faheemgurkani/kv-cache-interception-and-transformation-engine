@@ -437,7 +437,25 @@ Follow this order to avoid getting stuck:
 | **5 — Full eval** | Memory + speed + perplexity | `run_eval.py --compressor turboquant --stage full` |
 | **6 — QJL** | Key sign-projection compressor | `pytest tests/test_qjl.py`; `run_eval.py --compressor qjl` |
 | **7 — RocketKV** | Token selection compressor | `pytest tests/test_rocketkv.py`; `run_eval.py --compressor rocketkv` |
-| **8 — Sweep** | Compare all methods | `run_eval.py` across compressors + context lengths |
+| **8 — Sweep** | Compare all methods | Local: `run_eval.py`; **full grid: Modal** (`bash scripts/modal_run_sweep.sh`) |
+
+---
+
+## 7.5 Dual Runtime: Local (MPS) + Modal (NVIDIA CUDA)
+
+The same eval code runs on two backends. Only orchestration and device selection differ.
+
+| | **Local (Mac M4)** | **Modal (NVIDIA)** |
+|---|---|---|
+| Device | MPS / CPU via `get_eval_device()` | CUDA via `KV_EVAL_DEVICE=cuda` |
+| Use case | Dev, pytest, ctx=128 smoke | Full Phase 5 sweep (30 jobs) |
+| Entry | `scripts/run_eval.py` | `modal_app/sweep.py::main` |
+| Model path | `models/qwen3_1.7b/` | Volume `/models/qwen3_1.7b/` |
+| Parallelism | Serial (one job at a time) | **Job-level:** up to 30 A10G workers via `spawn_map()` |
+| Within-job PPL | Sequential token loop | Same — sequential by design |
+| Docs | This file | [MODAL_GPU_EVAL_DESIGN.md](MODAL_GPU_EVAL_DESIGN.md) |
+
+**Parallelism model:** Modal adds **checkout lanes** (one GPU per config × context job). It does **not** batch online PPL tokens across a sequence — that would change the metric. See Modal doc §3 for the full parallelism matrix.
 
 ---
 
@@ -460,7 +478,11 @@ framework/
   model.py          ModelLayer — eager attn, fp16, MPS
   kv_engine.py      KVCacheEngine — intercept loop
   kv_cache.py       iter/decompress/rebuild DynamicCache
-  device.py         MPS/CPU selection
+  device.py         MPS / CUDA / CPU selection (KV_EVAL_DEVICE)
+
+modal_app/          Modal NVIDIA sweep (see docs/MODAL_GPU_EVAL_DESIGN.md)
+  worker.py         eval_worker @ A10G — one job per GPU
+  sweep.py          spawn_map orchestrator
 
 compressors/
   base.py           KVCompressor ABC
@@ -496,6 +518,7 @@ This design provides:
 - True KV-level control of LLM inference without model surgery
 - Publication-grade metric structure (quality / memory / throughput)
 - Reproducible on Apple Silicon with documented eager-attention tradeoff
+- **NVIDIA CUDA path** on Modal for full parallel eval sweeps (A10G, job-level `spawn_map`)
 
 ---
 
@@ -544,7 +567,7 @@ Verification against common KV-compression mistakes (checked against current cod
 |---|---|---|
 | Orthonormal WHT (CPU/MPS) | ✅ | Scipy path: `H / √n`; roundtrip error ~1e-6 |
 | Normalize + inverse pairing | ✅ | Compress: `÷√D` after WHT; decompress: `×√D` before inverse WHT |
-| CUDA FHT path | ⚠️ | `fast-hadamard-transform` may use different scaling; verify on CUDA before trusting |
+| CUDA FHT path | ⚠️ | Modal uses scipy WHT fallback; `fast-hadamard-transform` not in Modal image |
 
 ### Reusability across papers
 

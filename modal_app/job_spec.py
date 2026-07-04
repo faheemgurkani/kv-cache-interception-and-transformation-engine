@@ -37,7 +37,7 @@ SWEEP_CONFIGS: list[tuple[str, dict]] = [
 def default_context_lengths() -> list[int]:
     from framework.config import load_model_config
 
-    return list(load_model_config().get("context_lengths", [4096, 8192, 16384, 32768]))
+    return list(load_model_config().get("context_lengths", [128, 256, 512]))
 
 
 def build_sweep_jobs(

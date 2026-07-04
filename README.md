@@ -150,7 +150,7 @@ python scripts/run_eval.py --compressor identity --context-length 512
 # Single baseline with JSON output
 python scripts/run_baseline.py --baseline identity --context-length 512
 
-# Full context-length sweep (4096 → 32768; slow on MPS)
+# Full context-length sweep (128, 256, 512)
 python scripts/run_eval.py --compressor identity --all-context-lengths
 ```
 
@@ -166,7 +166,7 @@ Results are written to `results/` as `.json` and `.csv`.
 |---|---|---|
 | `model_name` | HuggingFace model ID | `Qwen/Qwen3-1.7B` |
 | `local_path` | Where weights are saved | `models/qwen3_1.7b` |
-| `context_lengths` | Long-context eval sweep | `4096, 8192, 16384, 32768` |
+| `context_lengths` | Eval sweep (local + Modal) | `128, 256, 512` |
 | `bitwidths` | Target compression bitwidths | `2, 3, 4` |
 
 ### `configs/eval.yaml`
@@ -339,7 +339,7 @@ Full implementation details, configuration, and known limitations: [docs/QJL_AND
 
 Full design: [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md) — implemented NVIDIA runtime, job-level parallelism, storage, runbook.
 
-Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run on Modal** — one **A10G GPU per job**, up to **30 parallel workers** (5 configs × 6 context lengths) via `spawn_map()`.
+Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run on Modal** — one **A10G GPU per job**, up to **15 parallel workers** (5 configs × 3 context lengths: 128, 256, 512) via `spawn_map()`.
 
 **Prerequisites:** [Modal account](https://modal.com), `pip install modal`, and the existing secret `huggingface-secret` (`HF_TOKEN`).
 
@@ -347,7 +347,7 @@ Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run
 # 1. One-time: download Qwen3-1.7B into Modal Volume (~3.2 GB)
 bash scripts/modal_setup_model.sh
 
-# 2. Launch detached parallel sweep (default: 30 jobs)
+# 2. Launch detached parallel sweep (default: 15 jobs @ 128,256,512)
 bash scripts/modal_run_sweep.sh
 # equivalent: modal run --detach modal_app/sweep.py::main
 

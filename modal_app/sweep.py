@@ -5,7 +5,7 @@ Usage:
   # One-time model download to Modal Volume (~3.2 GB)
   modal run modal_app/worker.py::ensure_model
 
-  # Full parallel sweep (30 jobs: 5 configs × 6 context lengths)
+  # Full parallel sweep (15 jobs: 5 configs × 3 context lengths)
   modal run --detach modal_app/sweep.py
 
   # Subset sweep
@@ -22,14 +22,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from modal_app.job_spec import build_sweep_jobs, filter_existing_jobs
+from modal_app.job_spec import build_sweep_jobs, default_context_lengths, filter_existing_jobs
 from modal_app.merge import load_payloads_from_directory, write_merged_reports
 from modal_app.worker import app, eval_worker, list_completed_jobs
 
 
 @app.local_entrypoint()
 def main(
-    context_lengths: str = "128,512,4096,8192,16384,32768",
+    context_lengths: str = "",
     labels: str = "",
     sync: bool = False,
     resume: bool = True,
@@ -37,7 +37,11 @@ def main(
     skip_throughput: bool = False,
     output: str = "phase5_modal_sweep",
 ):
-    lengths = [int(item.strip()) for item in context_lengths.split(",") if item.strip()]
+    lengths = (
+        [int(item.strip()) for item in context_lengths.split(",") if item.strip()]
+        if context_lengths.strip()
+        else default_context_lengths()
+    )
     label_filter = [item.strip() for item in labels.split(",") if item.strip()] or None
 
     jobs = build_sweep_jobs(

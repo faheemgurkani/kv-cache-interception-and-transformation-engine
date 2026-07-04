@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 source .venv/bin/activate 2>/dev/null || true
 
-CONTEXT_LENGTHS="${CONTEXT_LENGTHS:-128,512,4096,8192,16384,32768}"
+CONTEXT_LENGTHS="${CONTEXT_LENGTHS:-128,256,512}"
 LABELS="${LABELS:-}"
 OUTPUT="${OUTPUT:-phase5_modal_sweep}"
 

@@ -448,7 +448,7 @@ The same eval code runs on two backends. Only orchestration and device selection
 | | **Local (Mac M4)** | **Modal (NVIDIA)** |
 |---|---|---|
 | Device | MPS / CPU via `get_eval_device()` | CUDA via `KV_EVAL_DEVICE=cuda` |
-| Use case | Dev, pytest, ctx=128 smoke | Full Phase 5 sweep (30 jobs) |
+| Use case | Dev, pytest, ctx=128 smoke | Full Phase 5 sweep (15 jobs @ 128/256/512) |
 | Entry | `scripts/run_eval.py` | `modal_app/sweep.py::main` |
 | Model path | `models/qwen3_1.7b/` | Volume `/models/qwen3_1.7b/` |
 | Parallelism | Serial (one job at a time) | **Job-level:** up to 30 A10G workers via `spawn_map()` |

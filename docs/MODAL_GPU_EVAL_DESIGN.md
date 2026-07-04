@@ -21,7 +21,7 @@ This document describes what is **actually implemented and running today**, incl
 ```text
 Local Mac (M4)                         Modal (NVIDIA A10G × N)
 ─────────────────                      ─────────────────────────
-pytest, smoke, dev                     Full eval sweep (30 jobs)
+pytest, smoke, dev                     Full eval sweep (15 jobs)
 scripts/run_eval.py @ ctx=128          modal_app/sweep.py::main
 MPS / CPU                              CUDA via KV_EVAL_DEVICE=cuda
 models/qwen3_1.7b/                     Volume /models/qwen3_1.7b/
@@ -138,7 +138,7 @@ NVIDIA helps most when you add **lanes** (Modal) and **keep data on GPU**; batch
 | Strategy | Implemented? | How | Speedup |
 |---|---|---|---|
 | **Different configs in parallel** | ✅ **Yes** | `eval_worker.spawn_map()` — identity, tq_b2, tq_b3, tq_b4, tq_mse | **Main win** (~linear with GPU count) |
-| **Different context lengths in parallel** | ✅ **Yes** | Same grid: 128 … 32768 each get their own container | **Main win** |
+| **Different context lengths in parallel** | ✅ **Yes** | Same grid: 128, 256, 512 each get their own container | **Main win** |
 | **Keep compress/decompress on GPU** | ✅ **Yes** | `turboquant_pipeline._store_tensor()` stays on CUDA when input is CUDA | High per job |
 | **Sliding-window cache carry (PPL)** | ✅ **Yes** | `eval/perplexity.py` — no O(n²) prefix replay across strides | 2–8× at 4K+ |
 | **Identity PPL fix (attention mask)** | ✅ **Yes** | `eval/perplexity.py` + `framework/kv_engine.py` | Correctness |
@@ -151,20 +151,20 @@ NVIDIA helps most when you add **lanes** (Modal) and **keep data on GPU**; batch
 | **Multi-GPU layer split** | ❌ No | One model copy per job | Hard; not needed for 1.7B |
 | **Multiple sequences batched** | ❌ No | `batch_size: 1` in eval config | N/A for current metrics |
 
-### 3.3 Job grid (30 checkout lanes)
+### 3.3 Job grid (15 checkout lanes)
 
 Each job = one `(compressor, bitwidth, stage, context_length)` tuple.
 
 ```text
-5 configs × 6 context lengths = 30 jobs
+5 configs × 3 context lengths = 15 jobs
 
 Configs:
   identity_baseline
   tq_full_b2, tq_full_b3, tq_full_b4
   tq_mse_b4
 
-Context lengths:
-  128, 512, 4096, 8192, 16384, 32768
+Context lengths (configs/model.yaml):
+  128, 256, 512
 ```
 
 Orchestrator (`modal_app/sweep.py::main`):
@@ -189,13 +189,10 @@ Modal runs each job in a **separate container with its own GPU** — no distribu
 
 ### 3.4 Expected wall-clock
 
-| Setup | Full 30-job sweep |
+| Setup | Full 15-job sweep |
 |---|---|
-| Mac M4 serial | Days |
-| Mac + cache-carry fix only | ~1–2 days serial |
-| **Modal 30× A10G parallel** | **~3–8 hours** (longest single job dominates) |
-
-Longest jobs: ctx=32768 online PPL (many sequential steps). Use `--detach` so the local client can disconnect without killing workers.
+| Mac M4 serial | Hours |
+| **Modal 15× A10G parallel** | **~30–90 min** (longest single job dominates) |
 
 ---
 
@@ -341,7 +338,7 @@ Monitor runs in the [Modal dashboard](https://modal.com/apps).
 | **D** | `framework/device.py` CUDA path | ✅ Done |
 | **E** | Modal image, volumes, worker, secrets | ✅ Done |
 | **F** | `spawn_map` orchestrator + merge | ✅ Done |
-| **G** | Full 30-job grid complete | ⚠️ In progress — long-ctx jobs may need re-run after OOM fixes |
+| **G** | Full 15-job grid complete | Run via `bash scripts/modal_run_sweep.sh` |
 
 ### Provisioning issues encountered (resolved)
 

@@ -168,5 +168,5 @@ class EvaluationRunner:
         context_lengths: list[int] | None = None,
         **kwargs,
     ) -> list[EvaluationResult]:
-        lengths = context_lengths or self.model_config.get("context_lengths", [4096])
+        lengths = context_lengths or self.model_config.get("context_lengths", [128, 256, 512])
         return [self.run(length, **kwargs) for length in lengths]

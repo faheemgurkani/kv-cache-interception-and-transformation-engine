@@ -134,7 +134,7 @@ def evaluate_attention_fidelity(
         if hasattr(compressor, "estimate_attention_scores"):
             scores_quant = compressor.estimate_attention_scores(query, key_payload, head_dim)
         else:
-            key_hat = compressor.decompress_kv(key_payload, mode="key")
+            key_hat = compressor.decompress_kv(key_payload, mode="key").to(device=query.device)
             key_hat_exp = expand_kv_heads(key_hat, num_q_heads, num_kv_heads)
             scores_quant = attention_scores(query, key_hat_exp, head_dim)
 

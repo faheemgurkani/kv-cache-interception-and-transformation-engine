@@ -54,8 +54,8 @@ def _tensor_reconstruction_error(
             value_rmses.append(errors["value_rmse"])
             continue
 
-        k_hat = compressor.decompress_kv(compressor.compress_kv(key, layer=layer_idx, mode="key"), mode="key")
-        v_hat = compressor.decompress_kv(compressor.compress_kv(value, layer=layer_idx, mode="value"), mode="value")
+        k_hat = compressor.decompress_kv(compressor.compress_kv(key, layer=layer_idx, mode="key"), mode="key").to(key.device)
+        v_hat = compressor.decompress_kv(compressor.compress_kv(value, layer=layer_idx, mode="value"), mode="value").to(value.device)
         key_rmses.append((key.float() - k_hat.float()).pow(2).mean().sqrt().item())
         value_rmses.append((value.float() - v_hat.float()).pow(2).mean().sqrt().item())
 

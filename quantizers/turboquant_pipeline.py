@@ -267,4 +267,5 @@ class TurboQuantPipeline:
 
     def reconstruction_error(self, x: torch.Tensor, use_qjl: bool = True) -> float:
         restored = self.decompress_tensor(self.compress_tensor(x, use_qjl=use_qjl))
+        restored = restored.to(device=x.device)
         return (x.float() - restored.float()).pow(2).mean().sqrt().item()

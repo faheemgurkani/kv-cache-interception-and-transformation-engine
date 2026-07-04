@@ -42,6 +42,7 @@ class EvaluationResult:
     context_length: int
     fidelity: FidelityMetrics
     inference: InferenceMetrics | None
+    stage: str | None = None
 
     @property
     def perplexity(self) -> float | None:
@@ -63,10 +64,18 @@ class EvaluationResult:
         return {
             "compressor": self.compressor,
             "bitwidth": self.bitwidth,
+            "stage": self.stage,
             "context_length": self.context_length,
             "section_a_fidelity": self.fidelity.to_dict(),
             "section_b_inference": None if self.inference is None else self.inference.to_dict(),
         }
+
+
+def _compressor_stage(compressor: KVCompressor) -> str | None:
+    stage = getattr(compressor, "stage", None)
+    if stage is None:
+        return None
+    return stage.value if hasattr(stage, "value") else str(stage)
 
 
 class EvaluationRunner:
@@ -151,6 +160,7 @@ class EvaluationRunner:
             context_length=context_length,
             fidelity=fidelity,
             inference=inference,
+            stage=_compressor_stage(self.compressor),
         )
 
     def run_all_context_lengths(

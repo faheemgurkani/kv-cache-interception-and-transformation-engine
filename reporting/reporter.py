@@ -34,6 +34,7 @@ class ResultReporter:
         fieldnames = [
             "compressor",
             "bitwidth",
+            "stage",
             "context_length",
             "key_rmse",
             "value_rmse",
@@ -61,6 +62,7 @@ class ResultReporter:
                     {
                         "compressor": result.compressor,
                         "bitwidth": result.bitwidth,
+                        "stage": result.stage,
                         "context_length": result.context_length,
                         "key_rmse": fidelity.tensor.key_rmse,
                         "value_rmse": fidelity.tensor.value_rmse,
@@ -88,10 +90,12 @@ class ResultReporter:
             inference = result.inference
             parts = [
                 f"[{result.compressor}] ctx={result.context_length}",
+                f"stage={result.stage}" if result.stage else None,
                 f"attn_rmse={fidelity.attention.rmse:.4f}",
                 f"ratio={fidelity.memory.compression_ratio:.2f}x",
                 f"bits/kv={fidelity.memory.effective_bits_per_kv_element:.2f}",
             ]
+            parts = [p for p in parts if p]
             if inference and inference.perplexity is not None:
                 parts.append(f"ppl={inference.perplexity:.4f}")
             if inference and inference.throughput is not None:

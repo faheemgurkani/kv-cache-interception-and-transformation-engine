@@ -39,8 +39,11 @@ This is **batch offline evaluation**, not a serving API. Each Modal container ru
 **Verdict:** Modal needs **model weights + result storage + secrets**. Everything else is **live inference inside a short-lived worker** — load model, run eval, write JSON, exit.
 
 ```bash
-modal secret create huggingface-secret HF_TOKEN=hf_...
-modal run modal_app/sweep.py --context-lengths 128,512,4096
+# Secret already created as huggingface-secret (HF_TOKEN)
+bash scripts/modal_setup_model.sh
+bash scripts/modal_run_sweep.sh          # detached spawn_map (30 jobs)
+bash scripts/modal_fetch_results.sh      # pull JSON from kv-engine-results
+modal run modal_app/sweep.py::merge_local --input-dir results/modal_volume
 ```
 
 ---
@@ -201,26 +204,31 @@ Section A is cheap vs PPL; lower priority than 4.2–4.4.
 
 ### 4.6 Identity engine PPL regression (fix before trusting long-ctx PPL)
 
-At ctx=512, identity online PPL = 46 vs baseline 14 — engine bug, not compression.
+At ctx=512, identity online PPL was 46 vs baseline 14 — caused by missing attention mask in the online loop.
 
-Investigate: `decompress_to_legacy_cache` + `DynamicCache` rebuild at longer `seq_len`.
-
-**Block long-ctx Modal sweep until identity online PPL ≈ baseline at ctx=512.**
+**Fixed:** explicit mask in `eval/perplexity.py` + auto mask in `framework/kv_engine.py`. Confirm on Modal with the `identity_baseline` job at ctx=512 before trusting long-ctx numbers.
 
 ---
 
 ## 5. Modal Setup
 
-### 5.1 Project layout (new files)
+### 5.1 Project layout (implemented)
 
 ```text
 modal_app/
   __init__.py
-  image.py          # CUDA image definition
-  worker.py         # @app.function gpu worker
-  sweep.py          # @app.local_entrypoint orchestrator
-  job_spec.py       # EvalJobSpec dataclass
-configs/modal.yaml  # GPU type, timeout, volume names
+  image.py          # CUDA image + volumes + add_local_dir
+  settings.py       # loads configs/modal.yaml
+  worker.py         # ensure_model + eval_worker (A10G)
+  sweep.py          # local_entrypoint: spawn_map / sync merge
+  job_spec.py       # EvalJobSpec + 5-config grid
+  merge.py          # flatten worker JSON → CSV/JSON
+configs/modal.yaml  # GPU, timeout, volume names, secret name
+scripts/
+  modal_setup_model.sh
+  modal_run_sweep.sh
+  modal_fetch_results.sh
+requirements-modal.txt  # CUDA deps (torch via cu124 index in image)
 ```
 
 ### 5.2 Container image
@@ -270,8 +278,10 @@ def eval_worker(job: dict) -> dict:
 Setup once:
 
 ```bash
-modal secret create huggingface-secret HF_TOKEN=hf_...
-modal run modal_app/sweep.py --detach
+modal secret create huggingface-secret HF_TOKEN=hf_...   # already exists
+bash scripts/modal_setup_model.sh
+modal run --detach modal_app/sweep.py
+# or: bash scripts/modal_run_sweep.sh
 ```
 
 ---
@@ -339,15 +349,15 @@ No requirement to remove MPS path. `get_eval_device()` selects backend automatic
 
 ## 8. Implementation Order
 
-| Phase | Work | Platform |
-|---|---|---|
-| **A** | Fix sliding-window cache carry (`perplexity.py`) | Local + Modal |
-| **B** | Fix identity PPL regression at ctx≥512 | Local + Modal |
-| **C** | GPU-native TurboQuant payloads (CUDA branch) | Modal (+ local CPU fallback) |
-| **D** | `framework/device.py` + `ModelLayer` CUDA path | Both |
-| **E** | Modal image, volume, worker, secrets | Modal only |
-| **F** | `spawn_map` sweep orchestrator | Modal only |
-| **G** | Re-run full grid; merge into `results/` | Modal |
+| Phase | Work | Platform | Status |
+|---|---|---|---|
+| **A** | Fix sliding-window cache carry (`perplexity.py`) | Local + Modal | ✅ |
+| **B** | Fix identity PPL regression at ctx≥512 (attention mask) | Local + Modal | ✅ (verify on Modal) |
+| **C** | GPU-native TurboQuant payloads (CUDA branch) | Modal (+ local CPU fallback) | ✅ |
+| **D** | `framework/device.py` + `ModelLayer` CUDA path | Both | ✅ |
+| **E** | Modal image, volume, worker, secrets | Modal only | ✅ |
+| **F** | `spawn_map` sweep orchestrator + merge | Modal only | ✅ |
+| **G** | Re-run full grid; merge into `results/` | Modal | Run on Modal |
 
 ---
 
@@ -355,15 +365,16 @@ No requirement to remove MPS path. `get_eval_device()` selects backend automatic
 
 To **fully leverage** NVIDIA on Modal:
 
-- [ ] All compress/decompress tensors stay on **CUDA** (no `.cpu()` in hot path)
-- [ ] `fast-hadamard-transform` installed in Modal image
-- [ ] Model + centroids loaded **once per worker** (not per metric)
-- [ ] Sliding-window cache **carried** across strides (Section 4.2)
-- [ ] One sweep job per GPU via `.map()` — do not run 30 configs serially in one container
-- [ ] Volume for model weights + `volume.commit()` after download
-- [ ] `timeout` ≥ 4 h for ctx=32768 jobs
-- [ ] Use `gpu=["A10G", "L4", "any"]` fallback if A10G quota limited
-- [ ] Aggregate results to JSON/CSV locally after `.map()` returns
+- [x] All compress/decompress tensors stay on **CUDA** (no `.cpu()` in hot path on CUDA)
+- [x] `fast-hadamard-transform` installed in Modal image
+- [x] Model loaded **once per worker** via `ensure_model()` + volume cache
+- [x] Sliding-window cache **carried** across strides (Section 4.2)
+- [x] One sweep job per GPU via `.spawn_map()` — 30 configs parallel, not serial in one container
+- [x] Volume for model weights + `volume.commit()` after download
+- [x] `timeout` = 4 h per job (`configs/modal.yaml`)
+- [x] `gpu=["A10G", "L4", "any"]` fallback in `configs/modal.yaml`
+- [x] Resume: skip jobs whose JSON already exists on results volume
+- [x] Merge results to CSV/JSON via `merge.py` + `modal_fetch_results.sh`
 
 ---
 
@@ -381,3 +392,29 @@ To **fully leverage** NVIDIA on Modal:
 - Parallel jobs: `Function.map()`, `Function.spawn_map()` — [Modal scale guide](https://modal.com/docs/guide/scale)
 - Volumes + secrets: [Modal volumes guide](https://modal.com/docs/guide/volumes)
 - CUDA PyTorch on Modal: [Modal CUDA guide](https://modal.com/docs/guide/cuda)
+
+---
+
+## 12. Runbook (copy-paste)
+
+```bash
+cd /path/to/kv-cache-compression-benchmark
+source .venv/bin/activate
+pip install modal
+
+# One-time model cache on Modal Volume
+bash scripts/modal_setup_model.sh
+
+# Full 30-job sweep (detached)
+bash scripts/modal_run_sweep.sh
+
+# Monitor in Modal dashboard; when done:
+bash scripts/modal_fetch_results.sh
+modal run modal_app/sweep.py::merge_local --input-dir results/modal_volume
+
+# Resume after partial run (skips JSON already on volume)
+modal run --detach modal_app/sweep.py --resume
+
+# Sync subset and merge locally (blocks until done)
+modal run modal_app/sweep.py --sync --context-lengths 128,512 --labels identity_baseline
+```

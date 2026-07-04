@@ -324,6 +324,7 @@ Full implementation details, configuration, and known limitations: [docs/QJL_AND
 ├── data/               # WikiText-2 loader + long-context builder
 ├── datasets/           # placeholder dirs (cache lives in .cache/)
 ├── reporting/          # JSON/CSV export
+├── modal_app/          # Modal CUDA workers + parallel sweep orchestrator
 ├── models/             # downloaded weights (gitignored)
 ├── results/            # experiment outputs (gitignored)
 ├── plots/              # figures (gitignored)
@@ -331,6 +332,41 @@ Full implementation details, configuration, and known limitations: [docs/QJL_AND
 ├── scripts/            # download, verify, run eval
 └── tests/              # pytest suite
 ```
+
+---
+
+## Modal GPU Evaluation (NVIDIA)
+
+Full design: [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md)
+
+Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run on Modal** — one **A10G GPU per job**, 30 parallel workers for the default grid (5 configs × 6 context lengths).
+
+**Prerequisites:** [Modal account](https://modal.com), `pip install modal`, and the existing secret `huggingface-secret` (`HF_TOKEN`).
+
+```bash
+# 1. One-time: download Qwen3-1.7B into Modal Volume (~3.2 GB)
+bash scripts/modal_setup_model.sh
+
+# 2. Launch detached parallel sweep (default: 30 jobs)
+bash scripts/modal_run_sweep.sh
+
+# Subset example
+CONTEXT_LENGTHS=128,512 LABELS=tq_full_b4 bash scripts/modal_run_sweep.sh
+
+# 3. Fetch per-job JSON from Modal Volume
+bash scripts/modal_fetch_results.sh
+
+# 4. Merge into local CSV/JSON
+modal run modal_app/sweep.py::merge_local --input-dir results/modal_volume
+```
+
+| Modal artifact | Name | Purpose |
+|---|---|---|
+| Model volume | `kv-engine-qwen3` | Persist Qwen3-1.7B weights |
+| Results volume | `kv-engine-results` | Per-job JSON (`{label}_ctx{len}_b{bw}_{stage}.json`) |
+| Secret | `huggingface-secret` | HF_TOKEN for first-time model download |
+
+Config: `configs/modal.yaml` (GPU type, timeouts, volume names).
 
 ---
 
@@ -343,6 +379,9 @@ Full implementation details, configuration, and known limitations: [docs/QJL_AND
 | `scripts/run_eval.py` | Full eval runner (memory + speed + perplexity) |
 | `scripts/run_baseline.py` | Single-baseline eval with JSON output |
 | `scripts/validate_turboquant.py` | TurboQuant stage ablation + KV intercept smoke test |
+| `scripts/modal_setup_model.sh` | One-time Qwen3 download to Modal Volume |
+| `scripts/modal_run_sweep.sh` | Detached parallel eval sweep on Modal A10G GPUs |
+| `scripts/modal_fetch_results.sh` | Pull job JSON from `kv-engine-results` volume |
 
 ### `run_eval.py` flags
 
@@ -385,6 +424,7 @@ Cache directory: `.cache/huggingface/datasets/` (gitignored).
 | `fast-hadamard-transform` build error | Expected on Mac; skip for identity/eval smoke tests |
 | Slow eval on long contexts | Start with `--context-length 512`; use `--skip-perplexity` for speed-only runs |
 | MPS OOM at 32K context | Reduce `--context-length` or run on CPU |
+| Full sweep too slow locally | Use Modal: `bash scripts/modal_run_sweep.sh` |
 
 ---
 
@@ -396,7 +436,7 @@ Cache directory: `.cache/huggingface/datasets/` (gitignored).
 4. **Phase 2** — KIVI baseline
 5. **Phase 3** — QJL baseline ✅
 6. **Phase 4** — RocketKV baseline ✅
-7. **Phase 5** — Full evaluation sweep across all methods (pending)
+7. **Phase 5** — Full evaluation sweep across all methods (Modal parallel sweep)
 
 See [docs/SYSTEM_DESIGN.md §11](docs/SYSTEM_DESIGN.md#11-design-verification-checklist) for verification against common KV-compression mistakes (granularity, attention, QJL storage, Hadamard scaling, paper reusability).
 

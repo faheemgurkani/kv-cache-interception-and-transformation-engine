@@ -1,0 +1,18 @@
+# Modal CUDA worker dependencies (torch installed separately with cu124 index)
+transformers
+accelerate
+datasets
+evaluate
+numpy
+scipy
+pandas
+tqdm
+einops
+psutil
+scikit-learn
+sentencepiece
+safetensors
+pyyaml
+python-dotenv
+huggingface_hub
+fast-hadamard-transform

@@ -26,3 +26,6 @@ sentencepiece
 safetensors
 python-dotenv
 pyyaml
+
+# Modal orchestration (install locally: pip install modal)
+# modal

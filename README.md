@@ -339,7 +339,13 @@ Full implementation details, configuration, and known limitations: [docs/QJL_AND
 
 Full design: [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md) — implemented NVIDIA runtime, job-level parallelism, storage, runbook.
 
-Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run on Modal** — one **A10G GPU per job**, up to **15 parallel workers** (5 configs × 3 context lengths: 128, 256, 512) via `spawn_map()`.
+Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run on Modal** — one **A10G GPU per job**, parallelized via `spawn_map()`. Sweep presets live in `configs/modal_sweeps.yaml`:
+
+| Preset | Configs | Jobs (× ctx 128, 256, 512) |
+|---|---|---|
+| `turboquant` (default) | 5 | 15 |
+| `qjl` | 1 | 3 |
+| `rocketkv` | 3 | 9 |
 
 **Prerequisites:** [Modal account](https://modal.com), `pip install modal`, and the existing secret `huggingface-secret` (`HF_TOKEN`).
 
@@ -347,27 +353,29 @@ Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run
 # 1. One-time: download Qwen3-1.7B into Modal Volume (~3.2 GB)
 bash scripts/modal_setup_model.sh
 
-# 2. Launch detached parallel sweep (default: 15 jobs @ 128,256,512)
-bash scripts/modal_run_sweep.sh
-# equivalent: modal run --detach modal_app/sweep.py::main
+# 2. Launch detached parallel sweep
+bash scripts/modal_run_sweep.sh                              # turboquant (15 jobs)
+bash scripts/modal_run_sweep_qjl.sh                          # qjl (3 jobs)
+bash scripts/modal_run_sweep_rocketkv.sh                   # rocketkv (9 jobs)
+# or: PRESET=qjl OUTPUT=phase5_modal_qjl bash scripts/modal_run_sweep.sh
 
 # Subset example
-CONTEXT_LENGTHS=128,512 LABELS=tq_full_b4 bash scripts/modal_run_sweep.sh
+PRESET=rocketkv CONTEXT_LENGTHS=128,512 LABELS=rocketkv_r50 bash scripts/modal_run_sweep.sh
 
 # 3. Fetch per-job JSON from Modal Volume
 bash scripts/modal_fetch_results.sh
 
 # 4. Merge into local CSV/JSON
-modal run modal_app/sweep.py::merge_local --input-dir results/modal_volume
+modal run modal_app/sweep.py::merge_local --input-dir results/modal_volume --output phase5_modal_rocketkv
 ```
 
 | Modal artifact | Name | Purpose |
 |---|---|---|
 | Model volume | `kv-engine-qwen3` | Persist Qwen3-1.7B weights |
-| Results volume | `kv-engine-results` | Per-job JSON (`{label}_ctx{len}_b{bw}_{stage}.json`) |
+| Results volume | `kv-engine-results` | Per-job JSON (TurboQuant/QJL: `{label}_ctx{len}_b{bw}_{stage}.json`; RocketKV: `{label}_ctx{len}_r{keep}_ws{win}_k{topk}.json`) |
 | Secret | `huggingface-secret` | HF_TOKEN for first-time model download |
 
-Config: `configs/modal.yaml` (GPU type, timeouts, volume names).
+Config: `configs/modal.yaml` (GPU type, timeouts, volume names). Sweep grids: `configs/modal_sweeps.yaml`.
 
 ---
 
@@ -381,7 +389,9 @@ Config: `configs/modal.yaml` (GPU type, timeouts, volume names).
 | `scripts/run_baseline.py` | Single-baseline eval with JSON output |
 | `scripts/validate_turboquant.py` | TurboQuant stage ablation + KV intercept smoke test |
 | `scripts/modal_setup_model.sh` | One-time Qwen3 download to Modal Volume |
-| `scripts/modal_run_sweep.sh` | Detached parallel eval sweep on Modal A10G GPUs |
+| `scripts/modal_run_sweep.sh` | Detached parallel eval sweep on Modal A10G GPUs (`PRESET=turboquant\|qjl\|rocketkv`) |
+| `scripts/modal_run_sweep_qjl.sh` | QJL preset sweep (3 jobs) |
+| `scripts/modal_run_sweep_rocketkv.sh` | RocketKV preset sweep (9 jobs) |
 | `scripts/modal_fetch_results.sh` | Pull job JSON from `kv-engine-results` volume |
 
 ### `run_eval.py` flags

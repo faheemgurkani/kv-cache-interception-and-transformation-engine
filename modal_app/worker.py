@@ -61,7 +61,7 @@ def ensure_model() -> str:
 )
 def eval_worker(job: dict) -> dict:
     """Run one (compressor × context_length) evaluation on CUDA."""
-    spec = EvalJobSpec(**job)
+    spec = EvalJobSpec.from_dict(job)
     started_at = datetime.now(UTC).isoformat()
 
     try:
@@ -75,12 +75,7 @@ def eval_worker(job: dict) -> dict:
 
         model_path = _ensure_model_weights()
 
-        kwargs: dict = {}
-        if spec.bitwidth is not None:
-            kwargs["bitwidth"] = spec.bitwidth
-        if spec.stage is not None:
-            kwargs["stage"] = spec.stage
-        compressor = get_compressor(spec.compressor, **kwargs)
+        compressor = get_compressor(spec.compressor, **spec.get_compressor_kwargs())
 
         runner = EvaluationRunner(
             model_layer=ModelLayer(model_path=model_path),

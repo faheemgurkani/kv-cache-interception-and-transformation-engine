@@ -1,0 +1,49 @@
+# Modal evaluation sweep presets (context lengths from configs/model.yaml unless overridden)
+#
+# Usage:
+#   modal run modal_app/sweep.py::main --preset qjl
+#   PRESET=rocketkv bash scripts/modal_run_sweep.sh
+
+presets:
+  turboquant:
+    - label: identity_baseline
+      name: identity
+    - label: tq_full_b2
+      name: turboquant
+      stage: full
+      bitwidth: 2
+    - label: tq_full_b3
+      name: turboquant
+      stage: full
+      bitwidth: 3
+    - label: tq_full_b4
+      name: turboquant
+      stage: full
+      bitwidth: 4
+    - label: tq_mse_b4
+      name: turboquant
+      stage: wht_quant
+      bitwidth: 4
+
+  qjl:
+    - label: qjl_default
+      name: qjl
+      bitwidth: 1
+      seed: 42
+
+  rocketkv:
+    - label: rocketkv_r25
+      name: rocketkv
+      keep_ratio: 0.25
+      window_size: 32
+      dynamic_top_k: 64
+    - label: rocketkv_r50
+      name: rocketkv
+      keep_ratio: 0.5
+      window_size: 32
+      dynamic_top_k: 64
+    - label: rocketkv_r75
+      name: rocketkv
+      keep_ratio: 0.75
+      window_size: 32
+      dynamic_top_k: 64

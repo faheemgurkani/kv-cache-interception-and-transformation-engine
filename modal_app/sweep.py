@@ -1,18 +1,24 @@
 """
-Launch parallel TurboQuant evaluation sweeps on Modal NVIDIA GPUs.
+Launch parallel evaluation sweeps on Modal NVIDIA GPUs.
 
 Usage:
   # One-time model download to Modal Volume (~3.2 GB)
   modal run modal_app/worker.py::ensure_model
 
-  # Full parallel sweep (15 jobs: 5 configs × 3 context lengths)
-  modal run --detach modal_app/sweep.py
+  # TurboQuant sweep (15 jobs: 5 configs × 3 context lengths)
+  modal run --detach modal_app/sweep.py::main --preset turboquant
+
+  # QJL sweep (3 jobs: 1 config × 3 context lengths)
+  modal run --detach modal_app/sweep.py::main --preset qjl --output phase5_modal_qjl
+
+  # RocketKV sweep (9 jobs: 3 configs × 3 context lengths)
+  modal run --detach modal_app/sweep.py::main --preset rocketkv --output phase5_modal_rocketkv
 
   # Subset sweep
-  modal run --detach modal_app/sweep.py --context-lengths 128,512 --labels tq_full_b4
+  modal run --detach modal_app/sweep.py --preset rocketkv --context-lengths 128,512 --labels rocketkv_r50
 
   # Sync run — waits and writes merged JSON/CSV locally
-  modal run modal_app/sweep.py --sync
+  modal run modal_app/sweep.py::main --preset qjl --sync
 
   # Merge payloads already downloaded from the results volume
   modal run modal_app/sweep.py::merge_local --input-dir results/modal_volume
@@ -22,7 +28,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from modal_app.job_spec import build_sweep_jobs, default_context_lengths, filter_existing_jobs
+from modal_app.job_spec import build_sweep_jobs, default_context_lengths, filter_existing_jobs, get_sweep_configs
 from modal_app.merge import load_payloads_from_directory, write_merged_reports
 from modal_app.worker import app, eval_worker, list_completed_jobs
 
@@ -31,6 +37,7 @@ from modal_app.worker import app, eval_worker, list_completed_jobs
 def main(
     context_lengths: str = "",
     labels: str = "",
+    preset: str = "turboquant",
     sync: bool = False,
     resume: bool = True,
     skip_perplexity: bool = False,
@@ -43,10 +50,12 @@ def main(
         else default_context_lengths()
     )
     label_filter = [item.strip() for item in labels.split(",") if item.strip()] or None
+    sweep_configs = get_sweep_configs(preset)
 
     jobs = build_sweep_jobs(
         context_lengths=lengths,
         labels=label_filter,
+        preset=preset,
         skip_perplexity=skip_perplexity,
         skip_throughput=skip_throughput,
     )
@@ -59,6 +68,10 @@ def main(
             return
 
     job_dicts = [job.to_dict() for job in jobs]
+    print(
+        f"Preset '{preset}': {len(sweep_configs)} configs × {len(lengths)} context lengths "
+        f"= {len(sweep_configs) * len(lengths)} total grid jobs."
+    )
     print(f"Submitting {len(job_dicts)} eval jobs to Modal ({'sync' if sync else 'spawn'} mode).")
 
     if sync:

@@ -72,6 +72,9 @@ def decompress_compressed_layer(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Decompress one layer; supports batch (single payload) or incremental (payload lists)."""
     if is_incremental_compressed(compressed):
+        decompress_incremental = getattr(compressor, "decompress_incremental_layer", None)
+        if decompress_incremental is not None:
+            return decompress_incremental(compressed)
         key_parts = [compressor.decompress_kv(item, mode="key") for item in compressed.keys]  # type: ignore[union-attr]
         value_parts = [compressor.decompress_kv(item, mode="value") for item in compressed.values]  # type: ignore[union-attr]
         return torch.cat(key_parts, dim=2), torch.cat(value_parts, dim=2)

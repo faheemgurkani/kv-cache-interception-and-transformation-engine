@@ -75,6 +75,13 @@ class RocketKVCompressor(KVCompressor):
             layer=layer,
         )
 
+    def decompress_incremental_layer(
+        self,
+        compressed: CompressedKV,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Apply token selection after concatenating per-token incremental payloads."""
+        return self.decompress(compressed)
+
     def decompress(self, compressed: CompressedKV) -> tuple[torch.Tensor, torch.Tensor]:
         payload = compressed.keys
         if isinstance(payload, list):

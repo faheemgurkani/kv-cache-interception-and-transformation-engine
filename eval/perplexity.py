@@ -60,6 +60,14 @@ def evaluate_perplexity_baseline(
 def _maybe_trim_cache(cache: CompressedCache, max_length: int, compressor: KVCompressor) -> CompressedCache:
     if cache.seq_length <= max_length:
         return cache
+    if getattr(compressor, "name", "") == "rocketkv" and hasattr(compressor, "trim_layer"):
+        if hasattr(compressor, "reset_state"):
+            compressor.reset_state()
+        drop = cache.seq_length - max_length
+        from framework.kv_engine import CompressedCache
+
+        trimmed_layers = [compressor.trim_layer(layer, drop) for layer in cache.layers]  # type: ignore[attr-defined]
+        return CompressedCache(layers=trimmed_layers)
     return trim_compressed_cache(cache, cache.seq_length - max_length, compressor)
 
 
@@ -79,6 +87,8 @@ def evaluate_perplexity(
     """
     device = model_layer.device
     engine = model_layer.make_kv_engine(compressor)
+    if hasattr(compressor, "reset_state"):
+        compressor.reset_state()
     max_length = max_length or getattr(
         model_layer.config, "max_position_embeddings", input_ids.size(1)
     )
@@ -103,7 +113,13 @@ def evaluate_perplexity(
                 device=device,
                 dtype=torch.long,
             )
-            logits, cache = engine.step(token, attention_mask=attention_mask, compressed_cache=cache)
+            position_ids = torch.tensor([[t]], device=device, dtype=torch.long)
+            logits, cache = engine.step(
+                token,
+                attention_mask=attention_mask,
+                compressed_cache=cache,
+                position_ids=position_ids,
+            )
 
             target_pos = t + 1
             if score_from <= target_pos <= score_to:

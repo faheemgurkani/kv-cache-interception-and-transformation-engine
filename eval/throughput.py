@@ -29,6 +29,8 @@ def evaluate_throughput(
     num_new_tokens: int = 128,
 ) -> ThroughputMetrics:
     """Measure tokens/sec using KVCacheEngine (compress/decompress each step)."""
+    if hasattr(compressor, "reset_state"):
+        compressor.reset_state()
     engine = model_layer.make_kv_engine(compressor)
 
     start = time.perf_counter()

@@ -44,6 +44,14 @@ class EvalJobSpec:
 
     @property
     def result_stem(self) -> str:
+        if "token_budget" in self.compressor_kwargs:
+            token_budget = int(self.compressor_kwargs["token_budget"])
+            hsa_budget = int(self.compressor_kwargs.get("hsa_budget", token_budget))
+            window_size = int(self.compressor_kwargs.get("window_size", 32))
+            return (
+                f"{self.label}_ctx{self.context_length}_b{token_budget}"
+                f"_hsa{hsa_budget}_ws{window_size}"
+            )
         if "keep_ratio" in self.compressor_kwargs:
             keep_ratio = float(self.compressor_kwargs["keep_ratio"])
             window_size = int(self.compressor_kwargs.get("window_size", 32))

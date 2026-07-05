@@ -1,4 +1,4 @@
-"""Run evaluations for the KV-Cache Interception + Transformation Engine."""
+"""Run evaluations for the KV-Cache Interception and Transformation Engine."""
 
 from __future__ import annotations
 

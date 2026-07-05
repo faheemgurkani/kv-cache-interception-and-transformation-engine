@@ -48,7 +48,7 @@ def _tensor_reconstruction_error(
 
     for layer_idx, (key, value) in enumerate(iter_layer_kv(past_key_values)):
         if hasattr(compressor, "reconstruction_error"):
-            errors = compressor.reconstruction_error(key, value)
+            errors = compressor.reconstruction_error(key, value, layer=layer_idx)
             key_rmses.append(errors["key_rmse"])
             value_rmses.append(errors["value_rmse"])
             continue
@@ -108,4 +108,6 @@ def evaluate_fidelity(
     del outputs
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+    if hasattr(compressor, "reset_state"):
+        compressor.reset_state()
     return FidelityMetrics(tensor=tensor, attention=attention, memory=memory)

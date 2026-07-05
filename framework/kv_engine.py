@@ -14,6 +14,7 @@ from framework.kv_cache import (
     incremental_seq_length,
     iter_layer_kv,
 )
+from quantizers.rocketkv import RocketKVLayerPayload
 
 
 @dataclass
@@ -94,6 +95,7 @@ class KVCacheEngine:
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor | None = None,
         compressed_cache: CompressedCache | None = None,
+        position_ids: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, CompressedCache]:
         cache = compressed_cache or self.compressed_cache
         prev_seq = cache.seq_length if cache is not None else 0
@@ -108,6 +110,11 @@ class KVCacheEngine:
 
         past_kv = None
         if cache is not None and cache.layers:
+            if getattr(self.compressor, "name", "") == "rocketkv":
+                for layer_idx, layer in enumerate(cache.layers):
+                    payload = layer.keys
+                    if isinstance(payload, RocketKVLayerPayload):
+                        self.compressor.restore_state_from_payload(layer_idx, payload)  # type: ignore[attr-defined]
             past_kv = decompress_to_legacy_cache(
                 cache.layers, self.compressor, self.model.config, device=input_ids.device
             )
@@ -116,10 +123,35 @@ class KVCacheEngine:
             input_ids,
             attention_mask=attention_mask,
             past_key_values=past_kv,
+            position_ids=position_ids,
             use_cache=True,
         )
 
         prior_layers = cache.layers if cache is not None else None
+        if getattr(self.compressor, "name", "") == "rocketkv":
+            new_layers: list[CompressedKV] = []
+            for layer_idx, (key, value) in enumerate(iter_layer_kv(outputs.past_key_values)):
+                prior_payload = None
+                if prior_layers is not None:
+                    prior = prior_layers[layer_idx].keys
+                    if isinstance(prior, RocketKVLayerPayload):
+                        prior_payload = prior
+                orig_len = key.shape[2]
+                if prior_payload is not None and prior_payload.selected_indices.numel():
+                    orig_len = max(orig_len, int(prior_payload.selected_indices.max().item()) + 1)
+                new_layers.append(
+                    self.compressor.compress_layer_from_kv(  # type: ignore[attr-defined]
+                        key,
+                        value,
+                        layer_idx,
+                        original_seq_len=orig_len,
+                        prior_payload=prior_payload,
+                    )
+                )
+            new_cache = CompressedCache(layers=new_layers)
+            self.compressed_cache = new_cache
+            return outputs.logits, new_cache
+
         new_layers = self._compress_new_tokens(outputs.past_key_values, prev_seq, prior_layers)
         new_cache = CompressedCache(layers=new_layers)
         self.compressed_cache = new_cache

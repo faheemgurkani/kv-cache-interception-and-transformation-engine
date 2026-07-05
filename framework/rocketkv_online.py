@@ -14,7 +14,7 @@ def apply_online_kv_sparsity(
     key: torch.Tensor,
     value: torch.Tensor,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Apply RocketKV stage-1 permanent filtering then stage-2 HSA.
+    """Apply RocketKV stage-1 (permanent) then stage-2 (HSA) sparsity.
 
     Returns sparse K/V plus ``kept_indices`` into the pre-sparsity sequence axis.
     """
@@ -22,18 +22,24 @@ def apply_online_kv_sparsity(
         empty = torch.empty(0, dtype=torch.long, device=key.device)
         return key, value, empty
 
-    stage1_indices, key, value = compressor.token_selector.select(key, value)
-    compressor._permanent_indices[layer_idx] = stage1_indices.detach().cpu()
-    key, value, stage2_indices = compressor.hsa.select_top_k(
+    global_indices = compressor.extend_global_indices(layer_idx, key.shape[2], key.device)
+    stored_global, key, value, _, stage1_local = compressor.apply_stage1(
+        key,
+        value,
+        layer=layer_idx,
+        global_indices=global_indices,
+    )
+    key, value, mask_local = compressor.apply_stage2(
         query,
         key,
         value,
-        permanent_indices=None,
+        stored_global,
+        layer=layer_idx,
+        stage1_local=stage1_local,
     )
-    if stage1_indices.numel() == 0:
-        return key, value, stage2_indices
-    kept_indices = stage1_indices[stage2_indices]
-    return key, value, kept_indices
+    if mask_local.numel() != key.shape[2]:
+        mask_local = mask_local[: key.shape[2]]
+    return key, value, mask_local
 
 
 def align_attention_mask(
@@ -46,14 +52,41 @@ def align_attention_mask(
         return None
     if attention_mask.shape[-1] == key_seq_len:
         return attention_mask
-    if kept_indices.numel() != key_seq_len:
+    if kept_indices.numel() == 0:
         return attention_mask[..., :key_seq_len]
 
+    idx = kept_indices.to(attention_mask.device)
+    if idx.max().item() >= attention_mask.shape[-1]:
+        idx = idx[idx < attention_mask.shape[-1]]
+
     if attention_mask.dim() == 4:
-        return attention_mask.index_select(-1, kept_indices)
-    if attention_mask.dim() == 2:
-        return attention_mask.index_select(1, kept_indices)
-    return attention_mask[..., :key_seq_len]
+        aligned = attention_mask.index_select(-1, idx)
+    elif attention_mask.dim() == 2:
+        aligned = attention_mask.index_select(1, idx)
+    else:
+        aligned = attention_mask[..., :key_seq_len]
+
+    if aligned.shape[-1] != key_seq_len:
+        aligned = aligned[..., :key_seq_len]
+    return aligned
+
+
+def _write_sparse_cache(
+    past_key_values,
+    layer_index: int,
+    key_states: torch.Tensor,
+    value_states: torch.Tensor,
+) -> None:
+    """Physically evict tokens from the runtime DynamicCache."""
+    if past_key_values is None:
+        return
+    if hasattr(past_key_values, "layers"):
+        past_key_values.layers[layer_index].keys = key_states
+        past_key_values.layers[layer_index].values = value_states
+        return
+    if hasattr(past_key_values, "key_cache"):
+        past_key_values.key_cache[layer_index] = key_states
+        past_key_values.value_cache[layer_index] = value_states
 
 
 def _resolve_attention_interface(attn_module, config):
@@ -104,6 +137,12 @@ def enable_rocketkv_online(model, compressor: RocketKVCompressor) -> None:
                     compressor,
                     layer_index,
                     query_states,
+                    key_states,
+                    value_states,
+                )
+                _write_sparse_cache(
+                    past_key_values,
+                    layer_index,
                     key_states,
                     value_states,
                 )

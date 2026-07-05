@@ -1,16 +1,28 @@
 # Known Limits
 
-Online-path caveats and non-goals. Setup and commands: [README](../README.md). Architecture: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md).
+Scope and caveats for the **KV-Cache Interception and Transformation Engine** (compression analysis / benchmark). Setup: [README](../README.md). Architecture: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md).
+
+## Research scope
+
+| Status | Item |
+|---|---|
+| ✅ | Unified KV interception + plug-in compressors + Section A/B eval |
+| ✅ | Case studies: TurboQuant, QJL, RocketKV on Qwen3-1.7B |
+| ⚠️ | Single model, WikiText-2, ctx ≤512 — sufficient for arXiv framework paper, not top-tier conference breadth |
+| 🔜 | More models, contexts, algorithms (SnapKV, KIVI, AdaKV), benchmarks (LongBench, RULER) |
+
+## Implementation limits
 
 | Topic | Limit |
 |---|---|
 | **KIVI** | Stub only (`NotImplementedError`) |
 | **QJL Section B** | Uses key reconstruct in forward pass; Section A uses attention estimator — metrics diverge |
-| **RocketKV Section A vs B** | Offline fidelity ignores token eviction; Section B captures it |
+| **RocketKV** | Post-fix: token budgets + online HSA; historical Phase 5 tables used `r25`/`r50`/`r75` |
 | **TurboQuant 2-bit @ ctx=128** | Anomalously bad PPL; use ctx≥256 for comparisons |
 | **TurboQuant online speed** | ~0.08 tok/s @ ctx=512 (per-step compress/decompress) |
 | **Modal WHT** | Scipy fallback; no CUDA `fast-hadamard-transform` |
 | **Attention** | `attn_implementation="eager"` required — FlashAttention breaks KV intercept |
 | **Baseline eval order** | Baseline PPL runs before RocketKV attention patch (`eval/runner.py`) |
+| **Section A vs B** | Offline metrics do not always predict online PPL (by design — framework surfaces the gap) |
 
-Raw job JSON lives under `results/` (gitignored). Version-controlled numbers: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md).
+Raw job JSON: `results/` (gitignored). Version-controlled numbers: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md).

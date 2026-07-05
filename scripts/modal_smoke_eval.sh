@@ -13,7 +13,7 @@ case "$PRESET" in
     LABEL="${LABEL:-qjl_default}"
     ;;
   rocketkv)
-    LABEL="${LABEL:-rocketkv_r50}"
+    LABEL="${LABEL:-rocketkv_r512}"
     ;;
   baseline)
     LABEL="${LABEL:-identity_baseline}"

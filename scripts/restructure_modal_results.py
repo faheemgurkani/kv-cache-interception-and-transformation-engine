@@ -25,7 +25,7 @@ TURBOQUANT_PREFIXES = ("tq_",)
 ROCKETKV_PREFIXES = ("rocketkv_",)
 CONTEXT_LENGTHS = (128, 256, 512)
 TURBOQUANT_CONFIGS = ("tq_full_b2", "tq_full_b3", "tq_full_b4", "tq_mse_b4")
-ROCKETKV_CONFIGS = ("rocketkv_r25", "rocketkv_r50", "rocketkv_r75")
+ROCKETKV_CONFIGS = ("rocketkv_r256", "rocketkv_r512", "rocketkv_r1024")
 MODAL_APP_ID = "ap-ek9dIxujlrECcfFaOa3ok3"
 MODAL_APP_URL = f"https://modal.com/apps/faheemgurkani/main/{MODAL_APP_ID}"
 

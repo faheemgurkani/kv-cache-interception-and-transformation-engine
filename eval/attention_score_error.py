@@ -144,20 +144,31 @@ def evaluate_attention_fidelity(
         key_exp = expand_kv_heads(key, num_q_heads, num_kv_heads)
         query, key_exp = _slice_score_window(query, key_exp, score_tokens)
 
-        key_payload = compressor.compress_kv(key, layer=layer_idx, mode="key")
-
         scores_fp = attention_scores(query, key_exp, head_dim)
 
-        if hasattr(compressor, "estimate_attention_scores"):
+        if hasattr(compressor, "attention_fidelity"):
+            mse, rmse, cosine, layer_max = compressor.attention_fidelity(
+                query,
+                key,
+                _value,
+                head_dim,
+                num_q_heads,
+                num_kv_heads,
+                layer=layer_idx,
+            )
+        elif hasattr(compressor, "estimate_attention_scores"):
+            key_payload = compressor.compress_kv(key, layer=layer_idx, mode="key")
             scores_quant = compressor.estimate_attention_scores(query, key_payload, head_dim)
+            mse, rmse, cosine, layer_max = _score_distortion(scores_fp, scores_quant)
         else:
+            key_payload = compressor.compress_kv(key, layer=layer_idx, mode="key")
             key_hat = compressor.decompress_kv(key_payload, mode="key").to(device=query.device)
             key_hat_exp = expand_kv_heads(key_hat, num_q_heads, num_kv_heads)
             if score_tokens > 0 and key_hat_exp.shape[-2] > score_tokens:
                 key_hat_exp = key_hat_exp[..., -score_tokens:, :]
             scores_quant = attention_scores(query, key_hat_exp, head_dim)
+            mse, rmse, cosine, layer_max = _score_distortion(scores_fp, scores_quant)
 
-        mse, rmse, cosine, layer_max = _score_distortion(scores_fp, scores_quant)
         per_layer.append(
             LayerAttentionMetrics(
                 layer=layer_idx,
@@ -173,7 +184,11 @@ def evaluate_attention_fidelity(
         max_error = max(max_error, layer_max)
         layers += 1
 
-        del query, key_exp, key_payload, scores_fp, scores_quant
+        del query, key_exp, scores_fp
+        if "key_payload" in locals():
+            del key_payload
+        if "scores_quant" in locals():
+            del scores_quant
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 

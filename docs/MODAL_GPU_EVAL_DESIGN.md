@@ -1,6 +1,6 @@
 # Modal GPU Evaluation
 
-CUDA sweeps on [Modal](https://modal.com). Same eval code as local; only device and orchestration differ.
+CUDA sweeps for the **KV-Cache Interception and Transformation Engine** on [Modal](https://modal.com). Same eval code as local; only device and orchestration differ.
 
 Overview: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) · Results: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md)
 
@@ -41,7 +41,7 @@ Local: modal run --detach modal_app/sweep.py::main
 
 Identity baseline runs once under `baseline`; method sweeps do not re-run identity.
 
-Result stems: TurboQuant/QJL `{label}_ctx{len}_b{bw}_{stage}.json` · RocketKV `{label}_ctx{len}_r{keep}_ws{win}_k{topk}.json`
+Result stems: TurboQuant/QJL `{label}_ctx{len}_b{bw}_{stage}.json` · RocketKV `{label}_ctx{len}_r{budget}_ws{win}.json` (e.g. `rocketkv_r256`)
 
 ## Runbook
 

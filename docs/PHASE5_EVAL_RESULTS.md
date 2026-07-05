@@ -1,5 +1,7 @@
 # Phase 5 Evaluation Results
 
+Case-study numbers for the **KV-Cache Interception and Transformation Engine** on Qwen3-1.7B. Methods are compared under one pipeline — not as standalone paper reproductions.
+
 Qwen3-1.7B · WikiText-2 test · ctx **128 / 256 / 512** · Modal A10G · July 2026.
 
 Raw JSON/CSV: `results/` (gitignored). Fetch with `bash scripts/modal_fetch_results.sh`.
@@ -54,10 +56,11 @@ Key RMSE ~6.7; attn RMSE ~44–50 @ ctx=512.
 
 Section A reports 0 RMSE (full-precision kept tokens); Section B fails because tokens are evicted online.
 
-## Findings
+## Findings (framework lens)
 
-- **TurboQuant 4-bit** is the only method with paper-plausible quality (~1.3× baseline PPL, ~3× memory) at ctx≥256; online inference is very slow.
+- **TurboQuant 4-bit** is the only method with paper-plausible quality (~1.3× baseline PPL, ~3× memory) at ctx≥256 in this pipeline; online inference is very slow.
 - **QJL** saves ~1.9× memory but Section B PPL explodes — online uses key reconstruct, not the QJL attention estimator.
-- **RocketKV** keeps near-baseline speed but catastrophic PPL; offline fidelity does not reflect eviction cost.
+- **RocketKV** (historical `r25`/`r50`/`r75` presets) kept near-baseline speed but catastrophic PPL; presets are now **token budgets** (`r256`/`r512`/`r1024`) with improved online fidelity hooks.
+- These results illustrate **what the framework exposes**, not final claims about each upstream paper.
 
 Shared identity baseline from preset `baseline` in `configs/modal_sweeps.yaml` — not re-run per method.

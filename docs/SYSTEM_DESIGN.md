@@ -1,6 +1,8 @@
-# System Design
+# System Design — KV-Cache Interception and Transformation Engine
 
-Fixed model + eval stack; **only `compressors/` changes per method.**
+**Purpose:** compression task analysis and benchmarking. Fixed model + eval stack; **only `compressors/` changes per method.**
+
+This is a **generic evaluation framework**, not a TurboQuant-only implementation. The engine provides unified KV interception, plug-in compressors, Section A (offline fidelity), and Section B (online perplexity + throughput). Published KV-compression papers propose new algorithms; this repo standardizes how those algorithms are measured under online inference.
 
 ## Architecture
 

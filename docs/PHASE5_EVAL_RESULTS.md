@@ -59,7 +59,7 @@ Section A reports 0 RMSE (full-precision kept tokens); Section B fails because t
 ## Findings (framework lens)
 
 - **TurboQuant 4-bit** is the only method with paper-plausible quality (~1.3× baseline PPL, ~3× memory) at ctx≥256 in this pipeline; online inference is very slow.
-- **QJL** saves ~1.9× memory but Section B PPL explodes — online uses key reconstruct, not the QJL attention estimator.
+- **QJL** saves ~1.9× memory; Section B now uses the **asymmetric attention estimator** (not key reconstruct). PPL remains high vs baseline under 1-bit keys on Qwen3-1.7B.
 - **RocketKV** (historical `r25`/`r50`/`r75` presets) kept near-baseline speed but catastrophic PPL; presets are now **token budgets** (`r256`/`r512`/`r1024`) with improved online fidelity hooks.
 - These results illustrate **what the framework exposes**, not final claims about each upstream paper.
 

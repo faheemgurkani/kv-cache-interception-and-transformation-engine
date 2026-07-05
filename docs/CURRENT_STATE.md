@@ -16,7 +16,7 @@ Scope and caveats for the **KV-Cache Interception and Transformation Engine** (c
 | Topic | Limit |
 |---|---|
 | **KIVI** | Stub only (`NotImplementedError`) |
-| **QJL Section B** | Uses key reconstruct in forward pass; Section A uses attention estimator — metrics diverge |
+| **QJL Section B** | Uses asymmetric QJL attention estimator online (`framework/qjl_online.py`); Section A uses same estimator via `attention_fidelity` |
 | **RocketKV** | Post-fix: token budgets + online HSA; historical Phase 5 tables used `r25`/`r50`/`r75` |
 | **TurboQuant 2-bit @ ctx=128** | Anomalously bad PPL; use ctx≥256 for comparisons |
 | **TurboQuant online speed** | ~0.08 tok/s @ ctx=512 (per-step compress/decompress) |

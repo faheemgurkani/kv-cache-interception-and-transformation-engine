@@ -49,6 +49,10 @@ class KVCacheEngine:
             from framework.rocketkv_online import enable_rocketkv_online
 
             enable_rocketkv_online(model, compressor)
+        elif getattr(compressor, "name", "") == "qjl":
+            from framework.qjl_online import enable_qjl_online
+
+            enable_qjl_online(model, compressor)
 
     def _compress_new_tokens(
         self,
@@ -115,9 +119,13 @@ class KVCacheEngine:
                     payload = layer.keys
                     if isinstance(payload, RocketKVLayerPayload):
                         self.compressor.restore_state_from_payload(layer_idx, payload)  # type: ignore[attr-defined]
+            elif getattr(self.compressor, "name", "") == "qjl":
+                self.compressor.sync_key_payloads_from_cache(cache.layers)  # type: ignore[attr-defined]
             past_kv = decompress_to_legacy_cache(
                 cache.layers, self.compressor, self.model.config, device=input_ids.device
             )
+        elif getattr(self.compressor, "name", "") == "qjl" and hasattr(self.compressor, "reset_state"):
+            self.compressor.reset_state()  # type: ignore[attr-defined]
 
         outputs = self.model(
             input_ids,

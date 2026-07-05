@@ -32,7 +32,6 @@ def evaluate_throughput(
     if hasattr(compressor, "reset_state"):
         compressor.reset_state()
     engine = model_layer.make_kv_engine(compressor)
-
     start = time.perf_counter()
     engine.generate(input_ids, max_new_tokens=num_new_tokens)
     elapsed = time.perf_counter() - start

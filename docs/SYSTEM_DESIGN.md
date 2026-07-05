@@ -65,9 +65,9 @@ Stages: `wht_only`, `wht_quant`, `wht_quant_residual`, `full`. Shared Lloyd-Max 
 
 `quantizers/qjl_pipeline.py` → `compressors/qjl.py`
 
-Keys: `sign(S @ k) + ||k||` (projection S from seed, not stored). Values: FP16 passthrough.
+Keys: `sign(S @ k) + ||k||` (Gaussian S, fixed seed; strict ±1 signs). Values: FP16 passthrough.
 
-Section A: `estimate_attention_scores()`. Section B: approximate `decompress_kv()` — known gap.
+Section A: `attention_fidelity()` / `estimate_attention_scores()`. Section B: online **estimator** via `framework/qjl_online.py`.
 
 ### RocketKV
 

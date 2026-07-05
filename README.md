@@ -36,7 +36,7 @@ Qwen3-1.7B · WikiText-2 · Modal A10G · shared identity baseline PPL ≈ 14.11
 
 \*Historical preset name; current RocketKV sweeps use token budgets `r256` / `r512` / `r1024`. Full tables: [docs/PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md).
 
-**Takeaway:** Only **TurboQuant 4-bit @ ctx≥256** stays near baseline PPL with ~3× memory savings under this pipeline. QJL and RocketKV show large online degradation — useful as **negative case studies** for framework limits, not as paper-faithful reproductions yet.
+**Takeaway:** **TurboQuant 4-bit @ ctx≥256** stays near baseline PPL with ~3× memory savings. **QJL** now uses the paper's asymmetric attention estimator online (not key reconstruct); PPL remains high under 1-bit keys. RocketKV shows large online degradation until broader budget/token fixes land.
 
 ## Prerequisites
 

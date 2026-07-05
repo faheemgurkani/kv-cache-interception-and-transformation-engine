@@ -86,9 +86,9 @@ def evaluate_perplexity(
     Passes an explicit attention mask so past KV positions are visible to the model.
     """
     device = model_layer.device
-    engine = model_layer.make_kv_engine(compressor)
     if hasattr(compressor, "reset_state"):
         compressor.reset_state()
+    engine = model_layer.make_kv_engine(compressor)
     max_length = max_length or getattr(
         model_layer.config, "max_position_embeddings", input_ids.size(1)
     )

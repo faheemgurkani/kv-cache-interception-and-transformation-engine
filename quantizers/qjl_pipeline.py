@@ -58,10 +58,12 @@ class QJLPipeline:
         cache_key = (head_dim, str(device))
         if cache_key not in self._projections:
             m = self.proj_dim or head_dim
-            gen = torch.Generator(device="cpu")
-            gen.manual_seed(self.seed + head_dim)
-            s = torch.randn(m, head_dim, generator=gen)
-            self._projections[cache_key] = s.to(device)
+            self._projections[cache_key] = projection_matrix(
+                head_dim,
+                proj_dim=m,
+                seed=self.seed,
+                device=device,
+            )
         return self._projections[cache_key]
 
     def compress_tensor(self, x: torch.Tensor, mode: str = "key") -> QJLTensorPayload:
@@ -109,6 +111,32 @@ class QJLPipeline:
         )
         return k_hat.to(payload.original_dtype).reshape(payload.original_shape)
 
+    def _estimate_from_signs(
+        self,
+        query: torch.Tensor,
+        sign_bits: torch.Tensor,
+        vector_norm: torch.Tensor,
+        proj: torch.Tensor,
+        num_kv_heads: int,
+    ) -> torch.Tensor:
+        """Core asymmetric estimator with per-query-head GQA mapping."""
+        q = query.float()
+        num_q = q.shape[1]
+        group = 1 if num_q == num_kv_heads else num_q // num_kv_heads
+        m = proj.shape[0]
+        scale = math.sqrt(math.pi / 2.0) / m
+
+        head_scores: list[torch.Tensor] = []
+        for qi in range(num_q):
+            kv = qi // group
+            q_h = q[:, qi, :, :]
+            sq = torch.where(torch.einsum("md,btd->btm", proj, q_h) >= 0, 1.0, -1.0)
+            k_signs = sign_bits[:, kv, :, :]
+            k_norms = vector_norm[:, kv, :]
+            dots = torch.einsum("btm,bkm->btk", sq, k_signs)
+            head_scores.append(scale * dots * k_norms.unsqueeze(1))
+        return torch.stack(head_scores, dim=1)
+
     def estimate_inner_products(
         self,
         query: torch.Tensor,
@@ -119,31 +147,21 @@ class QJLPipeline:
 
         q · k ≈ sqrt(pi/2) * (||k|| / m) * <Sq, sign(Sk)>
 
-        Returns scores of shape [B, H, Tq, Tk] (or [B, H, Tk] when Tq=1).
+        Returns scores of shape [B, H_q, Tq, Tk].
         """
         if payload.passthrough is not None:
             k = payload.passthrough.float()
             q = query.float()
             if q.shape[1] != k.shape[1]:
                 group = q.shape[1] // k.shape[1]
-                q = q.view(q.shape[0], k.shape[1], group, q.shape[2], q.shape[3]).mean(dim=2)
-            return torch.einsum("...qd,...kd->...qk", q, k)
+                k = k.repeat_interleave(group, dim=1)
+            return torch.einsum("bhqd,bhkd->bhqk", q, k)
 
         device = query.device
         proj = self._get_projection(payload.head_dim, device)[: payload.proj_dim]
-        q = query.float()
-        num_kv_heads = payload.original_shape[1]
-        if q.shape[1] != num_kv_heads:
-            group = q.shape[1] // num_kv_heads
-            q = q.view(q.shape[0], num_kv_heads, group, q.shape[2], q.shape[3]).mean(dim=2)
-
-        sq = torch.sign(torch.einsum("md,...d->...m", proj, q))
         kt = payload.sign_bits.to(device).to(proj.dtype)
-        dots = torch.einsum("...qm,...km->...qk", sq, kt)
-        m = proj.shape[0]
-        scale = math.sqrt(math.pi / 2.0) / m
         norms = payload.vector_norm.to(device).squeeze(-1)
-        return scale * norms.unsqueeze(-2) * dots
+        return self._estimate_from_signs(query, kt, norms, proj, payload.original_shape[1])
 
     def estimate_attention_scores(
         self,
@@ -154,21 +172,38 @@ class QJLPipeline:
     ) -> torch.Tensor:
         """Estimate QK^T / sqrt(d) from compressed key payloads."""
         if isinstance(payloads, list):
-            parts = []
-            for item in payloads:
-                part = self.estimate_inner_products(query, item)
-                if part.dim() == query.dim() - 1:
-                    part = part.unsqueeze(-1)
-                parts.append(part)
-            scores = torch.cat(parts, dim=-1)
+            if not payloads:
+                device = query.device
+                return torch.empty(
+                    query.shape[0],
+                    query.shape[1],
+                    query.shape[2],
+                    0,
+                    device=device,
+                    dtype=query.dtype,
+                )
+            device = query.device
+            first = payloads[0]
+            proj = self._get_projection(first.head_dim, device)[: first.proj_dim]
+            sign_bits = torch.cat(
+                [item.sign_bits.to(device).to(proj.dtype) for item in payloads],
+                dim=2,
+            )
+            norms = torch.cat(
+                [item.vector_norm.to(device) for item in payloads],
+                dim=2,
+            ).squeeze(-1)
+            scores = self._estimate_from_signs(
+                query,
+                sign_bits,
+                norms,
+                proj,
+                first.original_shape[1],
+            )
         else:
             scores = self.estimate_inner_products(query, payloads)
             if scores.dim() == query.dim() - 1:
-                scores = scores.unsqueeze(-1)
-
-        if num_q_heads is not None and scores.shape[1] != num_q_heads:
-            repeats = num_q_heads // scores.shape[1]
-            scores = scores.repeat_interleave(repeats, dim=1)
+                scores = scores.unsqueeze(-2)
 
         return scores / math.sqrt(head_dim)
 

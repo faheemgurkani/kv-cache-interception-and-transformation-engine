@@ -5,7 +5,7 @@ Usage:
   # One-time model download to Modal Volume (~3.2 GB)
   modal run modal_app/worker.py::ensure_model
 
-  # TurboQuant sweep (15 jobs: 5 configs × 3 context lengths)
+  # TurboQuant sweep (12 jobs: 4 configs × 3 context lengths)
   modal run --detach modal_app/sweep.py::main --preset turboquant
 
   # QJL sweep (3 jobs: 1 config × 3 context lengths)

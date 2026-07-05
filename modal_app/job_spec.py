@@ -8,8 +8,9 @@ from typing import Any
 
 import yaml
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-SWEEPS_CONFIG_PATH = PROJECT_ROOT / "configs" / "modal_sweeps.yaml"
+from modal_app.settings import project_root
+
+SWEEPS_CONFIG_PATH = project_root() / "configs" / "modal_sweeps.yaml"
 PRESET_ORDER = ("turboquant", "qjl", "rocketkv")
 
 
@@ -93,8 +94,9 @@ def get_sweep_configs(preset: str = "turboquant") -> list[tuple[str, dict]]:
     return _parse_preset_entries(presets[preset])
 
 
-# Backward-compatible alias used by older scripts/docs.
-SWEEP_CONFIGS = get_sweep_configs("turboquant")
+def turboquant_sweep_configs() -> list[tuple[str, dict]]:
+    """Backward-compatible alias for the original TurboQuant sweep grid."""
+    return get_sweep_configs("turboquant")
 
 
 def default_context_lengths() -> list[int]:

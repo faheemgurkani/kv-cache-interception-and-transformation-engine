@@ -28,6 +28,17 @@ Tokenizer → Model Forward → KV Cache → (intercept here) → Attention → 
 
 See [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) for the full architecture.
 
+### Documentation
+
+| Document | Description |
+|---|---|
+| [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Architecture, plug-in model, compressor design |
+| [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md) | Modal GPU runtime, parallelism, runbook |
+| [docs/PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md) | Phase 5 sweep results and findings |
+| [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) | Compressor readiness, setup snapshot, known limits |
+
+Raw job JSON and CSV exports live under `results/` (gitignored). Fetch with `bash scripts/modal_fetch_results.sh`.
+
 **Methods supported (compression layer):** TurboQuant → KIVI → QJL → RocketKV
 
 ---

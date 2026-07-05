@@ -21,7 +21,7 @@ This document describes what is **actually implemented and running today**, incl
 ```text
 Local Mac (M4)                         Modal (NVIDIA A10G × N)
 ─────────────────                      ─────────────────────────
-pytest, smoke, dev                     Full eval sweep (15 jobs)
+pytest, smoke, dev                     Full eval sweeps (per preset; see modal_sweeps.yaml)
 scripts/run_eval.py @ ctx=128          modal_app/sweep.py::main
 MPS / CPU                              CUDA via KV_EVAL_DEVICE=cuda
 models/qwen3_1.7b/                     Volume /models/qwen3_1.7b/
@@ -76,13 +76,19 @@ modal_app/
   settings.py       Loads configs/modal.yaml; resolves project root in container
   worker.py         ensure_model (CPU), eval_worker (A10G), list_completed_jobs
   sweep.py          Local entrypoints: main (spawn/sync), merge_local
-  job_spec.py       EvalJobSpec + 5-config × N-context grid
+  job_spec.py       EvalJobSpec + sweep presets (configs/modal_sweeps.yaml)
   merge.py          Flatten worker JSON → CSV/JSON reports
-configs/modal.yaml  GPU type, timeout, volume/secret names
+configs/modal.yaml       GPU type, timeout, volume/secret names
+configs/modal_sweeps.yaml  Presets: baseline, turboquant, qjl, rocketkv
 scripts/
   modal_setup_model.sh
   modal_run_sweep.sh
+  modal_run_sweep_baseline.sh
+  modal_run_sweep_qjl.sh
+  modal_run_sweep_rocketkv.sh
+  modal_smoke_eval.sh
   modal_fetch_results.sh
+  restructure_modal_results.py
 requirements-modal.txt   Python deps (torch installed separately with cu124)
 ```
 
@@ -151,21 +157,21 @@ NVIDIA helps most when you add **lanes** (Modal) and **keep data on GPU**; batch
 | **Multi-GPU layer split** | ❌ No | One model copy per job | Hard; not needed for 1.7B |
 | **Multiple sequences batched** | ❌ No | `batch_size: 1` in eval config | N/A for current metrics |
 
-### 3.3 Job grid (15 checkout lanes)
+### 3.3 Job grids (sweep presets)
 
-Each job = one `(compressor, bitwidth, stage, context_length)` tuple.
+Grids are defined in `configs/modal_sweeps.yaml`. Select with `--preset` on `modal_app/sweep.py::main`.
 
-```text
-5 configs × 3 context lengths = 15 jobs
+| Preset | Configs | Jobs (× ctx 128, 256, 512) |
+|---|---|---|
+| `baseline` | `identity_baseline` | 3 |
+| `turboquant` | `tq_full_b2`, `tq_full_b3`, `tq_full_b4`, `tq_mse_b4` | 12 |
+| `qjl` | `qjl_default` | 3 |
+| `rocketkv` | `rocketkv_r25`, `rocketkv_r50`, `rocketkv_r75` | 9 |
 
-Configs:
-  identity_baseline
-  tq_full_b2, tq_full_b3, tq_full_b4
-  tq_mse_b4
+**Baseline rule:** identity runs once under preset `baseline`; method sweeps do **not** re-run identity. Compare all methods against the shared baseline bundle (see [CURRENT_STATE.md](CURRENT_STATE.md)).
 
-Context lengths (configs/model.yaml):
-  128, 256, 512
-```
+RocketKV result stems: `{label}_ctx{len}_r{keep}_ws{win}_k{topk}.json`  
+TurboQuant / QJL: `{label}_ctx{len}_b{bitwidth}_{stage}.json`
 
 Orchestrator (`modal_app/sweep.py::main`):
 
@@ -189,10 +195,21 @@ Modal runs each job in a **separate container with its own GPU** — no distribu
 
 ### 3.4 Expected wall-clock
 
-| Setup | Full 15-job sweep |
+| Setup | Typical sweep |
 |---|---|
-| Mac M4 serial | Hours |
-| **Modal 15× A10G parallel** | **~30–90 min** (longest single job dominates) |
+| Mac M4 serial | Hours per method |
+| **Modal N× A10G parallel** | **~15–90 min** per preset (longest single job dominates) |
+
+### 3.5 Phase 5 sweeps completed
+
+| Preset | Jobs | Modal app (representative) | Status |
+|---|---:|---|---|
+| `baseline` | 3 | `ap-ek9dIxujlrECcfFaOa3ok3` | ✅ |
+| `turboquant` | 12 | `ap-ek9dIxujlrECcfFaOa3ok3` | ✅ |
+| `qjl` | 3 | `ap-Pck6cN9lPU80IfFCb4waT2` | ✅ |
+| `rocketkv` | 9 | `ap-ZCFcYJgwGzBb7ZpLWBViLV` | ✅ |
+
+Full metrics and interpretation: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md). Local JSON/CSV bundles under `results/` (gitignored); fetch with `bash scripts/modal_fetch_results.sh`.
 
 ---
 
@@ -304,24 +321,34 @@ pip install modal
 bash scripts/modal_setup_model.sh
 # equivalent: modal run modal_app/worker.py::ensure_model
 
-# Full 30-job sweep (detached — recommended)
-bash scripts/modal_run_sweep.sh
-# equivalent: modal run --detach modal_app/sweep.py::main
+# Shared identity baseline (3 jobs) — run once before method sweeps
+bash scripts/modal_run_sweep_baseline.sh
+
+# Method sweeps (detached — recommended)
+bash scripts/modal_run_sweep.sh              # turboquant (12 jobs)
+bash scripts/modal_run_sweep_qjl.sh          # qjl (3 jobs)
+bash scripts/modal_run_sweep_rocketkv.sh     # rocketkv (9 jobs)
+# equivalent: PRESET=qjl modal run --detach modal_app/sweep.py::main
+
+# Single-job smoke @ ctx=128
+bash scripts/modal_smoke_eval.sh qjl
 
 # Subset example
 modal run --detach modal_app/sweep.py::main \
-  --context-lengths 128,512 --labels identity_baseline
+  --preset turboquant --context-lengths 128,512 --labels tq_full_b4
 
 # Sync smoke (blocks until done; merges locally)
 modal run modal_app/sweep.py::main --sync \
-  --context-lengths 128 --labels identity_baseline --no-resume
+  --preset baseline --context-lengths 128 --no-resume
 
 # After jobs finish — fetch + merge
 bash scripts/modal_fetch_results.sh
-modal run modal_app/sweep.py::merge_local --input-dir results/modal_volume
+modal run modal_app/sweep.py::merge_local \
+  --input-dir results/modal_volume/qjl --output phase5_modal_qjl \
+  --label-prefixes qjl_default
 
 # Resume partial sweep (skips successful .json on volume)
-modal run --detach modal_app/sweep.py::main
+modal run --detach modal_app/sweep.py::main --preset rocketkv
 ```
 
 Monitor runs in the [Modal dashboard](https://modal.com/apps).
@@ -338,7 +365,7 @@ Monitor runs in the [Modal dashboard](https://modal.com/apps).
 | **D** | `framework/device.py` CUDA path | ✅ Done |
 | **E** | Modal image, volumes, worker, secrets | ✅ Done |
 | **F** | `spawn_map` orchestrator + merge | ✅ Done |
-| **G** | Full 15-job grid complete | Run via `bash scripts/modal_run_sweep.sh` |
+| **G** | Phase 5 Modal sweeps (baseline + turboquant + qjl + rocketkv) | ✅ Complete — see [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) |
 
 ### Provisioning issues encountered (resolved)
 

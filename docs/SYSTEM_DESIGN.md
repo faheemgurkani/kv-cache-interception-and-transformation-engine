@@ -437,7 +437,9 @@ Follow this order to avoid getting stuck:
 | **5 — Full eval** | Memory + speed + perplexity | `run_eval.py --compressor turboquant --stage full` |
 | **6 — QJL** | Key sign-projection compressor | `pytest tests/test_qjl.py`; `run_eval.py --compressor qjl` |
 | **7 — RocketKV** | Token selection compressor | `pytest tests/test_rocketkv.py`; `run_eval.py --compressor rocketkv` |
-| **8 — Sweep** | Compare all methods | Local: `run_eval.py`; **full grid: Modal** (`bash scripts/modal_run_sweep.sh`) |
+| **8 — Sweep** | Compare all methods | Local: `run_eval.py`; **full grid: Modal** (see `configs/modal_sweeps.yaml`) |
+
+**Phase 5 status (July 2026):** Modal sweeps **complete** for identity baseline, TurboQuant (12 jobs), QJL (3 jobs), and RocketKV (9 jobs) at ctx 128/256/512. Results and findings: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md). Current readiness: [CURRENT_STATE.md](CURRENT_STATE.md).
 
 ---
 
@@ -448,12 +450,14 @@ The same eval code runs on two backends. Only orchestration and device selection
 | | **Local (Mac M4)** | **Modal (NVIDIA)** |
 |---|---|---|
 | Device | MPS / CPU via `get_eval_device()` | CUDA via `KV_EVAL_DEVICE=cuda` |
-| Use case | Dev, pytest, ctx=128 smoke | Full Phase 5 sweep (15 jobs @ 128/256/512) |
+| Use case | Dev, pytest, ctx=128 smoke | Full Phase 5 sweeps (baseline + per-method presets) |
 | Entry | `scripts/run_eval.py` | `modal_app/sweep.py::main` |
 | Model path | `models/qwen3_1.7b/` | Volume `/models/qwen3_1.7b/` |
 | Parallelism | Serial (one job at a time) | **Job-level:** up to 30 A10G workers via `spawn_map()` |
 | Within-job PPL | Sequential token loop | Same — sequential by design |
 | Docs | This file | [MODAL_GPU_EVAL_DESIGN.md](MODAL_GPU_EVAL_DESIGN.md) |
+
+Sweep presets (`configs/modal_sweeps.yaml`): `baseline` (3), `turboquant` (12), `qjl` (3), `rocketkv` (9 jobs). Identity baseline is **separate** from method sweeps.
 
 **Parallelism model:** Modal adds **checkout lanes** (one GPU per config × context job). It does **not** batch online PPL tokens across a sequence — that would change the metric. See Modal doc §3 for the full parallelism matrix.
 

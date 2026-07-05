@@ -7,4 +7,5 @@ PRESET=qjl \
 OUTPUT="${OUTPUT:-phase5_modal_qjl}" \
 CONTEXT_LENGTHS="${CONTEXT_LENGTHS:-128,256,512}" \
 LABELS="${LABELS:-}" \
+NO_RESUME="${NO_RESUME:-1}" \
 bash scripts/modal_run_sweep.sh

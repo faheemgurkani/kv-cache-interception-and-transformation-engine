@@ -122,17 +122,28 @@ class EvaluationRunner:
 
         inference: InferenceMetrics | None = None
         if run_perplexity or run_throughput:
+            # Baselines must run before KVCacheEngine construction (RocketKV patches attention).
+            perplexity_baseline = (
+                evaluate_perplexity_baseline(self.model_layer, input_ids, stride=stride)
+                if include_baselines and run_perplexity
+                else None
+            )
+            throughput_baseline = (
+                evaluate_throughput_baseline(
+                    self.model_layer,
+                    input_ids,
+                    num_new_tokens=num_new_tokens,
+                )
+                if include_baselines and run_throughput
+                else None
+            )
             inference = InferenceMetrics(
                 perplexity=(
                     evaluate_perplexity(self.model_layer, input_ids, self.compressor, stride=stride)
                     if run_perplexity
                     else None
                 ),
-                perplexity_baseline=(
-                    evaluate_perplexity_baseline(self.model_layer, input_ids, stride=stride)
-                    if include_baselines and run_perplexity
-                    else None
-                ),
+                perplexity_baseline=perplexity_baseline,
                 throughput=(
                     evaluate_throughput(
                         self.model_layer,
@@ -143,15 +154,7 @@ class EvaluationRunner:
                     if run_throughput
                     else None
                 ),
-                throughput_baseline=(
-                    evaluate_throughput_baseline(
-                        self.model_layer,
-                        input_ids,
-                        num_new_tokens=num_new_tokens,
-                    )
-                    if include_baselines and run_throughput
-                    else None
-                ),
+                throughput_baseline=throughput_baseline,
             )
 
         return EvaluationResult(

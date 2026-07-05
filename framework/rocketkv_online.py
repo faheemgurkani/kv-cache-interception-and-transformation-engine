@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
 import torch
 
 from compressors.rocketkv import RocketKVCompressor
@@ -15,20 +13,47 @@ def apply_online_kv_sparsity(
     query: torch.Tensor,
     key: torch.Tensor,
     value: torch.Tensor,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Apply RocketKV stage-1 permanent filtering then stage-2 HSA."""
-    if key.shape[2] == 0:
-        return key, value
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Apply RocketKV stage-1 permanent filtering then stage-2 HSA.
 
-    indices, key, value = compressor.token_selector.select(key, value)
-    compressor._permanent_indices[layer_idx] = indices.detach().cpu()
-    key, value, _ = compressor.hsa.select_top_k(
+    Returns sparse K/V plus ``kept_indices`` into the pre-sparsity sequence axis.
+    """
+    if key.shape[2] == 0:
+        empty = torch.empty(0, dtype=torch.long, device=key.device)
+        return key, value, empty
+
+    stage1_indices, key, value = compressor.token_selector.select(key, value)
+    compressor._permanent_indices[layer_idx] = stage1_indices.detach().cpu()
+    key, value, stage2_indices = compressor.hsa.select_top_k(
         query,
         key,
         value,
         permanent_indices=None,
     )
-    return key, value
+    if stage1_indices.numel() == 0:
+        return key, value, stage2_indices
+    kept_indices = stage1_indices[stage2_indices]
+    return key, value, kept_indices
+
+
+def align_attention_mask(
+    attention_mask: torch.Tensor | None,
+    kept_indices: torch.Tensor,
+    key_seq_len: int,
+) -> torch.Tensor | None:
+    """Slice the additive/causal mask to match sparse key/value length."""
+    if attention_mask is None:
+        return None
+    if attention_mask.shape[-1] == key_seq_len:
+        return attention_mask
+    if kept_indices.numel() != key_seq_len:
+        return attention_mask[..., :key_seq_len]
+
+    if attention_mask.dim() == 4:
+        return attention_mask.index_select(-1, kept_indices)
+    if attention_mask.dim() == 2:
+        return attention_mask.index_select(1, kept_indices)
+    return attention_mask[..., :key_seq_len]
 
 
 def _resolve_attention_interface(attn_module, config):
@@ -75,12 +100,17 @@ def enable_rocketkv_online(model, compressor: RocketKVCompressor) -> None:
                         layer_index,
                     )
 
-                key_states, value_states = apply_online_kv_sparsity(
+                key_states, value_states, kept_indices = apply_online_kv_sparsity(
                     compressor,
                     layer_index,
                     query_states,
                     key_states,
                     value_states,
+                )
+                attention_mask = align_attention_mask(
+                    attention_mask,
+                    kept_indices,
+                    key_states.shape[2],
                 )
 
                 attention_interface = _resolve_attention_interface(attn, model.config)

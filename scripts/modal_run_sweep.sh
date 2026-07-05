@@ -8,10 +8,14 @@ PRESET="${PRESET:-turboquant}"
 CONTEXT_LENGTHS="${CONTEXT_LENGTHS:-128,256,512}"
 LABELS="${LABELS:-}"
 OUTPUT="${OUTPUT:-phase5_modal_sweep}"
+NO_RESUME="${NO_RESUME:-}"
 
 ARGS=(--preset "$PRESET" --context-lengths "$CONTEXT_LENGTHS" --output "$OUTPUT")
 if [[ -n "$LABELS" ]]; then
   ARGS+=(--labels "$LABELS")
+fi
+if [[ -n "$NO_RESUME" ]]; then
+  ARGS+=(--no-resume)
 fi
 
 modal run --detach modal_app/sweep.py::main "${ARGS[@]}"

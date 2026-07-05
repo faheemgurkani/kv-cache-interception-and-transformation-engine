@@ -17,7 +17,7 @@ Scope and caveats for the **KV-Cache Interception and Transformation Engine** (c
 |---|---|
 | **KIVI** | Stub only (`NotImplementedError`) |
 | **QJL Section B** | Uses asymmetric QJL attention estimator online (`framework/qjl_online.py`); Section A uses same estimator via `attention_fidelity` |
-| **RocketKV** | Post-fix: token budgets + online HSA; historical Phase 5 tables used `r25`/`r50`/`r75` |
+| **RocketKV** | Token budgets `r256`/`r512`/`r1024` + online HSA; post-fix PPL still ~7–11M @ ctx=512 |
 | **TurboQuant 2-bit @ ctx=128** | Anomalously bad PPL; use ctx≥256 for comparisons |
 | **TurboQuant online speed** | ~0.08 tok/s @ ctx=512 (per-step compress/decompress) |
 | **Modal WHT** | Scipy fallback; no CUDA `fast-hadamard-transform` |

@@ -19,13 +19,16 @@ MODAL_VOLUME = PROJECT_ROOT / "results" / "modal_volume"
 BASELINE_DIR = PROJECT_ROOT / "results" / "phase5_modal_baseline"
 TURBOQUANT_DIR = PROJECT_ROOT / "results" / "phase5_modal_sweep_128_256_512"
 ROCKETKV_DIR = PROJECT_ROOT / "results" / "phase5_modal_rocketkv"
+QJL_DIR = PROJECT_ROOT / "results" / "phase5_modal_qjl"
 
 BASELINE_LABEL = "identity_baseline"
 TURBOQUANT_PREFIXES = ("tq_",)
-ROCKETKV_PREFIXES = ("rocketkv_",)
+ROCKETKV_PREFIXES = ("rocketkv_r256_", "rocketkv_r512_", "rocketkv_r1024_")
+QJL_PREFIXES = ("qjl_default_",)
 CONTEXT_LENGTHS = (128, 256, 512)
 TURBOQUANT_CONFIGS = ("tq_full_b2", "tq_full_b3", "tq_full_b4", "tq_mse_b4")
 ROCKETKV_CONFIGS = ("rocketkv_r256", "rocketkv_r512", "rocketkv_r1024")
+QJL_CONFIGS = ("qjl_default",)
 MODAL_APP_ID = "ap-ek9dIxujlrECcfFaOa3ok3"
 MODAL_APP_URL = f"https://modal.com/apps/faheemgurkani/main/{MODAL_APP_ID}"
 
@@ -140,9 +143,43 @@ def restructure_turboquant() -> tuple[Path, Path]:
     return json_path, csv_path
 
 
+def restructure_qjl() -> tuple[Path, Path]:
+    jobs_dir = QJL_DIR / "jobs"
+    jobs_dir.mkdir(parents=True, exist_ok=True)
+    _copy_jobs(MODAL_VOLUME, jobs_dir, QJL_PREFIXES)
+
+    payloads = load_payloads_from_directory(jobs_dir)
+    json_path, csv_path = write_merged_reports(payloads, QJL_DIR, "phase5_modal_qjl")
+
+    _write_manifest(
+        QJL_DIR / "manifest.json",
+        {
+            "sweep_id": "phase5_modal_qjl",
+            "method": "qjl",
+            "shared_baseline": "../phase5_modal_baseline/",
+            "modal_app_id": "ap-LDOu0QHLjrRrwtZriSfh9d",
+            "modal_app_url": "https://modal.com/apps/faheemgurkani/main/ap-LDOu0QHLjrRrwtZriSfh9d",
+            "completed_at_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "jobs_total": len(payloads),
+            "jobs_ok": len(payloads),
+            "jobs_error": 0,
+            "context_lengths": list(CONTEXT_LENGTHS),
+            "configs": list(QJL_CONFIGS),
+            "files": {
+                "jobs_dir": "jobs/",
+                "merged_csv": csv_path.name,
+                "merged_json": json_path.name,
+            },
+        },
+    )
+    return json_path, csv_path
+
+
 def restructure_rocketkv() -> tuple[Path, Path]:
     jobs_dir = ROCKETKV_DIR / "jobs"
     jobs_dir.mkdir(parents=True, exist_ok=True)
+    for legacy in jobs_dir.glob("rocketkv_r{25,50,75}_*.json"):
+        legacy.unlink(missing_ok=True)
     _copy_jobs(MODAL_VOLUME, jobs_dir, ROCKETKV_PREFIXES)
 
     payloads = load_payloads_from_directory(jobs_dir)
@@ -154,8 +191,8 @@ def restructure_rocketkv() -> tuple[Path, Path]:
             "sweep_id": "phase5_modal_rocketkv",
             "method": "rocketkv",
             "shared_baseline": "../phase5_modal_baseline/",
-            "modal_app_id": "ap-jct37Y2ytrDK5CVMPHWTbz",
-            "modal_app_url": "https://modal.com/apps/faheemgurkani/main/ap-jct37Y2ytrDK5CVMPHWTbz",
+            "modal_app_id": "ap-NH3Yv40wIlAi72wq5njPbb",
+            "modal_app_url": "https://modal.com/apps/faheemgurkani/main/ap-NH3Yv40wIlAi72wq5njPbb",
             "completed_at_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "jobs_total": len(payloads),
             "jobs_ok": len(payloads),
@@ -175,11 +212,14 @@ def restructure_rocketkv() -> tuple[Path, Path]:
 def main() -> None:
     baseline_json, baseline_csv = restructure_baseline()
     tq_json, tq_csv = restructure_turboquant()
+    qjl_json, qjl_csv = restructure_qjl()
     rk_json, rk_csv = restructure_rocketkv()
     print(f"Baseline: {len(load_payloads_from_directory(BASELINE_DIR / 'jobs'))} jobs")
     print(f"  {baseline_csv}")
     print(f"TurboQuant: {len(load_payloads_from_directory(TURBOQUANT_DIR / 'jobs'))} jobs")
     print(f"  {tq_csv}")
+    print(f"QJL: {len(load_payloads_from_directory(QJL_DIR / 'jobs'))} jobs")
+    print(f"  {qjl_csv}")
     print(f"RocketKV: {len(load_payloads_from_directory(ROCKETKV_DIR / 'jobs'))} jobs")
     print(f"  {rk_csv}")
 

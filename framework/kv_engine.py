@@ -44,6 +44,10 @@ class KVCacheEngine:
         self.model = model
         self.compressor = compressor
         self.compressed_cache: CompressedCache | None = None
+        if getattr(compressor, "name", "") == "rocketkv":
+            from framework.rocketkv_online import enable_rocketkv_online
+
+            enable_rocketkv_online(model, compressor)
 
     def _compress_new_tokens(
         self,

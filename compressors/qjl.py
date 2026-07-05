@@ -56,3 +56,10 @@ class QJLCompressor(KVCompressor):
             "key_rmse": self.pipeline.reconstruction_error(key, mode="key"),
             "value_rmse": self.pipeline.reconstruction_error(value, mode="value"),
         }
+
+    def shared_storage_bytes(self) -> int:
+        """Count regenerated projection matrices once per model run."""
+        total = 0
+        for projection in self.pipeline._projections.values():
+            total += projection.numel() * projection.element_size()
+        return total

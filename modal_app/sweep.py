@@ -40,6 +40,7 @@ def main(
     preset: str = "turboquant",
     sync: bool = False,
     resume: bool = True,
+    no_resume: bool = False,
     skip_perplexity: bool = False,
     skip_throughput: bool = False,
     output: str = "phase5_modal_sweep",
@@ -60,7 +61,7 @@ def main(
         skip_throughput=skip_throughput,
     )
 
-    if resume:
+    if resume and not no_resume:
         completed = set(list_completed_jobs.remote())
         jobs = filter_existing_jobs(jobs, completed)
         if not jobs:
@@ -98,9 +99,11 @@ def main(
 def merge_local(
     input_dir: str = "results/modal_volume",
     output: str = "phase5_modal_sweep",
+    label_prefixes: str = "",
 ):
     directory = Path(input_dir)
-    payloads = load_payloads_from_directory(directory)
+    prefixes = tuple(item.strip() for item in label_prefixes.split(",") if item.strip()) or None
+    payloads = load_payloads_from_directory(directory, label_prefixes=prefixes)
     if not payloads:
         raise SystemExit(f"No job JSON payloads found under {directory}")
     json_path, csv_path = write_merged_reports(payloads, Path("results"), output)

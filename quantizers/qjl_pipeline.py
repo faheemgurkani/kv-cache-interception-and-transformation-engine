@@ -27,6 +27,7 @@ class QJLTensorPayload:
     head_dim: int
     original_shape: tuple[int, ...]
     original_dtype: torch.dtype
+    original_device: str = "cpu"
     passthrough: torch.Tensor | None = None
 
     def storage_bits(self) -> int:
@@ -51,16 +52,17 @@ class QJLPipeline:
     def __init__(self, seed: int = 42, proj_dim: int | None = None) -> None:
         self.seed = seed
         self.proj_dim = proj_dim
-        self._projections: dict[int, torch.Tensor] = {}
+        self._projections: dict[tuple[int, str], torch.Tensor] = {}
 
     def _get_projection(self, head_dim: int, device: torch.device) -> torch.Tensor:
-        if head_dim not in self._projections:
+        cache_key = (head_dim, str(device))
+        if cache_key not in self._projections:
             m = self.proj_dim or head_dim
             gen = torch.Generator(device="cpu")
             gen.manual_seed(self.seed + head_dim)
             s = torch.randn(m, head_dim, generator=gen)
-            self._projections[head_dim] = s.to(device)
-        return self._projections[head_dim]
+            self._projections[cache_key] = s.to(device)
+        return self._projections[cache_key]
 
     def compress_tensor(self, x: torch.Tensor, mode: str = "key") -> QJLTensorPayload:
         original_shape = tuple(x.shape)
@@ -75,6 +77,7 @@ class QJLPipeline:
                 head_dim=head_dim,
                 original_shape=original_shape,
                 original_dtype=original_dtype,
+                original_device=str(x.device),
                 passthrough=x.detach().clone(),
             )
 
@@ -90,18 +93,19 @@ class QJLPipeline:
             head_dim=head_dim,
             original_shape=original_shape,
             original_dtype=original_dtype,
+            original_device=str(x.device),
         )
 
     def decompress_tensor(self, payload: QJLTensorPayload) -> torch.Tensor:
         if payload.passthrough is not None:
             return payload.passthrough
 
-        cpu = torch.device("cpu")
-        proj = self._get_projection(payload.head_dim, cpu)[: payload.proj_dim]
+        target = torch.device(payload.original_device)
+        proj = self._get_projection(payload.head_dim, target)[: payload.proj_dim]
         k_hat = qjl_decode(
-            payload.sign_bits.to(cpu),
+            payload.sign_bits.to(target),
             proj,
-            payload.vector_norm.to(cpu),
+            payload.vector_norm.to(target),
         )
         return k_hat.to(payload.original_dtype).reshape(payload.original_shape)
 

@@ -398,6 +398,7 @@ Config: `configs/modal.yaml` (GPU type, timeouts, volume names). Sweep grids: `c
 | `scripts/modal_run_sweep_qjl.sh`      | QJL preset sweep (3 jobs)                                                            |
 | `scripts/modal_run_sweep_rocketkv.sh` | RocketKV preset sweep (9 jobs)                                                       |
 | `scripts/restructure_modal_results.py`| Split baseline vs method bundles from `results/modal_volume/`                        |
+| `scripts/modal_smoke_eval.sh`         | One-job Modal smoke (`qjl`, `rocketkv`, `baseline`, `turboquant`) @ ctx=128          |
 | `scripts/modal_fetch_results.sh`      | Pull job JSON from `kv-engine-results` volume                                        |
 
 ### `run_eval.py` flags

@@ -79,8 +79,10 @@ class RocketKVCompressor(KVCompressor):
         self,
         compressed: CompressedKV,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Apply token selection after concatenating per-token incremental payloads."""
-        return self.decompress(compressed)
+        """Concatenate per-token payloads; sparsity is applied in the online attention hook."""
+        key_parts = [self.decompress_kv(item, mode="key") for item in compressed.keys]  # type: ignore[union-attr]
+        value_parts = [self.decompress_kv(item, mode="value") for item in compressed.values]  # type: ignore[union-attr]
+        return torch.cat(key_parts, dim=2), torch.cat(value_parts, dim=2)
 
     def decompress(self, compressed: CompressedKV) -> tuple[torch.Tensor, torch.Tensor]:
         payload = compressed.keys

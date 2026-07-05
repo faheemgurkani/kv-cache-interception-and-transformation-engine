@@ -361,7 +361,7 @@ Keep top keep_ratio of prefix + all window tokens
 query → approximate scores (head reduction) → top-k → union permanent indices
 ```
 
-Exposed via `RocketKVCompressor.select_dynamic_tokens()`. Stage 2 is implemented but not yet wired into `KVCacheEngine.generate()` — online eval currently uses Stage 1 filtering via decompress.
+Exposed via ``RocketKVCompressor.select_dynamic_tokens()``. Stage 2 is wired into online inference through ``framework/rocketkv_online.py`` (Qwen3 eager attention patch) when ``KVCacheEngine`` is constructed with a RocketKV compressor.
 
 ### Storage format (`RocketKVLayerPayload`)
 

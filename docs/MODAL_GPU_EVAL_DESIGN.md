@@ -2,7 +2,7 @@
 
 CUDA sweeps for the **KV-Cache Interception and Transformation Engine** on [Modal](https://modal.com). Same eval code as local; only device and orchestration differ.
 
-Overview: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) · Results: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md)
+Overview: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) · Results: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) · Reproducibility: [REPRODUCIBILITY.md](REPRODUCIBILITY.md)
 
 ## Summary
 
@@ -41,7 +41,7 @@ Local: modal run --detach modal_app/sweep.py::main
 
 Identity baseline runs once under `baseline`; method sweeps do not re-run identity.
 
-Result stems: TurboQuant/QJL `{label}_ctx{len}_b{bw}_{stage}.json` · RocketKV `{label}_ctx{len}_r{budget}_ws{win}.json` (e.g. `rocketkv_r256`)
+Result stems: TurboQuant/QJL `{label}_ctx{len}_b{bw}_{stage}.json` · RocketKV `{label}_ctx{len}_b{budget}_hsa{hsa}_ws{win}.json` (e.g. `rocketkv_r256_ctx512_b256_hsa256_ws32.json`)
 
 ## Runbook
 
@@ -56,13 +56,18 @@ bash scripts/modal_run_sweep_rocketkv.sh
 
 bash scripts/modal_smoke_eval.sh qjl         # single job @ ctx=128
 bash scripts/modal_fetch_results.sh
+python scripts/restructure_modal_results.py   # bundles under results/phase5_modal_*/
 
+# Or merge one preset manually:
 modal run modal_app/sweep.py::merge_local \
-  --input-dir results/modal_volume/qjl --output phase5_modal_qjl \
+  --input-dir results/modal_volume \
+  --output phase5_modal_qjl \
   --label-prefixes qjl_default
 ```
 
-Resume: re-run with default `--resume` (skips successful `.json` on volume). Fresh run: `--no-resume`.
+Resume: re-run with default `--resume` (skips successful `.json` on volume). Fresh run: `NO_RESUME=1` or `--no-resume` after code changes.
+
+See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for seeds, config files, verification checklist, and sanity-check baselines.
 
 Wall-clock: ~15–90 min per preset (longest job dominates).
 

@@ -6,7 +6,7 @@ A **modular framework for KV-cache compression analysis and benchmarking** — n
 Model (fixed) → KVCacheEngine (fixed) → KVCompressor (variable) → eval/ (fixed)
 ```
 
-Architecture: [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) · Results: [docs/PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md) · Modal: [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md)
+Architecture: [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) · Results: [docs/PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md) · Reproducibility: [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) · Modal: [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md)
 
 ## Research positioning
 
@@ -86,6 +86,20 @@ bash scripts/modal_fetch_results.sh
 ```
 
 Sweep presets: `configs/modal_sweeps.yaml` · Config: `configs/model.yaml`, `configs/eval.yaml`, `configs/modal.yaml`
+
+## Reproducibility
+
+Full step-by-step guide: **[docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md)**
+
+| Step | Command |
+|---|---|
+| Verify install | `pytest tests/ -q` |
+| Local smoke | `python scripts/run_eval.py --compressor identity --context-length 512` |
+| Modal smoke | `bash scripts/modal_smoke_eval.sh qjl` |
+| Full Phase 5 sweep | `bash scripts/modal_run_sweep_baseline.sh` then method scripts (see guide) |
+| Fetch + bundle | `bash scripts/modal_fetch_results.sh && python scripts/restructure_modal_results.py` |
+
+Record `git rev-parse HEAD` when citing results. Config YAML files are the experimental source of truth; use `--no-resume` on Modal for clean re-sweeps after code changes.
 
 ## Compressors (plug-ins)
 

@@ -4,7 +4,7 @@ Case-study numbers for the **KV-Cache Interception and Transformation Engine** o
 
 Qwen3-1.7B · WikiText-2 test · ctx **128 / 256 / 512** · Modal A10G · July 2026 (post-fix sweeps).
 
-Raw JSON/CSV: `results/` (gitignored). Fetch with `bash scripts/modal_fetch_results.sh`.
+Raw JSON/CSV: `results/` (gitignored). To reproduce: [REPRODUCIBILITY.md](REPRODUCIBILITY.md) · fetch with `bash scripts/modal_fetch_results.sh` · bundle with `python scripts/restructure_modal_results.py`.
 
 ## Identity baseline
 

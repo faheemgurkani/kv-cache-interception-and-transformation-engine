@@ -89,7 +89,7 @@ Stub in `compressors/kivi.py` — not implemented.
 
 Orchestrator: `eval/runner.py`. WikiText-2 samples concatenated to target length via `data/loader.py`.
 
-Results: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md). Known limits: [CURRENT_STATE.md](CURRENT_STATE.md).
+Results: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md). Reproducibility: [REPRODUCIBILITY.md](REPRODUCIBILITY.md). Known limits: [CURRENT_STATE.md](CURRENT_STATE.md).
 
 ## Runtimes
 

@@ -18,7 +18,6 @@ from reporting.reporter import ResultReporter
 
 
 SWEEP_CONFIGS: list[tuple[str, dict]] = [
-    ("identity_baseline", {"name": "identity"}),
     ("tq_full_b2", {"name": "turboquant", "stage": "full", "bitwidth": 2}),
     ("tq_full_b3", {"name": "turboquant", "stage": "full", "bitwidth": 3}),
     ("tq_full_b4", {"name": "turboquant", "stage": "full", "bitwidth": 4}),

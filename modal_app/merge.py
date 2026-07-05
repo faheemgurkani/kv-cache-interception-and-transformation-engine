@@ -94,14 +94,32 @@ def write_merged_reports(
     return json_path, csv_path
 
 
-def load_payloads_from_directory(directory: Path) -> list[dict[str, Any]]:
+def load_payloads_from_directory(
+    directory: Path,
+    *,
+    labels: set[str] | None = None,
+    label_prefixes: tuple[str, ...] | None = None,
+    exclude_labels: set[str] | None = None,
+) -> list[dict[str, Any]]:
     payloads: list[dict[str, Any]] = []
     for path in sorted(directory.rglob("*.json")):
         if path.name.endswith(".error.json"):
             continue
         data = json.loads(path.read_text())
         if isinstance(data, dict) and "section_a_fidelity" in data:
-            payloads.append(data)
+            payload = data
         elif isinstance(data, dict) and "results" in data:
             payloads.extend(data["results"])
+            continue
+        else:
+            continue
+
+        label = payload.get("label") or (payload.get("job") or {}).get("label")
+        if labels is not None and label not in labels:
+            continue
+        if exclude_labels and label in exclude_labels:
+            continue
+        if label_prefixes and not any(str(label or "").startswith(prefix) for prefix in label_prefixes):
+            continue
+        payloads.append(payload)
     return payloads

@@ -11,7 +11,7 @@ import yaml
 from modal_app.settings import project_root
 
 SWEEPS_CONFIG_PATH = project_root() / "configs" / "modal_sweeps.yaml"
-PRESET_ORDER = ("turboquant", "qjl", "rocketkv")
+PRESET_ORDER = ("baseline", "turboquant", "qjl", "rocketkv")
 
 
 @dataclass
@@ -84,6 +84,8 @@ def get_sweep_configs(preset: str = "turboquant") -> list[tuple[str, dict]]:
         combined: list[tuple[str, dict]] = []
         seen_labels: set[str] = set()
         for preset_name in PRESET_ORDER:
+            if preset_name == "baseline":
+                continue
             for label, cfg in _parse_preset_entries(presets.get(preset_name, [])):
                 if label in seen_labels:
                     continue

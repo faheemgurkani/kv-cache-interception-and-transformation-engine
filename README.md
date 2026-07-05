@@ -18,11 +18,11 @@ Tokenizer → Model Forward → KV Cache → (intercept here) → Attention → 
                          TurboQuant | KIVI | QJL | RocketKV | identity
 ```
 
-| Component | Role | Changes per paper? |
-|---|---|---|
-| `framework/kv_engine.py` | Intercepts `past_key_values` between steps | No |
-| `compressors/*` | `KVCompressor` plug-ins (transform KV tensors) | **Yes** |
-| `eval/` + `reporting/` | Fixed metrics (memory, speed, perplexity) | No |
+| Component                | Role                                           | Changes per paper? |
+| ------------------------ | ---------------------------------------------- | ------------------ |
+| `framework/kv_engine.py` | Intercepts `past_key_values` between steps     | No                 |
+| `compressors/*`          | `KVCompressor` plug-ins (transform KV tensors) | **Yes**            |
+| `eval/` + `reporting/`   | Fixed metrics (memory, speed, perplexity)      | No                 |
 
 **TurboQuant** is one implementation of `KVCompressor`, not the project itself. KIVI, QJL, and RocketKV plug into the same engine and eval pipeline without touching model or metric code.
 
@@ -36,12 +36,12 @@ See [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) for the full architecture.
 
 The repository ships **code, configs, and scripts only**. Large artifacts are downloaded locally and are **gitignored**:
 
-| Artifact | Location | Approx. size | How to obtain |
-|---|---|---:|---|
-| Model weights | `models/qwen3_1.7b/` | ~3.2 GB | `python scripts/download_model.py` |
-| WikiText-2 cache | `.cache/huggingface/datasets/` | ~10 MB | auto on first eval / test run |
-| Virtual environment | `.venv/` | ~2 GB | `pip install -r requirements.txt` |
-| Experiment results | `results/`, `plots/` | varies | produced by eval scripts |
+| Artifact            | Location                       | Approx. size | How to obtain                      |
+| ------------------- | ------------------------------ | -----------: | ---------------------------------- |
+| Model weights       | `models/qwen3_1.7b/`           |      ~3.2 GB | `python scripts/download_model.py` |
+| WikiText-2 cache    | `.cache/huggingface/datasets/` |       ~10 MB | auto on first eval / test run      |
+| Virtual environment | `.venv/`                       |        ~2 GB | `pip install -r requirements.txt`  |
+| Experiment results  | `results/`, `plots/`           |       varies | produced by eval scripts           |
 
 Do not commit `.env` (contains HuggingFace tokens).
 
@@ -49,12 +49,12 @@ Do not commit `.env` (contains HuggingFace tokens).
 
 ## Requirements
 
-| Requirement | Version / notes |
-|---|---|
-| Python | 3.11 |
-| OS | macOS (Apple Silicon MPS) or Linux/CPU |
-| Disk space | ~6 GB free (venv + model + cache) |
-| HuggingFace account | Token with model read access |
+| Requirement         | Version / notes                        |
+| ------------------- | -------------------------------------- |
+| Python              | 3.11                                   |
+| OS                  | macOS (Apple Silicon MPS) or Linux/CPU |
+| Disk space          | ~6 GB free (venv + model + cache)      |
+| HuggingFace account | Token with model read access           |
 
 > **Apple Silicon note:** `fast-hadamard-transform` requires CUDA/nvcc and does **not** build on MPS. Core eval works without it; TurboQuant Hadamard steps need a CUDA machine or a fallback (Phase 1).
 
@@ -162,23 +162,23 @@ Results are written to `results/` as `.json` and `.csv`.
 
 ### `configs/model.yaml`
 
-| Key | Description | Default |
-|---|---|---|
-| `model_name` | HuggingFace model ID | `Qwen/Qwen3-1.7B` |
-| `local_path` | Where weights are saved | `models/qwen3_1.7b` |
-| `context_lengths` | Eval sweep (local + Modal) | `128, 256, 512` |
-| `bitwidths` | Target compression bitwidths | `2, 3, 4` |
+| Key               | Description                  | Default             |
+| ----------------- | ---------------------------- | ------------------- |
+| `model_name`      | HuggingFace model ID         | `Qwen/Qwen3-1.7B`   |
+| `local_path`      | Where weights are saved      | `models/qwen3_1.7b` |
+| `context_lengths` | Eval sweep (local + Modal)   | `128, 256, 512`     |
+| `bitwidths`       | Target compression bitwidths | `2, 3, 4`           |
 
 ### `configs/eval.yaml`
 
-| Key | Description | Default |
-|---|---|---|
-| `wikitext.name` | HF dataset ID | `Salesforce/wikitext` |
-| `wikitext.config` | Dataset config | `wikitext-2-raw-v1` |
-| `wikitext.split` | Eval split | `test` |
-| `perplexity_stride` | Sliding-window stride | `512` |
-| `generated_tokens` | Tokens for throughput test | `64` |
-| `default_context_length` | Default `--context-length` | `512` |
+| Key                      | Description                | Default               |
+| ------------------------ | -------------------------- | --------------------- |
+| `wikitext.name`          | HF dataset ID              | `Salesforce/wikitext` |
+| `wikitext.config`        | Dataset config             | `wikitext-2-raw-v1`   |
+| `wikitext.split`         | Eval split                 | `test`                |
+| `perplexity_stride`      | Sliding-window stride      | `512`                 |
+| `generated_tokens`       | Tokens for throughput test | `64`                  |
+| `default_context_length` | Default `--context-length` | `512`                 |
 
 WikiText-2 documents are short; the framework **concatenates samples** until the target context length is reached (standard practice for long-context KV-cache eval).
 
@@ -208,13 +208,13 @@ Evaluation + Reporting           ← eval/ + reporting/ (fixed)
 
 **QJL + RocketKV implementation:** [docs/QJL_AND_ROCKETKV.md](docs/QJL_AND_ROCKETKV.md)
 
-| Layer | Directory |
-|---|---|
-| Model | `framework/model.py` |
-| KV interception | `framework/kv_engine.py`, `framework/kv_cache.py` |
-| Compression (plug-in) | `compressors/`, `quantizers/` |
-| Evaluation | `eval/` |
-| Reporting | `reporting/` |
+| Layer                 | Directory                                         |
+| --------------------- | ------------------------------------------------- |
+| Model                 | `framework/model.py`                              |
+| KV interception       | `framework/kv_engine.py`, `framework/kv_cache.py` |
+| Compression (plug-in) | `compressors/`, `quantizers/`                     |
+| Evaluation            | `eval/`                                           |
+| Reporting             | `reporting/`                                      |
 
 ### Compressors
 
@@ -227,13 +227,13 @@ class KVCompressor:
     def decompress(self, compressed): ...
 ```
 
-| Name | Status | Paper pipeline |
-|---|---|---|
-| `identity` | ✅ working | no compression (baseline) |
-| `turboquant` | ✅ Phase 1 | WHT → Lloyd-Max → QJL residual |
-| `kivi` | 🔜 Phase 2 | asymmetric INT2 |
-| `qjl` | ✅ Phase 3 | random projection → 1-bit sign (keys only) |
-| `rocketkv` | ✅ Phase 4 | token selection → eviction |
+| Name         | Status     | Paper pipeline                             |
+| ------------ | ---------- | ------------------------------------------ |
+| `identity`   | ✅ working | no compression (baseline)                  |
+| `turboquant` | ✅ Phase 1 | WHT → Lloyd-Max → QJL residual             |
+| `kivi`       | 🔜 Phase 2 | asymmetric INT2                            |
+| `qjl`        | ✅ Phase 3 | random projection → 1-bit sign (keys only) |
+| `rocketkv`   | ✅ Phase 4 | token selection → eviction                 |
 
 ### TurboQuant (summary)
 
@@ -295,18 +295,18 @@ Full implementation details, configuration, and known limitations: [docs/QJL_AND
 
 **Section A — Compression Fidelity (offline)**
 
-| Metric | Module |
-|---|---|
-| Tensor RMSE (K/V) | `eval/fidelity.py` |
+| Metric                                 | Module                          |
+| -------------------------------------- | ------------------------------- |
+| Tensor RMSE (K/V)                      | `eval/fidelity.py`              |
 | Attention RMSE / cosine / max (`QK^T`) | `eval/attention_score_error.py` |
-| Memory / compression ratio | `eval/memory.py` |
+| Memory / compression ratio             | `eval/memory.py`                |
 
 **Section B — Inference Impact (online, compressed KV in loop)**
 
-| Metric | Module |
-|---|---|
-| Perplexity | `eval/perplexity.py` → `KVCacheEngine.step()` |
-| Speed | `eval/throughput.py` → `KVCacheEngine.generate()` |
+| Metric     | Module                                            |
+| ---------- | ------------------------------------------------- |
+| Perplexity | `eval/perplexity.py` → `KVCacheEngine.step()`     |
+| Speed      | `eval/throughput.py` → `KVCacheEngine.generate()` |
 
 ---
 
@@ -341,11 +341,14 @@ Full design: [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md) — 
 
 Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run on Modal** — one **A10G GPU per job**, parallelized via `spawn_map()`. Sweep presets live in `configs/modal_sweeps.yaml`:
 
-| Preset | Configs | Jobs (× ctx 128, 256, 512) |
-|---|---|---|
-| `turboquant` (default) | 5 | 15 |
-| `qjl` | 1 | 3 |
-| `rocketkv` | 3 | 9 |
+| Preset                 | Configs | Jobs (× ctx 128, 256, 512) |
+| ---------------------- | ------- | -------------------------- |
+| `baseline`             | 1       | 3 (shared identity — run once, reuse for all methods) |
+| `turboquant` (default) | 4       | 12                         |
+| `qjl`                  | 1       | 3                          |
+| `rocketkv`             | 3       | 9                          |
+
+**Results layout:** shared baseline lives in `results/phase5_modal_baseline/`; method sweeps reference it (TurboQuant: `results/phase5_modal_sweep_128_256_512/`, RocketKV: `results/phase5_modal_rocketkv/`).
 
 **Prerequisites:** [Modal account](https://modal.com), `pip install modal`, and the existing secret `huggingface-secret` (`HF_TOKEN`).
 
@@ -354,9 +357,10 @@ Local Mac (MPS) stays for development and smoke tests. **Full Phase 5 sweeps run
 bash scripts/modal_setup_model.sh
 
 # 2. Launch detached parallel sweep
-bash scripts/modal_run_sweep.sh                              # turboquant (15 jobs)
+bash scripts/modal_run_sweep_baseline.sh                     # shared identity baseline (3 jobs, once)
+bash scripts/modal_run_sweep.sh                              # turboquant (12 jobs)
 bash scripts/modal_run_sweep_qjl.sh                          # qjl (3 jobs)
-bash scripts/modal_run_sweep_rocketkv.sh                   # rocketkv (9 jobs)
+bash scripts/modal_run_sweep_rocketkv.sh                     # rocketkv (9 jobs)
 # or: PRESET=qjl OUTPUT=phase5_modal_qjl bash scripts/modal_run_sweep.sh
 
 # Subset example
@@ -369,11 +373,11 @@ bash scripts/modal_fetch_results.sh
 modal run modal_app/sweep.py::merge_local --input-dir results/modal_volume --output phase5_modal_rocketkv
 ```
 
-| Modal artifact | Name | Purpose |
-|---|---|---|
-| Model volume | `kv-engine-qwen3` | Persist Qwen3-1.7B weights |
-| Results volume | `kv-engine-results` | Per-job JSON (TurboQuant/QJL: `{label}_ctx{len}_b{bw}_{stage}.json`; RocketKV: `{label}_ctx{len}_r{keep}_ws{win}_k{topk}.json`) |
-| Secret | `huggingface-secret` | HF_TOKEN for first-time model download |
+| Modal artifact | Name                 | Purpose                                                                                                                         |
+| -------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Model volume   | `kv-engine-qwen3`    | Persist Qwen3-1.7B weights                                                                                                      |
+| Results volume | `kv-engine-results`  | Per-job JSON (TurboQuant/QJL: `{label}_ctx{len}_b{bw}_{stage}.json`; RocketKV: `{label}_ctx{len}_r{keep}_ws{win}_k{topk}.json`) |
+| Secret         | `huggingface-secret` | HF_TOKEN for first-time model download                                                                                          |
 
 Config: `configs/modal.yaml` (GPU type, timeouts, volume names). Sweep grids: `configs/modal_sweeps.yaml`.
 
@@ -381,18 +385,20 @@ Config: `configs/modal.yaml` (GPU type, timeouts, volume names). Sweep grids: `c
 
 ## Scripts Reference
 
-| Script | Purpose |
-|---|---|
-| `scripts/download_model.py` | Download Qwen3-1.7B from HuggingFace |
-| `scripts/verify_kv_cache.py` | Confirm `past_key_values` access |
-| `scripts/run_eval.py` | Full eval runner (memory + speed + perplexity) |
-| `scripts/run_baseline.py` | Single-baseline eval with JSON output |
-| `scripts/validate_turboquant.py` | TurboQuant stage ablation + KV intercept smoke test |
-| `scripts/modal_setup_model.sh` | One-time Qwen3 download to Modal Volume |
-| `scripts/modal_run_sweep.sh` | Detached parallel eval sweep on Modal A10G GPUs (`PRESET=turboquant\|qjl\|rocketkv`) |
-| `scripts/modal_run_sweep_qjl.sh` | QJL preset sweep (3 jobs) |
-| `scripts/modal_run_sweep_rocketkv.sh` | RocketKV preset sweep (9 jobs) |
-| `scripts/modal_fetch_results.sh` | Pull job JSON from `kv-engine-results` volume |
+| Script                                | Purpose                                                                              |
+| ------------------------------------- | ------------------------------------------------------------------------------------ |
+| `scripts/download_model.py`           | Download Qwen3-1.7B from HuggingFace                                                 |
+| `scripts/verify_kv_cache.py`          | Confirm `past_key_values` access                                                     |
+| `scripts/run_eval.py`                 | Full eval runner (memory + speed + perplexity)                                       |
+| `scripts/run_baseline.py`             | Single-baseline eval with JSON output                                                |
+| `scripts/validate_turboquant.py`      | TurboQuant stage ablation + KV intercept smoke test                                  |
+| `scripts/modal_setup_model.sh`        | One-time Qwen3 download to Modal Volume                                              |
+| `scripts/modal_run_sweep_baseline.sh` | Shared identity baseline sweep (3 jobs) |
+| `scripts/modal_run_sweep.sh`          | Detached parallel eval sweep on Modal A10G GPUs (`PRESET=baseline\|turboquant\|qjl\|rocketkv`) |
+| `scripts/modal_run_sweep_qjl.sh`      | QJL preset sweep (3 jobs)                                                            |
+| `scripts/modal_run_sweep_rocketkv.sh` | RocketKV preset sweep (9 jobs)                                                       |
+| `scripts/restructure_modal_results.py`| Split baseline vs method bundles from `results/modal_volume/`                        |
+| `scripts/modal_fetch_results.sh`      | Pull job JSON from `kv-engine-results` volume                                        |
 
 ### `run_eval.py` flags
 
@@ -427,15 +433,15 @@ Cache directory: `.cache/huggingface/datasets/` (gitignored).
 
 ## Troubleshooting
 
-| Issue | Fix |
-|---|---|
-| `ModuleNotFoundError: compressors` | Run scripts from repo root: `python scripts/run_eval.py` |
-| `Model not found at models/qwen3_1.7b` | Run `python scripts/download_model.py` |
-| WikiText load fails with `HfUriError` | Use `Salesforce/wikitext` (already set in `configs/eval.yaml`) |
-| `fast-hadamard-transform` build error | Expected on Mac; skip for identity/eval smoke tests |
-| Slow eval on long contexts | Start with `--context-length 512`; use `--skip-perplexity` for speed-only runs |
-| MPS OOM at 32K context | Reduce `--context-length` or run on CPU |
-| Full sweep too slow locally | Use Modal: `bash scripts/modal_run_sweep.sh` |
+| Issue                                  | Fix                                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------ |
+| `ModuleNotFoundError: compressors`     | Run scripts from repo root: `python scripts/run_eval.py`                       |
+| `Model not found at models/qwen3_1.7b` | Run `python scripts/download_model.py`                                         |
+| WikiText load fails with `HfUriError`  | Use `Salesforce/wikitext` (already set in `configs/eval.yaml`)                 |
+| `fast-hadamard-transform` build error  | Expected on Mac; skip for identity/eval smoke tests                            |
+| Slow eval on long contexts             | Start with `--context-length 512`; use `--skip-perplexity` for speed-only runs |
+| MPS OOM at 32K context                 | Reduce `--context-length` or run on CPU                                        |
+| Full sweep too slow locally            | Use Modal: `bash scripts/modal_run_sweep.sh`                                   |
 
 ---
 

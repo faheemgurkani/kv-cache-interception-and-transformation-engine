@@ -1,13 +1,16 @@
 # Modal evaluation sweep presets (context lengths from configs/model.yaml unless overridden)
 #
 # Usage:
-#   modal run modal_app/sweep.py::main --preset qjl
-#   PRESET=rocketkv bash scripts/modal_run_sweep.sh
+#   modal run modal_app/sweep.py::main --preset baseline   # shared no-compression baseline
+#   modal run modal_app/sweep.py::main --preset turboquant
+#   PRESET=qjl bash scripts/modal_run_sweep.sh
 
 presets:
-  turboquant:
+  baseline:
     - label: identity_baseline
       name: identity
+
+  turboquant:
     - label: tq_full_b2
       name: turboquant
       stage: full

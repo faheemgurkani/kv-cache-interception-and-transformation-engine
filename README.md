@@ -6,7 +6,7 @@ A **modular framework for KV-cache compression analysis and benchmarking** — n
 Model (fixed) → KVCacheEngine (fixed) → KVCompressor (variable) → eval/ (fixed)
 ```
 
-Architecture: [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) · Results: [docs/PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md) · Reproducibility: [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) · Modal: [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md)
+Architecture: [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) · Methodology: [docs/METHODOLOGY.md](docs/METHODOLOGY.md) · Math: [docs/MATHEMATICS_AND_ALGORITHMS.md](docs/MATHEMATICS_AND_ALGORITHMS.md) · Results: [docs/PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md) ([complete tables](docs/RESULTS_COMPLETE.md)) · Reproducibility: [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) · Modal: [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md)
 
 ## Research positioning
 
@@ -100,6 +100,19 @@ Full step-by-step guide: **[docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md)**
 | Fetch + bundle | `bash scripts/modal_fetch_results.sh && python scripts/restructure_modal_results.py` |
 
 Record `git rev-parse HEAD` when citing results. Config YAML files are the experimental source of truth; use `--no-resume` on Modal for clean re-sweeps after code changes.
+
+## Documentation
+
+| Doc | Contents |
+|---|---|
+| [SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Architecture overview |
+| [METHODOLOGY.md](docs/METHODOLOGY.md) | Full experimental + algorithm methodology |
+| [MATHEMATICS_AND_ALGORITHMS.md](docs/MATHEMATICS_AND_ALGORITHMS.md) | Equations, notation, pseudocode |
+| [PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md) | Summary results tables |
+| [RESULTS_COMPLETE.md](docs/RESULTS_COMPLETE.md) | **Every metric, per-layer stats, logs** (auto-generated) |
+| [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) | How to reproduce sweeps |
+
+Regenerate complete results doc: `python scripts/export_results_documentation.py`
 
 ## Compressors (plug-ins)
 

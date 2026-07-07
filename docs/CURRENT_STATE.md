@@ -25,4 +25,4 @@ Scope and caveats for the **KV-Cache Interception and Transformation Engine** (c
 | **Baseline eval order** | Baseline PPL runs before RocketKV attention patch (`eval/runner.py`) |
 | **Section A vs B** | Offline metrics do not always predict online PPL (by design — framework surfaces the gap) |
 
-Raw job JSON: `results/` (gitignored). Version-controlled numbers: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md). How to reproduce sweeps: [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
+Raw job JSON: `results/` (gitignored). Version-controlled numbers: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) · [RESULTS_COMPLETE.md](RESULTS_COMPLETE.md). Methodology: [METHODOLOGY.md](METHODOLOGY.md).

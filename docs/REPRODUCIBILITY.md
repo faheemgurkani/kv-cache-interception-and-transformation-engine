@@ -318,4 +318,13 @@ Documented in [CURRENT_STATE.md](CURRENT_STATE.md):
 - QJL / RocketKV PPL catastrophic on Qwen3-1.7B under this pipeline — faithful implementation, not paper-matched quality
 - Section A metrics do not always predict Section B PPL (by design)
 
-For issues, include: git SHA, preset label, context length, Modal app URL from sweep output, and the job JSON stem.
+## 10. Documentation index
+
+| Document | Purpose |
+|---|---|
+| [METHODOLOGY.md](METHODOLOGY.md) | System design + compression + eval protocol |
+| [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) | Equations and pseudocode |
+| [RESULTS_COMPLETE.md](RESULTS_COMPLETE.md) | Every Phase 5 metric, per-layer stats, logs |
+| [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) | Summary tables for papers/README |
+
+Regenerate complete results: `python scripts/export_results_documentation.py`

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from compressors.qjl import QJLCompressor
+from framework.model_adapter import load_attention_ops, project_qkv
 from quantizers.qjl_pipeline import QJLTensorPayload
 
 
@@ -63,16 +63,16 @@ def qjl_eager_attention_forward(
 
 
 def enable_qjl_online(model, compressor: QJLCompressor) -> None:
-    """Patch Qwen3 eager attention to score keys with the QJL estimator."""
+    """Patch eager attention to score keys with the QJL estimator."""
     if getattr(model, "_qjl_online_enabled", False):
         return
 
-    from transformers.models.qwen3.modeling_qwen3 import apply_rotary_pos_emb
+    ops = load_attention_ops(model.config)
 
     for layer_idx, layer in enumerate(model.model.layers):
         attn = layer.self_attn
 
-        def make_forward(layer_index: int):
+        def make_forward(layer_index: int, attn_module=attn, attn_ops=ops):
             def forward(
                 hidden_states: torch.Tensor,
                 position_embeddings: tuple[torch.Tensor, torch.Tensor],
@@ -81,14 +81,14 @@ def enable_qjl_online(model, compressor: QJLCompressor) -> None:
                 **kwargs,
             ):
                 input_shape = hidden_states.shape[:-1]
-                hidden_shape = (*input_shape, -1, attn.head_dim)
-
-                query_states = attn.q_norm(attn.q_proj(hidden_states).view(hidden_shape)).transpose(1, 2)
-                key_states = attn.k_norm(attn.k_proj(hidden_states).view(hidden_shape)).transpose(1, 2)
-                value_states = attn.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
+                query_states, key_states, value_states = project_qkv(
+                    attn_module, hidden_states, attn_ops
+                )
 
                 cos, sin = position_embeddings
-                query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
+                query_states, key_states = attn_ops.apply_rotary_pos_emb(
+                    query_states, key_states, cos, sin
+                )
 
                 if past_key_values is not None:
                     key_states, value_states = past_key_values.update(
@@ -104,12 +104,12 @@ def enable_qjl_online(model, compressor: QJLCompressor) -> None:
                     key_payloads,
                     compressor,
                     attention_mask,
-                    scaling=attn.scaling,
-                    num_key_value_groups=attn.num_key_value_groups,
+                    scaling=attn_module.scaling,
+                    num_key_value_groups=attn_module.num_key_value_groups,
                 )
 
                 attn_output = attn_output.reshape(*input_shape, -1).contiguous()
-                attn_output = attn.o_proj(attn_output)
+                attn_output = attn_module.o_proj(attn_output)
                 return attn_output, attn_weights
 
             return forward

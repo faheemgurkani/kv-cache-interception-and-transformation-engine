@@ -23,25 +23,53 @@ CANDIDATES = [
 ]
 
 
+def _is_complete(out: Path) -> bool:
+    if not (out / "config.json").exists():
+        return False
+    weights = list(out.glob("*.safetensors"))
+    if not weights:
+        return False
+    index = out / "model.safetensors.index.json"
+    if index.exists():
+        import json
+
+        need = set(json.loads(index.read_text())["weight_map"].values())
+        have = {p.name for p in weights}
+        return need.issubset(have)
+    return True
+
+
 def main() -> None:
     token = os.environ.get("HF_TOKEN")
     if not token:
         raise SystemExit("HF_TOKEN missing — set it in .env")
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    failures: list[str] = []
     for repo_id, dirname in CANDIDATES:
         out = MODELS_DIR / dirname
-        marker = out / "config.json"
-        if marker.exists():
-            print(f"SKIP {repo_id} → {out} (already present)")
+        if _is_complete(out):
+            print(f"SKIP {repo_id} → {out} (complete)")
             continue
         print(f"DOWNLOAD {repo_id} → {out}")
-        snapshot_download(
-            repo_id=repo_id,
-            local_dir=str(out),
-            token=token,
-        )
-        print(f"DONE {repo_id}")
+        try:
+            snapshot_download(
+                repo_id=repo_id,
+                local_dir=str(out),
+                token=token,
+            )
+        except Exception as exc:  # noqa: BLE001 — report and continue other models
+            failures.append(f"{repo_id}: {exc}")
+            print(f"FAIL {repo_id}: {exc}")
+            continue
+        if _is_complete(out):
+            print(f"DONE {repo_id}")
+        else:
+            failures.append(f"{repo_id}: incomplete after download")
+            print(f"INCOMPLETE {repo_id}")
+
+    if failures:
+        raise SystemExit("Some downloads failed:\n- " + "\n- ".join(failures))
 
 
 if __name__ == "__main__":

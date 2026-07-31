@@ -71,22 +71,16 @@ def _compute_layer_queries(
     position_embeddings: tuple[torch.Tensor, torch.Tensor],
 ) -> torch.Tensor:
     """Recompute RoPE-applied query states for one decoder layer."""
-    from transformers.models.qwen3.modeling_qwen3 import apply_rotary_pos_emb
+    from framework.model_adapter import load_attention_ops, pre_attention_hidden, project_qkv
 
     layer = model_layer.model.model.layers[layer_idx]
     attn = layer.self_attn
-    config = model_layer.config
+    ops = load_attention_ops(model_layer.config)
 
-    normed = layer.input_layernorm(hidden_states)
-    batch, seq_len, _ = normed.shape
-    head_dim = config.head_dim
-    num_q_heads = config.num_attention_heads
-    num_kv_heads = config.num_key_value_heads
-
-    query = attn.q_proj(normed).view(batch, seq_len, num_q_heads, head_dim).transpose(1, 2)
-    key = attn.k_proj(normed).view(batch, seq_len, num_kv_heads, head_dim).transpose(1, 2)
+    normed = pre_attention_hidden(layer, hidden_states, ops)
+    query, key, _value = project_qkv(attn, normed, ops)
     cos, sin = position_embeddings
-    query, _ = apply_rotary_pos_emb(query, key, cos, sin)
+    query, _ = ops.apply_rotary_pos_emb(query, key, cos, sin)
     return query
 
 
@@ -127,8 +121,10 @@ def evaluate_attention_fidelity(
     position_ids = torch.arange(input_ids.shape[1], device=device).unsqueeze(0)
     position_embeddings = model.model.rotary_emb(hidden_states[0], position_ids)
 
+    from framework.model_adapter import resolve_head_dim
+
     config = model_layer.config
-    head_dim = config.head_dim
+    head_dim = resolve_head_dim(config)
     num_q_heads = config.num_attention_heads
     num_kv_heads = config.num_key_value_heads
 

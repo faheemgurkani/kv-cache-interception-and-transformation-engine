@@ -5,6 +5,12 @@ from __future__ import annotations
 import torch
 
 from compressors.rocketkv import RocketKVCompressor
+from framework.model_adapter import (
+    attention_call_kwargs,
+    load_attention_ops,
+    project_qkv,
+    resolve_attention_interface,
+)
 
 
 def apply_online_kv_sparsity(
@@ -89,26 +95,17 @@ def _write_sparse_cache(
         past_key_values.value_cache[layer_index] = value_states
 
 
-def _resolve_attention_interface(attn_module, config):
-    from transformers.models.qwen3.modeling_qwen3 import ALL_ATTENTION_FUNCTIONS, eager_attention_forward
-
-    return ALL_ATTENTION_FUNCTIONS.get_interface(
-        config._attn_implementation,
-        eager_attention_forward,
-    )
-
-
 def enable_rocketkv_online(model, compressor: RocketKVCompressor) -> None:
-    """Patch Qwen3 eager attention to apply RocketKV sparsity before softmax."""
+    """Patch eager attention to apply RocketKV sparsity before softmax."""
     if getattr(model, "_rocketkv_online_enabled", False):
         return
 
-    from transformers.models.qwen3.modeling_qwen3 import apply_rotary_pos_emb
+    ops = load_attention_ops(model.config)
 
     for layer_idx, layer in enumerate(model.model.layers):
         attn = layer.self_attn
 
-        def make_forward(layer_index: int):
+        def make_forward(layer_index: int, attn_module=attn, attn_ops=ops):
             def forward(
                 hidden_states: torch.Tensor,
                 position_embeddings: tuple[torch.Tensor, torch.Tensor],
@@ -117,14 +114,14 @@ def enable_rocketkv_online(model, compressor: RocketKVCompressor) -> None:
                 **kwargs,
             ):
                 input_shape = hidden_states.shape[:-1]
-                hidden_shape = (*input_shape, -1, attn.head_dim)
-
-                query_states = attn.q_norm(attn.q_proj(hidden_states).view(hidden_shape)).transpose(1, 2)
-                key_states = attn.k_norm(attn.k_proj(hidden_states).view(hidden_shape)).transpose(1, 2)
-                value_states = attn.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
+                query_states, key_states, value_states = project_qkv(
+                    attn_module, hidden_states, attn_ops
+                )
 
                 cos, sin = position_embeddings
-                query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
+                query_states, key_states = attn_ops.apply_rotary_pos_emb(
+                    query_states, key_states, cos, sin
+                )
 
                 if past_key_values is not None:
                     key_states, value_states = past_key_values.update(
@@ -152,21 +149,22 @@ def enable_rocketkv_online(model, compressor: RocketKVCompressor) -> None:
                     key_states.shape[2],
                 )
 
-                attention_interface = _resolve_attention_interface(attn, model.config)
+                attention_interface = resolve_attention_interface(
+                    attn_module, model.config, attn_ops
+                )
+                call_kwargs = attention_call_kwargs(attn_module, attn_ops)
                 attn_output, attn_weights = attention_interface(
-                    attn,
+                    attn_module,
                     query_states,
                     key_states,
                     value_states,
                     attention_mask,
-                    dropout=0.0 if not attn.training else attn.attention_dropout,
-                    scaling=attn.scaling,
-                    sliding_window=attn.sliding_window,
+                    **call_kwargs,
                     **kwargs,
                 )
 
                 attn_output = attn_output.reshape(*input_shape, -1).contiguous()
-                attn_output = attn.o_proj(attn_output)
+                attn_output = attn_module.o_proj(attn_output)
                 return attn_output, attn_weights
 
             return forward

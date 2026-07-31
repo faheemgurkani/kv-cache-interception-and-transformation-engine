@@ -1,4 +1,4 @@
-"""Model layer: load Qwen3 with eager attention for KV interception."""
+"""Model layer: load a causal LM with eager attention for KV interception."""
 
 from __future__ import annotations
 

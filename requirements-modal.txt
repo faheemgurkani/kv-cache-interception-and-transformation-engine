@@ -1,5 +1,5 @@
 # Modal CUDA worker dependencies (torch installed separately with cu124 index)
-transformers
+transformers>=4.50.0
 accelerate
 datasets
 evaluate

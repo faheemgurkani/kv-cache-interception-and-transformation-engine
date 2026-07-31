@@ -90,7 +90,10 @@ def main(
 
     eval_worker.spawn_map(job_dicts)
     print(f"Spawned {len(job_dicts)} jobs on Modal GPUs.")
-    print("Results persist to volume: kv-engine-results")
+    from modal_app.settings import volume_names
+
+    _, results_vol = volume_names()
+    print(f"Results persist to volume: {results_vol}")
     print("Fetch locally: bash scripts/modal_fetch_results.sh")
     print("Or re-run with --sync after jobs finish to merge locally.")
 

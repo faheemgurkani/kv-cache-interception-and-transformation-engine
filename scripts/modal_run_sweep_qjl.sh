@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PRESET=qjl \
-OUTPUT="${OUTPUT:-phase5_modal_qjl}" \
+OUTPUT="${OUTPUT:-olmo2_phase5_qjl}" \
 CONTEXT_LENGTHS="${CONTEXT_LENGTHS:-128,256,512}" \
 LABELS="${LABELS:-}" \
 NO_RESUME="${NO_RESUME:-1}" \

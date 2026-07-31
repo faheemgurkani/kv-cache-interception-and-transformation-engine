@@ -21,11 +21,15 @@ _VOLUMES = {MODEL_MOUNT: model_volume, RESULTS_MOUNT: results_volume}
 
 
 def _model_dir() -> Path:
-    return Path(MODEL_MOUNT) / "qwen3_1.7b"
+    """Resolve volume-relative model directory from configs/model.yaml."""
+    from framework.config import load_model_config
+
+    local_path = load_model_config().get("local_path", "models/olmo2_1b")
+    return Path(MODEL_MOUNT) / Path(local_path).name
 
 
 def _ensure_model_weights() -> Path:
-    """Download Qwen3 once into the persistent model volume."""
+    """Download the configured HF model once into the persistent model volume."""
     from framework.config import load_model_config
 
     model_volume.reload()
@@ -35,7 +39,8 @@ def _ensure_model_weights() -> Path:
         return model_path
 
     model_path.mkdir(parents=True, exist_ok=True)
-    model_name = load_model_config().get("model_name", "Qwen/Qwen3-1.7B")
+    cfg = load_model_config()
+    model_name = cfg.get("model_name", "allenai/OLMo-2-0425-1B")
     AutoTokenizer.from_pretrained(model_name).save_pretrained(model_path)
     AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto").save_pretrained(model_path)
     model_volume.commit()
@@ -93,6 +98,8 @@ def eval_worker(job: dict) -> dict:
         payload = result.to_dict()
         payload["label"] = spec.label
         payload["job"] = spec.to_dict()
+        payload["model_name"] = load_model_config().get("model_name")
+        payload["model_path"] = str(model_path)
         payload["started_at"] = started_at
         payload["finished_at"] = datetime.now(UTC).isoformat()
         payload["status"] = "ok"

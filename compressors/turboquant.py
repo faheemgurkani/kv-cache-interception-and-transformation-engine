@@ -44,7 +44,13 @@ class TurboQuantCompressor(KVCompressor):
         centroids = self.pipeline.centroids
         return centroids.numel() * centroids.element_size()
 
-    def reconstruction_error(self, key: torch.Tensor, value: torch.Tensor) -> dict[str, float]:
+    def reconstruction_error(
+        self,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        layer: int = 0,
+    ) -> dict[str, float]:
+        _ = layer
         return {
             "key_rmse": self.pipeline.reconstruction_error(key, use_qjl=False),
             "value_rmse": self.pipeline.reconstruction_error(

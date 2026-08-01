@@ -43,7 +43,22 @@
 bash scripts/modal_setup_model.sh
 bash scripts/modal_run_sweep_baseline.sh
 PRESET=turboquant OUTPUT=olmo2_phase5_turboquant bash scripts/modal_run_sweep.sh
-bash scripts/modal_run_sweep_qjl.sh          # set OUTPUT if desired
+bash scripts/modal_run_sweep_qjl.sh
 bash scripts/modal_run_sweep_rocketkv.sh
 bash scripts/modal_fetch_results.sh
+python scripts/restructure_olmo2_modal_results.py
 ```
+
+## Phase-5 status (August 2026)
+
+**27/27 jobs OK** on Modal A10G → volume `kv-engine-results-olmo2`.
+
+| Bundle | Jobs | Local path |
+|---|---:|---|
+| Identity | 3 | `results/olmo2_phase5_baseline/` |
+| TurboQuant | 12 | `results/olmo2_phase5_turboquant/` |
+| QJL | 3 | `results/olmo2_phase5_qjl/` |
+| RocketKV | 9 | `results/olmo2_phase5_rocketkv/` |
+
+Summary write-up: `docs/OLMO2_PHASE5_EVAL_RESULTS.md`  
+Paper tables: `docs/research_paper_writeup/conference_101719.tex` §OLMo~2 1B Replication

@@ -1,15 +1,3 @@
-# ── Pre-publication (withhold until paper is published) ───────────────────────
-# Detailed methodology, equations, full result tables, and paper draft.
-docs/METHODOLOGY.md
-docs/MATHEMATICS_AND_ALGORITHMS.md
-docs/RESULTS_COMPLETE.md
-docs/PHASE5_EVAL_RESULTS.md
-docs/research_paper_writeup/
-
-# ── Local planning notes (not for public repo) ────────────────────────────────
-docs/IMPLEMENTATION_PLAN.md
-docs/EVALUATION_PLAN.md
-
 # ── Secrets & local environment ──────────────────────────────────────────────
 .venv/
 .env
@@ -45,7 +33,7 @@ htmlcov/
 .ipynb_checkpoints/
 notebooks/.ipynb_checkpoints/
 
-# ── Model weights (~3 GB; download via scripts/download_model.py) ──────────────
+# ── Model weights (download via scripts; never commit) ─────────────────────────
 models/*/
 !models/.gitkeep
 *.safetensors
@@ -61,15 +49,46 @@ datasets/wikitext2/*
 datasets/c4/*
 !datasets/wikitext2/.gitkeep
 !datasets/c4/.gitkeep
+data/**
 
 # ── Experiment outputs ─────────────────────────────────────────────────────────
+# Ignore bulky raw dumps by default; keep published summary bundles + README.
 results/*
 !results/.gitkeep
+!results/README.md
+!results/phase5_modal_baseline/
+!results/phase5_modal_baseline/**
+!results/phase5_modal_qjl/
+!results/phase5_modal_qjl/**
+!results/phase5_modal_rocketkv/
+!results/phase5_modal_rocketkv/**
+!results/phase5_modal_sweep_128_256_512/
+!results/phase5_modal_sweep_128_256_512/**
+!results/olmo2_phase5_baseline/
+!results/olmo2_phase5_baseline/**
+!results/olmo2_phase5_turboquant/
+!results/olmo2_phase5_turboquant/**
+!results/olmo2_phase5_qjl/
+!results/olmo2_phase5_qjl/**
+!results/olmo2_phase5_rocketkv/
+!results/olmo2_phase5_rocketkv/**
+!results/olmo2_phase5_summary.json
+!results/olmo2_phase5_inventory.csv
+# Drop per-job copies and raw Modal volume mirrors even inside allowed trees
+results/**/jobs/
+results/modal_volume/
+results/modal_volume_olmo2/
 plots/*
 !plots/.gitkeep
 wandb/
 *.log
 logs/
+
+# ── Local planning / unpublished draft paper ───────────────────────────────────
+docs/IMPLEMENTATION_PLAN.md
+docs/EVALUATION_PLAN.md
+docs/CURRENT_STATE.md
+docs/research_paper_writeup/
 
 # ── IDE & OS ───────────────────────────────────────────────────────────────────
 .DS_Store

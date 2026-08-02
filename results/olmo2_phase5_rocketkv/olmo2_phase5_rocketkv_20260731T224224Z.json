@@ -1,0 +1,1644 @@
+{
+  "timestamp": "20260731T224224Z",
+  "job_count": 9,
+  "results": [
+    {
+      "compressor": "rocketkv",
+      "bitwidth": 16,
+      "stage": null,
+      "context_length": 128,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 0.0,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 0.0,
+          "rmse": 0.0,
+          "cosine_similarity": 0.999847412109375,
+          "max_error": 0.0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 1,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0009765625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 2,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 3,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 4,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 5,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 6,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 7,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 8,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 9,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0009765625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 10,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 11,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 12,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 13,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 14,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 15,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 128,
+          "num_kv_elements": 8388608,
+          "uncompressed_bytes": 16777216,
+          "compressed_bytes": 16843264,
+          "shared_metadata_bytes": 0,
+          "compression_ratio": 0.9960786697875186,
+          "effective_bits_per_kv_element": 16.06298828125,
+          "process_memory_mb": 6947.13671875
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 10.989553693880998,
+        "perplexity_baseline": 10.992877387784619,
+        "throughput": {
+          "context_length": 128,
+          "generated_tokens": 64,
+          "elapsed_seconds": 2.041522221000001,
+          "tokens_per_second": 31.349156693798225,
+          "latency_ms_per_token": 31.898784703125017,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 128,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.1828804470000023,
+          "tokens_per_second": 54.10521423556837,
+          "latency_ms_per_token": 18.482506984375036,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "rocketkv_r1024",
+      "job": {
+        "compressor": "rocketkv",
+        "context_length": 128,
+        "bitwidth": null,
+        "stage": null,
+        "label": "rocketkv_r1024",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "token_budget": 1024,
+          "hsa_budget": 1024,
+          "window_size": 32
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:39:12.036418+00:00",
+      "finished_at": "2026-07-31T21:39:23.939515+00:00",
+      "status": "ok"
+    },
+    {
+      "compressor": "rocketkv",
+      "bitwidth": 16,
+      "stage": null,
+      "context_length": 256,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 0.0,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 0.0,
+          "rmse": 0.0,
+          "cosine_similarity": 0.99920654296875,
+          "max_error": 0.0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 1,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99853515625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 2,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 3,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 4,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 5,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 6,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 7,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 8,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 9,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 10,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 11,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 12,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 13,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99853515625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 14,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 15,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 256,
+          "num_kv_elements": 16777216,
+          "uncompressed_bytes": 33554432,
+          "compressed_bytes": 33686016,
+          "shared_metadata_bytes": 0,
+          "compression_ratio": 0.9960938093718177,
+          "effective_bits_per_kv_element": 16.062744140625,
+          "process_memory_mb": 5461.18359375
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 12.220909305362055,
+        "perplexity_baseline": 12.227868633777332,
+        "throughput": {
+          "context_length": 256,
+          "generated_tokens": 64,
+          "elapsed_seconds": 2.244201605999997,
+          "tokens_per_second": 28.517936993223987,
+          "latency_ms_per_token": 35.06565009374996,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 256,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.1824076780000023,
+          "tokens_per_second": 54.12684744085354,
+          "latency_ms_per_token": 18.475119968750036,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "rocketkv_r1024",
+      "job": {
+        "compressor": "rocketkv",
+        "context_length": 256,
+        "bitwidth": null,
+        "stage": null,
+        "label": "rocketkv_r1024",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "token_budget": 1024,
+          "hsa_budget": 1024,
+          "window_size": 32
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:39:08.698617+00:00",
+      "finished_at": "2026-07-31T21:39:26.713118+00:00",
+      "status": "ok"
+    },
+    {
+      "compressor": "rocketkv",
+      "bitwidth": 16,
+      "stage": null,
+      "context_length": 512,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 0.0,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 0.0,
+          "rmse": 0.0,
+          "cosine_similarity": 0.993988037109375,
+          "max_error": 0.0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9931640625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 1,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 2,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 3,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.994140625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 4,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9931640625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 5,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.994140625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 6,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 7,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99462890625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 8,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 9,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 10,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99462890625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 11,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.994140625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 12,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 13,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.994140625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 14,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 15,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99462890625,
+              "max_error": 0.0
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 512,
+          "num_kv_elements": 33554432,
+          "uncompressed_bytes": 67108864,
+          "compressed_bytes": 67371520,
+          "shared_metadata_bytes": 0,
+          "compression_ratio": 0.9961013793365505,
+          "effective_bits_per_kv_element": 16.0626220703125,
+          "process_memory_mb": 5466.33984375
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 8.311810349911925,
+        "perplexity_baseline": 8.312575426052119,
+        "throughput": {
+          "context_length": 512,
+          "generated_tokens": 64,
+          "elapsed_seconds": 2.684676404000001,
+          "tokens_per_second": 23.838999703891304,
+          "latency_ms_per_token": 41.94806881250002,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 512,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.2572590849999994,
+          "tokens_per_second": 50.90438459627439,
+          "latency_ms_per_token": 19.64467320312499,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "rocketkv_r1024",
+      "job": {
+        "compressor": "rocketkv",
+        "context_length": 512,
+        "bitwidth": null,
+        "stage": null,
+        "label": "rocketkv_r1024",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "token_budget": 1024,
+          "hsa_budget": 1024,
+          "window_size": 32
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:39:07.103599+00:00",
+      "finished_at": "2026-07-31T21:39:34.416500+00:00",
+      "status": "ok"
+    },
+    {
+      "compressor": "rocketkv",
+      "bitwidth": 16,
+      "stage": null,
+      "context_length": 128,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 0.0,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 0.0,
+          "rmse": 0.0,
+          "cosine_similarity": 0.999847412109375,
+          "max_error": 0.0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 1,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0009765625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 2,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 3,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 4,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 5,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 6,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 7,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 8,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 9,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0009765625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 10,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 11,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 12,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 13,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 14,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 15,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 128,
+          "num_kv_elements": 8388608,
+          "uncompressed_bytes": 16777216,
+          "compressed_bytes": 16843264,
+          "shared_metadata_bytes": 0,
+          "compression_ratio": 0.9960786697875186,
+          "effective_bits_per_kv_element": 16.06298828125,
+          "process_memory_mb": 5438.16796875
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 10.989553693880998,
+        "perplexity_baseline": 10.992877387784619,
+        "throughput": {
+          "context_length": 128,
+          "generated_tokens": 64,
+          "elapsed_seconds": 2.072963851000001,
+          "tokens_per_second": 30.873669103841973,
+          "latency_ms_per_token": 32.390060171875014,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 128,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.2919566170000003,
+          "tokens_per_second": 49.53726708611299,
+          "latency_ms_per_token": 20.186822140625004,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "rocketkv_r256",
+      "job": {
+        "compressor": "rocketkv",
+        "context_length": 128,
+        "bitwidth": null,
+        "stage": null,
+        "label": "rocketkv_r256",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "token_budget": 256,
+          "hsa_budget": 256,
+          "window_size": 32
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:38:36.578837+00:00",
+      "finished_at": "2026-07-31T21:38:50.377736+00:00",
+      "status": "ok"
+    },
+    {
+      "compressor": "rocketkv",
+      "bitwidth": 16,
+      "stage": null,
+      "context_length": 256,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 0.0,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 0.0,
+          "rmse": 0.0,
+          "cosine_similarity": 0.99920654296875,
+          "max_error": 0.0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 1,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99853515625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 2,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 3,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 4,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 5,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 6,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 7,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 8,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 9,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 10,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 11,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 12,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 13,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99853515625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 14,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 15,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 256,
+          "num_kv_elements": 16777216,
+          "uncompressed_bytes": 33554432,
+          "compressed_bytes": 33686016,
+          "shared_metadata_bytes": 0,
+          "compression_ratio": 0.9960938093718177,
+          "effective_bits_per_kv_element": 16.062744140625,
+          "process_memory_mb": 6307.21875
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 12.220909305362055,
+        "perplexity_baseline": 12.227868633777332,
+        "throughput": {
+          "context_length": 256,
+          "generated_tokens": 64,
+          "elapsed_seconds": 3.7632885760000008,
+          "tokens_per_second": 17.006402434337257,
+          "latency_ms_per_token": 58.80138400000001,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 256,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.1808712800000016,
+          "tokens_per_second": 54.19727034092988,
+          "latency_ms_per_token": 18.451113750000026,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "rocketkv_r256",
+      "job": {
+        "compressor": "rocketkv",
+        "context_length": 256,
+        "bitwidth": null,
+        "stage": null,
+        "label": "rocketkv_r256",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "token_budget": 256,
+          "hsa_budget": 256,
+          "window_size": 32
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:38:52.669598+00:00",
+      "finished_at": "2026-07-31T21:39:10.302873+00:00",
+      "status": "ok"
+    },
+    {
+      "compressor": "rocketkv",
+      "bitwidth": 16,
+      "stage": null,
+      "context_length": 512,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 0.0,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 4.454724013805389,
+          "rmse": 2.0833187120250765,
+          "cosine_similarity": 0.758880615234375,
+          "max_error": 29.359375,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 8.966139793395996,
+              "rmse": 2.9943513142909595,
+              "cosine_similarity": 0.73779296875,
+              "max_error": 29.359375
+            },
+            {
+              "layer": 1,
+              "mse": 5.152790069580078,
+              "rmse": 2.269975786121975,
+              "cosine_similarity": 0.7158203125,
+              "max_error": 17.625
+            },
+            {
+              "layer": 2,
+              "mse": 4.488729953765869,
+              "rmse": 2.1186623029085756,
+              "cosine_similarity": 0.7421875,
+              "max_error": 16.015625
+            },
+            {
+              "layer": 3,
+              "mse": 5.225212574005127,
+              "rmse": 2.28587238795282,
+              "cosine_similarity": 0.748046875,
+              "max_error": 19.1875
+            },
+            {
+              "layer": 4,
+              "mse": 3.3781800270080566,
+              "rmse": 1.8379825970362333,
+              "cosine_similarity": 0.75146484375,
+              "max_error": 15.265625
+            },
+            {
+              "layer": 5,
+              "mse": 4.035364627838135,
+              "rmse": 2.008821701355831,
+              "cosine_similarity": 0.78369140625,
+              "max_error": 13.625
+            },
+            {
+              "layer": 6,
+              "mse": 4.935811996459961,
+              "rmse": 2.2216687413878695,
+              "cosine_similarity": 0.744140625,
+              "max_error": 16.921875
+            },
+            {
+              "layer": 7,
+              "mse": 6.399174213409424,
+              "rmse": 2.529658912464173,
+              "cosine_similarity": 0.7587890625,
+              "max_error": 26.34375
+            },
+            {
+              "layer": 8,
+              "mse": 3.470700740814209,
+              "rmse": 1.8629816802143302,
+              "cosine_similarity": 0.79150390625,
+              "max_error": 18.75
+            },
+            {
+              "layer": 9,
+              "mse": 4.269937515258789,
+              "rmse": 2.06638271267904,
+              "cosine_similarity": 0.76025390625,
+              "max_error": 16.21875
+            },
+            {
+              "layer": 10,
+              "mse": 4.522193431854248,
+              "rmse": 2.1265449517596022,
+              "cosine_similarity": 0.7978515625,
+              "max_error": 17.09375
+            },
+            {
+              "layer": 11,
+              "mse": 4.644317626953125,
+              "rmse": 2.15506789381521,
+              "cosine_similarity": 0.75927734375,
+              "max_error": 21.515625
+            },
+            {
+              "layer": 12,
+              "mse": 3.516202449798584,
+              "rmse": 1.8751539802903079,
+              "cosine_similarity": 0.75732421875,
+              "max_error": 16.71875
+            },
+            {
+              "layer": 13,
+              "mse": 2.8656585216522217,
+              "rmse": 1.6928256028463835,
+              "cosine_similarity": 0.7392578125,
+              "max_error": 14.875
+            },
+            {
+              "layer": 14,
+              "mse": 2.8187332153320312,
+              "rmse": 1.678908340360495,
+              "cosine_similarity": 0.76220703125,
+              "max_error": 11.0546875
+            },
+            {
+              "layer": 15,
+              "mse": 2.586437463760376,
+              "rmse": 1.6082404869174187,
+              "cosine_similarity": 0.79248046875,
+              "max_error": 13.15625
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 512,
+          "num_kv_elements": 33554432,
+          "uncompressed_bytes": 67108864,
+          "compressed_bytes": 33686016,
+          "shared_metadata_bytes": 0,
+          "compression_ratio": 1.9921876187436354,
+          "effective_bits_per_kv_element": 8.0313720703125,
+          "process_memory_mb": 5512.08984375
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 8.76777296524379,
+        "perplexity_baseline": 8.312141407322708,
+        "throughput": {
+          "context_length": 512,
+          "generated_tokens": 64,
+          "elapsed_seconds": 4.3358851650000005,
+          "tokens_per_second": 14.760538520858173,
+          "latency_ms_per_token": 67.74820570312501,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 512,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.5682566530000024,
+          "tokens_per_second": 40.80964673580116,
+          "latency_ms_per_token": 24.504010203125038,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "rocketkv_r256",
+      "job": {
+        "compressor": "rocketkv",
+        "context_length": 512,
+        "bitwidth": null,
+        "stage": null,
+        "label": "rocketkv_r256",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "token_budget": 256,
+          "hsa_budget": 256,
+          "window_size": 32
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:39:16.136722+00:00",
+      "finished_at": "2026-07-31T21:39:59.783416+00:00",
+      "status": "ok"
+    },
+    {
+      "compressor": "rocketkv",
+      "bitwidth": 16,
+      "stage": null,
+      "context_length": 128,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 0.0,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 0.0,
+          "rmse": 0.0,
+          "cosine_similarity": 0.999786376953125,
+          "max_error": 0.0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 1,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0009765625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 2,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 3,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0009765625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 4,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 5,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 6,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 7,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 8,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 9,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 10,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 11,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 12,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 13,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 14,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 15,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 128,
+          "num_kv_elements": 8388608,
+          "uncompressed_bytes": 16777216,
+          "compressed_bytes": 16843264,
+          "shared_metadata_bytes": 0,
+          "compression_ratio": 0.9960786697875186,
+          "effective_bits_per_kv_element": 16.06298828125,
+          "process_memory_mb": 5277.72265625
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 10.99175249874247,
+        "perplexity_baseline": 10.994895670818893,
+        "throughput": {
+          "context_length": 128,
+          "generated_tokens": 64,
+          "elapsed_seconds": 3.214785127999999,
+          "tokens_per_second": 19.908017939542994,
+          "latency_ms_per_token": 50.231017624999986,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 128,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.6731793830000008,
+          "tokens_per_second": 38.25053108486693,
+          "latency_ms_per_token": 26.143427859375013,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "rocketkv_r512",
+      "job": {
+        "compressor": "rocketkv",
+        "context_length": 128,
+        "bitwidth": null,
+        "stage": null,
+        "label": "rocketkv_r512",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "token_budget": 512,
+          "hsa_budget": 512,
+          "window_size": 32
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:39:11.844806+00:00",
+      "finished_at": "2026-07-31T21:39:30.162388+00:00",
+      "status": "ok"
+    },
+    {
+      "compressor": "rocketkv",
+      "bitwidth": 16,
+      "stage": null,
+      "context_length": 256,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 0.0,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 0.0,
+          "rmse": 0.0,
+          "cosine_similarity": 0.999359130859375,
+          "max_error": 0.0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 1,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99853515625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 2,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 3,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 4,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 5,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 6,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 7,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 8,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 9,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 10,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 11,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 12,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 13,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 1.0,
+              "max_error": 0.0
+            },
+            {
+              "layer": 14,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 15,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9990234375,
+              "max_error": 0.0
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 256,
+          "num_kv_elements": 16777216,
+          "uncompressed_bytes": 33554432,
+          "compressed_bytes": 33686016,
+          "shared_metadata_bytes": 0,
+          "compression_ratio": 0.9960938093718177,
+          "effective_bits_per_kv_element": 16.062744140625,
+          "process_memory_mb": 5463.296875
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 12.220528486060038,
+        "perplexity_baseline": 12.223706221067687,
+        "throughput": {
+          "context_length": 256,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.6854308819999986,
+          "tokens_per_second": 37.97248566138475,
+          "latency_ms_per_token": 26.334857531249977,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 256,
+          "generated_tokens": 64,
+          "elapsed_seconds": 0.8122773579999958,
+          "tokens_per_second": 78.79082110275975,
+          "latency_ms_per_token": 12.691833718749933,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "rocketkv_r512",
+      "job": {
+        "compressor": "rocketkv",
+        "context_length": 256,
+        "bitwidth": null,
+        "stage": null,
+        "label": "rocketkv_r512",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "token_budget": 512,
+          "hsa_budget": 512,
+          "window_size": 32
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:39:06.056209+00:00",
+      "finished_at": "2026-07-31T21:39:36.860753+00:00",
+      "status": "ok"
+    },
+    {
+      "compressor": "rocketkv",
+      "bitwidth": 16,
+      "stage": null,
+      "context_length": 512,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 0.0,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 0.0,
+          "rmse": 0.0,
+          "cosine_similarity": 0.993988037109375,
+          "max_error": 0.0,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9931640625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 1,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 2,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 3,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.994140625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 4,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9931640625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 5,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.994140625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 6,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 7,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99462890625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 8,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 9,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.9951171875,
+              "max_error": 0.0
+            },
+            {
+              "layer": 10,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99462890625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 11,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.994140625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 12,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 13,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.994140625,
+              "max_error": 0.0
+            },
+            {
+              "layer": 14,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99365234375,
+              "max_error": 0.0
+            },
+            {
+              "layer": 15,
+              "mse": 0.0,
+              "rmse": 0.0,
+              "cosine_similarity": 0.99462890625,
+              "max_error": 0.0
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 512,
+          "num_kv_elements": 33554432,
+          "uncompressed_bytes": 67108864,
+          "compressed_bytes": 67371520,
+          "shared_metadata_bytes": 0,
+          "compression_ratio": 0.9961013793365505,
+          "effective_bits_per_kv_element": 16.0626220703125,
+          "process_memory_mb": 5496.8359375
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 8.311810349911925,
+        "perplexity_baseline": 8.312575426052119,
+        "throughput": {
+          "context_length": 512,
+          "generated_tokens": 64,
+          "elapsed_seconds": 4.606473981999997,
+          "tokens_per_second": 13.893489955676046,
+          "latency_ms_per_token": 71.97615596874995,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 512,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.1892859750000007,
+          "tokens_per_second": 53.81380201679412,
+          "latency_ms_per_token": 18.58259335937501,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "rocketkv_r512",
+      "job": {
+        "compressor": "rocketkv",
+        "context_length": 512,
+        "bitwidth": null,
+        "stage": null,
+        "label": "rocketkv_r512",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "token_budget": 512,
+          "hsa_budget": 512,
+          "window_size": 32
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:39:05.946164+00:00",
+      "finished_at": "2026-07-31T21:39:47.018182+00:00",
+      "status": "ok"
+    }
+  ]
+}

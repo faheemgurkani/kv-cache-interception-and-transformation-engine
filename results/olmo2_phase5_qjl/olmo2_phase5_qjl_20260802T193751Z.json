@@ -1,0 +1,546 @@
+{
+  "timestamp": "20260802T193751Z",
+  "job_count": 3,
+  "results": [
+    {
+      "compressor": "qjl",
+      "bitwidth": 1,
+      "stage": null,
+      "context_length": 128,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 2.156188152730465,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 7.175427883863449,
+          "rmse": 2.6611470147982756,
+          "cosine_similarity": 0.6957858055830002,
+          "max_error": 17.727645874023438,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 10.09753704071045,
+              "rmse": 3.17766219738827,
+              "cosine_similarity": 0.644152045249939,
+              "max_error": 17.727645874023438
+            },
+            {
+              "layer": 1,
+              "mse": 8.64521598815918,
+              "rmse": 2.940274815074125,
+              "cosine_similarity": 0.777084469795227,
+              "max_error": 13.149271011352539
+            },
+            {
+              "layer": 2,
+              "mse": 7.320113182067871,
+              "rmse": 2.705570768260899,
+              "cosine_similarity": 0.7183859944343567,
+              "max_error": 12.275693893432617
+            },
+            {
+              "layer": 3,
+              "mse": 7.172252655029297,
+              "rmse": 2.678106169484193,
+              "cosine_similarity": 0.6949761509895325,
+              "max_error": 13.435845375061035
+            },
+            {
+              "layer": 4,
+              "mse": 5.030210494995117,
+              "rmse": 2.24281307624936,
+              "cosine_similarity": 0.6502130627632141,
+              "max_error": 12.939271926879883
+            },
+            {
+              "layer": 5,
+              "mse": 6.225434303283691,
+              "rmse": 2.4950820233578876,
+              "cosine_similarity": 0.6125032901763916,
+              "max_error": 12.604036331176758
+            },
+            {
+              "layer": 6,
+              "mse": 7.593424320220947,
+              "rmse": 2.755616867458346,
+              "cosine_similarity": 0.6057525277137756,
+              "max_error": 11.804882049560547
+            },
+            {
+              "layer": 7,
+              "mse": 8.774362564086914,
+              "rmse": 2.9621550540251795,
+              "cosine_similarity": 0.7417100667953491,
+              "max_error": 17.040283203125
+            },
+            {
+              "layer": 8,
+              "mse": 8.588608741760254,
+              "rmse": 2.9306328227466936,
+              "cosine_similarity": 0.7679916024208069,
+              "max_error": 12.951566696166992
+            },
+            {
+              "layer": 9,
+              "mse": 8.725021362304688,
+              "rmse": 2.953814713604204,
+              "cosine_similarity": 0.7489200234413147,
+              "max_error": 14.094097137451172
+            },
+            {
+              "layer": 10,
+              "mse": 7.572039604187012,
+              "rmse": 2.751733926851761,
+              "cosine_similarity": 0.6940395832061768,
+              "max_error": 10.816747665405273
+            },
+            {
+              "layer": 11,
+              "mse": 8.104151725769043,
+              "rmse": 2.846779184581945,
+              "cosine_similarity": 0.6793476343154907,
+              "max_error": 13.799704551696777
+            },
+            {
+              "layer": 12,
+              "mse": 6.367053031921387,
+              "rmse": 2.523302009653499,
+              "cosine_similarity": 0.7196277379989624,
+              "max_error": 15.862436294555664
+            },
+            {
+              "layer": 13,
+              "mse": 4.588161468505859,
+              "rmse": 2.141999409081585,
+              "cosine_similarity": 0.6885801553726196,
+              "max_error": 12.003771781921387
+            },
+            {
+              "layer": 14,
+              "mse": 4.951763153076172,
+              "rmse": 2.225255750037773,
+              "cosine_similarity": 0.6634377241134644,
+              "max_error": 9.866337776184082
+            },
+            {
+              "layer": 15,
+              "mse": 5.051496505737305,
+              "rmse": 2.247553448916689,
+              "cosine_similarity": 0.7258508205413818,
+              "max_error": 11.160421371459961
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 128,
+          "num_kv_elements": 8388608,
+          "uncompressed_bytes": 16777216,
+          "compressed_bytes": 9109888,
+          "shared_metadata_bytes": 65536,
+          "compression_ratio": 1.8416489862443972,
+          "effective_bits_per_kv_element": 8.6878662109375,
+          "process_memory_mb": 5405.9609375
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 716.7163231074765,
+        "perplexity_baseline": 10.993773774252224,
+        "throughput": {
+          "context_length": 128,
+          "generated_tokens": 64,
+          "elapsed_seconds": 41.806786361,
+          "tokens_per_second": 1.5308519398588174,
+          "latency_ms_per_token": 653.231036890625,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 128,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.4478484750000007,
+          "tokens_per_second": 44.2035206757392,
+          "latency_ms_per_token": 22.62263242187501,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "qjl_default",
+      "job": {
+        "compressor": "qjl",
+        "context_length": 128,
+        "bitwidth": 1,
+        "stage": null,
+        "label": "qjl_default",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "seed": 42
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:39:08.363049+00:00",
+      "finished_at": "2026-07-31T21:40:36.538974+00:00",
+      "status": "ok"
+    },
+    {
+      "compressor": "qjl",
+      "bitwidth": 1,
+      "stage": null,
+      "context_length": 256,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 2.1590349823236465,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 7.578768700361252,
+          "rmse": 2.7329657423793337,
+          "cosine_similarity": 0.6956958211958408,
+          "max_error": 26.090757369995117,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 11.56305980682373,
+              "rmse": 3.400449941820013,
+              "cosine_similarity": 0.6655005812644958,
+              "max_error": 26.090757369995117
+            },
+            {
+              "layer": 1,
+              "mse": 8.529311180114746,
+              "rmse": 2.9204984472029336,
+              "cosine_similarity": 0.7768391966819763,
+              "max_error": 20.874727249145508
+            },
+            {
+              "layer": 2,
+              "mse": 7.760614395141602,
+              "rmse": 2.785787930755247,
+              "cosine_similarity": 0.7130617499351501,
+              "max_error": 13.6250638961792
+            },
+            {
+              "layer": 3,
+              "mse": 8.342719078063965,
+              "rmse": 2.8883765471392344,
+              "cosine_similarity": 0.6818217039108276,
+              "max_error": 17.0814151763916
+            },
+            {
+              "layer": 4,
+              "mse": 5.691498756408691,
+              "rmse": 2.3856862233765552,
+              "cosine_similarity": 0.6739081740379333,
+              "max_error": 14.433042526245117
+            },
+            {
+              "layer": 5,
+              "mse": 7.190859794616699,
+              "rmse": 2.6815778554083973,
+              "cosine_similarity": 0.6422016620635986,
+              "max_error": 13.213071823120117
+            },
+            {
+              "layer": 6,
+              "mse": 8.19100570678711,
+              "rmse": 2.861993310052822,
+              "cosine_similarity": 0.6507405042648315,
+              "max_error": 13.392194747924805
+            },
+            {
+              "layer": 7,
+              "mse": 9.619818687438965,
+              "rmse": 3.1015832549585003,
+              "cosine_similarity": 0.7273962497711182,
+              "max_error": 17.410398483276367
+            },
+            {
+              "layer": 8,
+              "mse": 7.965435028076172,
+              "rmse": 2.822310228886288,
+              "cosine_similarity": 0.7591545581817627,
+              "max_error": 14.967902183532715
+            },
+            {
+              "layer": 9,
+              "mse": 8.332148551940918,
+              "rmse": 2.8865461284969824,
+              "cosine_similarity": 0.7262926697731018,
+              "max_error": 14.094097137451172
+            },
+            {
+              "layer": 10,
+              "mse": 8.548945426940918,
+              "rmse": 2.9238579696936235,
+              "cosine_similarity": 0.7081449031829834,
+              "max_error": 14.276850700378418
+            },
+            {
+              "layer": 11,
+              "mse": 8.535515785217285,
+              "rmse": 2.9215605051440035,
+              "cosine_similarity": 0.6634329557418823,
+              "max_error": 17.21063804626465
+            },
+            {
+              "layer": 12,
+              "mse": 6.281184196472168,
+              "rmse": 2.5062290790093726,
+              "cosine_similarity": 0.7141181230545044,
+              "max_error": 15.862436294555664
+            },
+            {
+              "layer": 13,
+              "mse": 4.60806941986084,
+              "rmse": 2.1466414278730483,
+              "cosine_similarity": 0.6669751405715942,
+              "max_error": 12.36091423034668
+            },
+            {
+              "layer": 14,
+              "mse": 4.978370666503906,
+              "rmse": 2.2312262696786056,
+              "cosine_similarity": 0.6596122980117798,
+              "max_error": 10.425834655761719
+            },
+            {
+              "layer": 15,
+              "mse": 5.1217427253723145,
+              "rmse": 2.2631267585737027,
+              "cosine_similarity": 0.7019326686859131,
+              "max_error": 12.431201934814453
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 256,
+          "num_kv_elements": 16777216,
+          "uncompressed_bytes": 33554432,
+          "compressed_bytes": 18153856,
+          "shared_metadata_bytes": 65536,
+          "compression_ratio": 1.8483363534446897,
+          "effective_bits_per_kv_element": 8.65643310546875,
+          "process_memory_mb": 5412.10546875
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 841.4362844419169,
+        "perplexity_baseline": 12.227868633777332,
+        "throughput": {
+          "context_length": 256,
+          "generated_tokens": 64,
+          "elapsed_seconds": 56.948478765999994,
+          "tokens_per_second": 1.1238228199733753,
+          "latency_ms_per_token": 889.8199807187499,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 256,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.2810490739999985,
+          "tokens_per_second": 49.9590541056822,
+          "latency_ms_per_token": 20.016391781249975,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "qjl_default",
+      "job": {
+        "compressor": "qjl",
+        "context_length": 256,
+        "bitwidth": 1,
+        "stage": null,
+        "label": "qjl_default",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "seed": 42
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:38:35.789690+00:00",
+      "finished_at": "2026-07-31T21:41:30.384385+00:00",
+      "status": "ok"
+    },
+    {
+      "compressor": "qjl",
+      "bitwidth": 1,
+      "stage": null,
+      "context_length": 512,
+      "section_a_fidelity": {
+        "tensor": {
+          "key_rmse": 2.156835913658142,
+          "value_rmse": 0.0
+        },
+        "attention": {
+          "mse": 9.530145764350891,
+          "rmse": 3.052087616745795,
+          "cosine_similarity": 0.7294609844684601,
+          "max_error": 29.218969345092773,
+          "per_layer": [
+            {
+              "layer": 0,
+              "mse": 18.044815063476562,
+              "rmse": 4.247918909710561,
+              "cosine_similarity": 0.7347272038459778,
+              "max_error": 29.218969345092773
+            },
+            {
+              "layer": 1,
+              "mse": 9.504703521728516,
+              "rmse": 3.082969919043732,
+              "cosine_similarity": 0.7779583930969238,
+              "max_error": 21.328397750854492
+            },
+            {
+              "layer": 2,
+              "mse": 9.056421279907227,
+              "rmse": 3.009388854885195,
+              "cosine_similarity": 0.7277721166610718,
+              "max_error": 19.601388931274414
+            },
+            {
+              "layer": 3,
+              "mse": 10.791145324707031,
+              "rmse": 3.284987872840177,
+              "cosine_similarity": 0.6876150965690613,
+              "max_error": 19.280118942260742
+            },
+            {
+              "layer": 4,
+              "mse": 7.008731842041016,
+              "rmse": 2.647400959817197,
+              "cosine_similarity": 0.7210894823074341,
+              "max_error": 14.926804542541504
+            },
+            {
+              "layer": 5,
+              "mse": 9.551515579223633,
+              "rmse": 3.0905526333042173,
+              "cosine_similarity": 0.6954495310783386,
+              "max_error": 16.09913444519043
+            },
+            {
+              "layer": 6,
+              "mse": 9.953204154968262,
+              "rmse": 3.154869910942171,
+              "cosine_similarity": 0.7373454570770264,
+              "max_error": 16.412761688232422
+            },
+            {
+              "layer": 7,
+              "mse": 13.871700286865234,
+              "rmse": 3.7244731556107684,
+              "cosine_similarity": 0.7548657655715942,
+              "max_error": 25.623933792114258
+            },
+            {
+              "layer": 8,
+              "mse": 8.416797637939453,
+              "rmse": 2.901171769809477,
+              "cosine_similarity": 0.7668052315711975,
+              "max_error": 17.729793548583984
+            },
+            {
+              "layer": 9,
+              "mse": 9.221651077270508,
+              "rmse": 3.0367171546376373,
+              "cosine_similarity": 0.751305103302002,
+              "max_error": 15.83232307434082
+            },
+            {
+              "layer": 10,
+              "mse": 11.409975051879883,
+              "rmse": 3.3778654579304788,
+              "cosine_similarity": 0.7502351999282837,
+              "max_error": 20.41908073425293
+            },
+            {
+              "layer": 11,
+              "mse": 10.090205192565918,
+              "rmse": 3.1765083334639495,
+              "cosine_similarity": 0.7014610171318054,
+              "max_error": 28.07708168029785
+            },
+            {
+              "layer": 12,
+              "mse": 7.472813606262207,
+              "rmse": 2.7336447476331314,
+              "cosine_similarity": 0.72947096824646,
+              "max_error": 17.545549392700195
+            },
+            {
+              "layer": 13,
+              "mse": 5.697887897491455,
+              "rmse": 2.387024905084037,
+              "cosine_similarity": 0.7070131897926331,
+              "max_error": 17.63603401184082
+            },
+            {
+              "layer": 14,
+              "mse": 6.0849528312683105,
+              "rmse": 2.4667697158973536,
+              "cosine_similarity": 0.7085320949554443,
+              "max_error": 13.647089958190918
+            },
+            {
+              "layer": 15,
+              "mse": 6.305811882019043,
+              "rmse": 2.5111375673226353,
+              "cosine_similarity": 0.7197299003601074,
+              "max_error": 16.29478645324707
+            }
+          ]
+        },
+        "memory": {
+          "context_length": 512,
+          "num_kv_elements": 33554432,
+          "uncompressed_bytes": 67108864,
+          "compressed_bytes": 36241792,
+          "shared_metadata_bytes": 65536,
+          "compression_ratio": 1.8516982824690347,
+          "effective_bits_per_kv_element": 8.640716552734375,
+          "process_memory_mb": 5252.1328125
+        }
+      },
+      "section_b_inference": {
+        "perplexity": 873.4420863488082,
+        "perplexity_baseline": 8.313832028137456,
+        "throughput": {
+          "context_length": 512,
+          "generated_tokens": 64,
+          "elapsed_seconds": 177.34047402299996,
+          "tokens_per_second": 0.36088772375616635,
+          "latency_ms_per_token": 2770.9449066093744,
+          "online_compressed_kv": true
+        },
+        "throughput_baseline": {
+          "context_length": 512,
+          "generated_tokens": 64,
+          "elapsed_seconds": 1.9671243029999985,
+          "tokens_per_second": 32.53480214869779,
+          "latency_ms_per_token": 30.736317234374976,
+          "online_compressed_kv": false
+        }
+      },
+      "label": "qjl_default",
+      "job": {
+        "compressor": "qjl",
+        "context_length": 512,
+        "bitwidth": 1,
+        "stage": null,
+        "label": "qjl_default",
+        "skip_perplexity": false,
+        "skip_throughput": false,
+        "compressor_kwargs": {
+          "seed": 42
+        }
+      },
+      "model_name": "allenai/OLMo-2-0425-1B",
+      "model_path": "/models/olmo2_1b",
+      "started_at": "2026-07-31T21:38:46.592513+00:00",
+      "finished_at": "2026-07-31T21:52:44.078074+00:00",
+      "status": "ok"
+    }
+  ]
+}

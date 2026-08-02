@@ -1,0 +1,24 @@
+{
+  "sweep_id": "phase5_modal_qjl",
+  "method": "qjl",
+  "shared_baseline": "../phase5_modal_baseline/",
+  "modal_app_id": "ap-LDOu0QHLjrRrwtZriSfh9d",
+  "modal_app_url": "https://modal.com/apps/faheemgurkani/main/ap-LDOu0QHLjrRrwtZriSfh9d",
+  "completed_at_utc": "2026-07-05T20:25:32Z",
+  "jobs_total": 3,
+  "jobs_ok": 3,
+  "jobs_error": 0,
+  "context_lengths": [
+    128,
+    256,
+    512
+  ],
+  "configs": [
+    "qjl_default"
+  ],
+  "files": {
+    "jobs_dir": "jobs/",
+    "merged_csv": "phase5_modal_qjl_20260705T202532Z.csv",
+    "merged_json": "phase5_modal_qjl_20260705T202532Z.json"
+  }
+}

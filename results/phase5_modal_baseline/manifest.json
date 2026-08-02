@@ -1,0 +1,29 @@
+{
+  "sweep_id": "phase5_modal_baseline",
+  "role": "shared_no_compression_baseline_for_all_methods",
+  "source_modal_app_id": "ap-ek9dIxujlrECcfFaOa3ok3",
+  "source_modal_app_url": "https://modal.com/apps/faheemgurkani/main/ap-ek9dIxujlrECcfFaOa3ok3",
+  "completed_at_utc": "2026-07-04T18:58:54Z",
+  "jobs_total": 3,
+  "jobs_ok": 3,
+  "jobs_error": 0,
+  "context_lengths": [
+    128,
+    256,
+    512
+  ],
+  "configs": [
+    "identity_baseline"
+  ],
+  "reuse_for": [
+    "turboquant",
+    "qjl",
+    "rocketkv",
+    "kivi"
+  ],
+  "files": {
+    "jobs_dir": "jobs/",
+    "merged_csv": "phase5_modal_baseline_20260705T202532Z.csv",
+    "merged_json": "phase5_modal_baseline_20260705T202532Z.json"
+  }
+}

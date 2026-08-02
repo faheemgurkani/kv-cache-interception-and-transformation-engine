@@ -1,0 +1,4 @@
+label,compressor,bitwidth,stage,context_length,key_rmse,value_rmse,attention_rmse,attention_cosine,attention_max_error,uncompressed_bytes,compressed_bytes,compression_ratio,effective_bits_per_kv_element,shared_metadata_bytes,perplexity_compressed,perplexity_baseline,tokens_per_second,latency_ms_per_token,online_compressed_kv,finished_at
+identity_baseline,identity,16,,128,0.0,0.0,0.0,0.892822265625,0.0,14680064,14680064,1.0,16.0,0,14.205436533436368,14.207357388256316,23.681193063242738,42.22760218750005,True,2026-07-04T17:47:33.028357+00:00
+identity_baseline,identity,16,,256,0.0,0.0,0.0,0.7850864955357143,0.0,29360128,29360128,1.0,16.0,0,17.65900135344402,17.667764627830792,17.682042890029038,56.55455120312502,True,2026-07-04T17:47:42.423833+00:00
+identity_baseline,identity,16,,512,0.0,0.0,0.0,0.6033063616071429,0.0,58720256,58720256,1.0,16.0,0,14.11542600597366,14.114851285222572,13.847401323254818,72.21571590624998,True,2026-07-04T17:48:21.077436+00:00

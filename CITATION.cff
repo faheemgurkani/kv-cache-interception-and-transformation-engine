@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use KVBench, please cite it as below."
+type: software
+title: "KVBench: Bridging Offline Fidelity and Online Inference Evaluation for KV Cache Compression in Small Language Models"
+abstract: >-
+  KVBench is a reproducible benchmarking framework for KV-cache compression on
+  small language models. It provides a unified interception engine, plug-in
+  compressors, and dual offline (Section A) / online (Section B) evaluation
+  metrics. Research manuscript in preparation.
+authors:
+  - family-names: Faheem
+    given-names: Muhammad
+    email: faheemgurkani@gmail.com
+repository-code: "https://github.com/faheemgurkani/kv-cache-compression-benchmark-"
+license: Apache-2.0
+keywords:
+  - KV cache compression
+  - small language models
+  - benchmarking
+  - offline fidelity
+  - online inference
+  - TurboQuant
+  - QJL
+  - RocketKV
+version: "0.1.0"
+date-released: "2026-08-01"
+preferred-citation:
+  type: software
+  authors:
+    - family-names: Faheem
+      given-names: Muhammad
+  title: "KVBench: Bridging Offline Fidelity and Online Inference Evaluation for KV Cache Compression in Small Language Models"
+  year: 2026
+  url: "https://github.com/faheemgurkani/kv-cache-compression-benchmark-"
+  notes: "Research manuscript in preparation"

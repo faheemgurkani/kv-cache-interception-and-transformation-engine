@@ -1,0 +1,22 @@
+{
+  "sweep_id": "olmo2_phase5_baseline",
+  "model_name": "allenai/OLMo-2-0425-1B",
+  "role": "shared_no_compression_baseline",
+  "completed_at_utc": "2026-08-02T19:37:51.246228+00:00",
+  "jobs_total": 3,
+  "jobs_ok": 3,
+  "jobs_error": 0,
+  "context_lengths": [
+    128,
+    256,
+    512
+  ],
+  "configs": [
+    "identity_baseline"
+  ],
+  "files": {
+    "jobs_dir": "jobs/",
+    "merged_csv": "olmo2_phase5_baseline_20260802T193751Z.csv",
+    "merged_json": "olmo2_phase5_baseline_20260802T193751Z.json"
+  }
+}

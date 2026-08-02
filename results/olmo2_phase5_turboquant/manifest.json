@@ -1,0 +1,25 @@
+{
+  "sweep_id": "olmo2_phase5_turboquant",
+  "model_name": "allenai/OLMo-2-0425-1B",
+  "role": "turboquant_sweep",
+  "completed_at_utc": "2026-08-02T19:37:51.266394+00:00",
+  "jobs_total": 12,
+  "jobs_ok": 12,
+  "jobs_error": 0,
+  "context_lengths": [
+    128,
+    256,
+    512
+  ],
+  "configs": [
+    "tq_full_b2",
+    "tq_full_b3",
+    "tq_full_b4",
+    "tq_mse_b4"
+  ],
+  "files": {
+    "jobs_dir": "jobs/",
+    "merged_csv": "olmo2_phase5_turboquant_20260802T193751Z.csv",
+    "merged_json": "olmo2_phase5_turboquant_20260802T193751Z.json"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "sweep_id": "olmo2_phase5_qjl",
+  "model_name": "allenai/OLMo-2-0425-1B",
+  "role": "qjl_sweep",
+  "completed_at_utc": "2026-08-02T19:37:51.270998+00:00",
+  "jobs_total": 3,
+  "jobs_ok": 3,
+  "jobs_error": 0,
+  "context_lengths": [
+    128,
+    256,
+    512
+  ],
+  "configs": [
+    "qjl_default"
+  ],
+  "files": {
+    "jobs_dir": "jobs/",
+    "merged_csv": "olmo2_phase5_qjl_20260802T193751Z.csv",
+    "merged_json": "olmo2_phase5_qjl_20260802T193751Z.json"
+  }
+}

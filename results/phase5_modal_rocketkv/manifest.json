@@ -1,0 +1,26 @@
+{
+  "sweep_id": "phase5_modal_rocketkv",
+  "method": "rocketkv",
+  "shared_baseline": "../phase5_modal_baseline/",
+  "modal_app_id": "ap-NH3Yv40wIlAi72wq5njPbb",
+  "modal_app_url": "https://modal.com/apps/faheemgurkani/main/ap-NH3Yv40wIlAi72wq5njPbb",
+  "completed_at_utc": "2026-07-05T20:25:50Z",
+  "jobs_total": 9,
+  "jobs_ok": 9,
+  "jobs_error": 0,
+  "context_lengths": [
+    128,
+    256,
+    512
+  ],
+  "configs": [
+    "rocketkv_r256",
+    "rocketkv_r512",
+    "rocketkv_r1024"
+  ],
+  "files": {
+    "jobs_dir": "jobs/",
+    "merged_csv": "phase5_modal_rocketkv_20260705T202549Z.csv",
+    "merged_json": "phase5_modal_rocketkv_20260705T202549Z.json"
+  }
+}

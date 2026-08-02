@@ -1,0 +1,24 @@
+{
+  "sweep_id": "olmo2_phase5_rocketkv",
+  "model_name": "allenai/OLMo-2-0425-1B",
+  "role": "rocketkv_sweep",
+  "completed_at_utc": "2026-08-02T19:37:51.277537+00:00",
+  "jobs_total": 9,
+  "jobs_ok": 9,
+  "jobs_error": 0,
+  "context_lengths": [
+    128,
+    256,
+    512
+  ],
+  "configs": [
+    "rocketkv_r256",
+    "rocketkv_r512",
+    "rocketkv_r1024"
+  ],
+  "files": {
+    "jobs_dir": "jobs/",
+    "merged_csv": "olmo2_phase5_rocketkv_20260802T193751Z.csv",
+    "merged_json": "olmo2_phase5_rocketkv_20260802T193751Z.json"
+  }
+}

@@ -1,11 +1,42 @@
-# OLMo 2 1B — Phase-5 Modal Evaluation Results
+# OLMo 2 1B — Complete Phase-5 Results, Metrics & Logs
 
-**Model:** `allenai/OLMo-2-0425-1B` (MHA 16/16, 16 layers, head_dim 128)
-**Generated (UTC):** 2026-08-02T19:37:51.207151+00:00
-**Jobs:** 27/27 ok (Identity 3 + TurboQuant 12 + QJL 3 + RocketKV 9)
-**Volumes:** `kv-engine-olmo2` / `kv-engine-results-olmo2`
-**Raw JSON:** `results/modal_volume_olmo2/`
-**Full report:** [`OLMO2_RESULTS_COMPLETE.md`](OLMO2_RESULTS_COMPLETE.md)
+**Generated (UTC):** 2026-08-02T19:37:51.206658+00:00
+**Model:** `allenai/OLMo-2-0425-1B` (`Olmo2ForCausalLM`, MHA 16/16, 16 layers, head_dim 128, FP16, eager attn)
+**Hardware:** Modal NVIDIA A10G
+**Dataset:** WikiText-2 test, batch=1, contexts `{128,256,512}`
+**Grid:** Identity×3 + TurboQuant×12 + QJL×3 + RocketKV×9 = **27/27 OK, 0 errors**
+**Volumes:** `kv-engine-olmo2` (weights), `kv-engine-results-olmo2` (job JSON)
+**Local raw:** `results/modal_volume_olmo2/`
+**Bundles:** `results/olmo2_phase5_{baseline,turboquant,qjl,rocketkv}/`
+**Inventory CSV:** `results/olmo2_phase5_inventory.csv`
+**Paper:** `docs/research_paper_writeup/conference_101719.tex` §\ref{sec:olmo2}
+
+## Completeness checklist
+
+| Check | Status |
+|---|---|
+| Remote Modal result files | 27 ok / 0 error |
+| Local fetched JSON | 27 |
+| Expected filename grid | 27/27 |
+| Section A (tensor/attn/memory) present | PASS |
+| Section B (PPL + throughput) present | PASS |
+| Per-layer attention (16 layers) | PASS |
+| Timestamps + model_name stamped | PASS |
+
+## Metric catalog (every job)
+
+### Section A — offline fidelity
+- `key_rmse`, `value_rmse` (tensor reconstruction)
+- Attention: `mse`, `rmse`, `cosine_similarity`, `max_error`, `per_layer[16]`
+- Memory: `uncompressed_bytes`, `compressed_bytes`, `shared_metadata_bytes`, `compression_ratio`, `effective_bits_per_kv_element`, `process_memory_mb`
+
+### Section B — online inference
+- `perplexity`, `perplexity_baseline` (sliding-window WikiText-2)
+- Throughput: `tokens_per_second`, `latency_ms_per_token`, `generated_tokens` (=64), `elapsed_seconds`, `online_compressed_kv`
+
+### Job metadata / logs
+- `label`, `compressor`, `bitwidth`, `stage`, `context_length`, `job` kwargs
+- `model_name`, `model_path`, `started_at`, `finished_at`, `status`
 
 ## Master results table (all 27 jobs)
 
@@ -98,9 +129,18 @@
 | RocketKV B=512 | 8.31 | 1.00 | 1.00 | 13.89 | 0.994 |
 | RocketKV B=1024 | 8.31 | 1.00 | 1.00 | 23.84 | 0.994 |
 
-## See also
+## Artifact index
 
-- Full metrics + run logs: [`OLMO2_RESULTS_COMPLETE.md`](OLMO2_RESULTS_COMPLETE.md)
-- Architecture probe: [`OLMO2_ARCHITECTURE_PROBE.md`](OLMO2_ARCHITECTURE_PROBE.md)
-- Paper: `research_paper_writeup/conference_101719.tex` (§OLMo~2 1B Replication)
+| Path | Contents |
+|---|---|
+| `results/modal_volume_olmo2/*.json` | Per-job raw Modal outputs (27) |
+| `results/olmo2_phase5_baseline/` | Identity merged CSV/JSON + jobs/ + manifest |
+| `results/olmo2_phase5_turboquant/` | TurboQuant merged CSV/JSON + jobs/ + manifest |
+| `results/olmo2_phase5_qjl/` | QJL merged CSV/JSON + jobs/ + manifest |
+| `results/olmo2_phase5_rocketkv/` | RocketKV merged CSV/JSON + jobs/ + manifest |
+| `results/olmo2_phase5_summary.json` | Compact numeric summary for paper sync |
+| `results/olmo2_phase5_inventory.csv` | Flat KPI inventory (all metrics) |
+| `docs/OLMO2_ARCHITECTURE_PROBE.md` | Architecture coupling notes |
+| `docs/OLMO2_PHASE5_EVAL_RESULTS.md` | Condensed tables |
+| `docs/research_paper_writeup/conference_101719.tex` | IEEE tables §OLMo~2 |
 

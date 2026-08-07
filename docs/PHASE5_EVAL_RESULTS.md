@@ -40,6 +40,8 @@ Baseline PPL at each ctx: 14.21 / 17.66 / 14.11.
 
 Post-fix: asymmetric QJL attention estimator online + per-query-head GQA scoring.
 
+**Aug 2026 estimator note:** Code now uses literature ProdQJL (float `S q`, sign only on keys). QJL numbers in this file were measured with the older both-sides-signed estimator and need a re-sweep.
+
 | ctx | compress | attn cos | PPL | tok/s |
 |---:|---:|---:|---:|---:|
 | 128 | 1.84× | 0.628 | 42.5M | 0.85 |

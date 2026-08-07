@@ -1,4 +1,4 @@
-"""QJL online inference: asymmetric attention estimator (no key reconstruction)."""
+"""QJL online inference: literature ProdQJL attention (float Sq, signed keys only)."""
 
 from __future__ import annotations
 

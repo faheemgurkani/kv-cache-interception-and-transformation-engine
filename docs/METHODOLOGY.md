@@ -136,13 +136,13 @@ Reconstruct \( \hat{k} = \frac{\sqrt{\pi/2}}{m} S^\top b \cdot \|k\| \).
 
 ### 4.3 Asymmetric attention estimator (Section A + online Section B)
 
-Do **not** decompress keys for attention. Estimate dot products:
+Do **not** decompress keys for attention. Use the literature ProdQJL estimator (Zandieh et al., Def. 3.1 / Eq. 4):
 
 \[
-q \cdot k \approx \frac{\sqrt{\pi/2}}{m} \|k\| \cdot \langle S_q, \mathrm{sign}(Sk) \rangle
+q \cdot k \approx \frac{\sqrt{\pi/2}}{m} \|k\|_2 \cdot \langle S q,\, \mathrm{sign}(S k) \rangle
 \]
 
-where \( S_q = \mathrm{sign}(S q) \) element-wise.
+where \( S q \in \mathbb{R}^m \) is the **float** JL projection of the query (never sign-quantized). Only the key sketch is binarized. Signing both sides estimates angle, not an unbiased inner product, and is therefore incorrect for attention.
 
 **GQA:** Scores computed **per query head**; each query head maps to its KV head group (`qi // group`). Query heads within a GQA group are **not** averaged (earlier bug fix).
 

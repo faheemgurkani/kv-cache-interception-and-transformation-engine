@@ -119,7 +119,12 @@ class QJLPipeline:
         proj: torch.Tensor,
         num_kv_heads: int,
     ) -> torch.Tensor:
-        """Core asymmetric estimator with per-query-head GQA mapping."""
+        """Literature QJL ProdQJL estimator with per-query-head GQA mapping.
+
+        Only keys are sign-quantized. The query projection ``Sq = S @ q`` stays
+        in floating point (Zandieh et al., Def. 3.1 / Eq. 4). Signing both sides
+        would estimate angle rather than an unbiased inner product.
+        """
         q = query.float()
         num_q = q.shape[1]
         group = 1 if num_q == num_kv_heads else num_q // num_kv_heads
@@ -130,7 +135,8 @@ class QJLPipeline:
         for qi in range(num_q):
             kv = qi // group
             q_h = q[:, qi, :, :]
-            sq = torch.where(torch.einsum("md,btd->btm", proj, q_h) >= 0, 1.0, -1.0)
+            # Float JL projection of the query — do NOT sign-quantize Sq.
+            sq = torch.einsum("md,btd->btm", proj, q_h)
             k_signs = sign_bits[:, kv, :, :]
             k_norms = vector_norm[:, kv, :]
             dots = torch.einsum("btm,bkm->btk", sq, k_signs)
@@ -145,7 +151,9 @@ class QJLPipeline:
         """
         Asymmetric QJL estimator for q · k without reconstructing k.
 
-        q · k ≈ sqrt(pi/2) * (||k|| / m) * <Sq, sign(Sk)>
+        ProdQJL(q, k) = sqrt(pi/2) / m * ||k||_2 * <S q, sign(S k)>
+
+        ``S q`` is kept as a float vector; only ``sign(S k)`` is binary.
 
         Returns scores of shape [B, H_q, Tq, Tk].
         """

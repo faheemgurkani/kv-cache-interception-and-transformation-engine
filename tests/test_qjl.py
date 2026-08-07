@@ -79,6 +79,77 @@ def test_qjl_attention_estimator_shape_and_correlation():
     assert corr > 0.2
 
 
+def test_qjl_estimator_keeps_query_projection_float():
+    """ProdQJL: float Sq = S@q, binary only on keys (literature Def. 3.1 / Eq. 4)."""
+    from quantizers.qjl_pipeline import QJLPipeline
+
+    torch.manual_seed(0)
+    d, m = 32, 64
+    pipeline = QJLPipeline(seed=7, proj_dim=m)
+    proj = pipeline._get_projection(d, torch.device("cpu"))
+    assert proj.shape == (m, d)
+
+    q = torch.randn(1, 1, 1, d)
+    k = torch.randn(1, 1, 3, d)
+    payload = pipeline.compress_tensor(k, mode="key")
+
+    # Manual literature estimator
+    sq = torch.einsum("md,btd->btm", proj, q[:, 0].float())  # float, not signed
+    assert sq.abs().amax() > 1.0 + 1e-5  # would be ±1 if signed
+    bk = payload.sign_bits.float()
+    norms = payload.vector_norm.squeeze(-1)
+    scale = math.sqrt(math.pi / 2.0) / m
+    manual = scale * torch.einsum("btm,bkm->btk", sq, bk[:, 0]) * norms[:, 0].unsqueeze(1)
+
+    got = pipeline.estimate_inner_products(q, payload)[:, 0]
+    assert torch.allclose(got, manual, atol=1e-5)
+
+    # Signing both sides is a different (biased) estimator — must not match code.
+    sq_signed = torch.where(sq >= 0, 1.0, -1.0)
+    both_signed = scale * torch.einsum("btm,bkm->btk", sq_signed, bk[:, 0]) * norms[:, 0].unsqueeze(1)
+    assert not torch.allclose(got, both_signed, atol=1e-4)
+
+
+def test_qjl_float_sq_lower_mae_than_both_signed():
+    """Float-Sq ProdQJL should track q·k better than signing both vectors."""
+    from quantizers.qjl_pipeline import QJLPipeline
+
+    torch.manual_seed(123)
+    d, m, n = 64, 128, 200
+    pipeline = QJLPipeline(seed=11, proj_dim=m)
+    proj = pipeline._get_projection(d, torch.device("cpu"))
+    scale = math.sqrt(math.pi / 2.0) / m
+
+    true_dots = []
+    float_sq_errs = []
+    both_signed_errs = []
+    for _ in range(n):
+        q = torch.randn(d)
+        k = torch.randn(d)
+        kn = k.norm().clamp(min=1e-8)
+        sq = proj @ q
+        bk = torch.where((proj @ k) >= 0, 1.0, -1.0)
+        est_float = scale * kn * torch.dot(sq, bk)
+        est_both = scale * kn * torch.dot(torch.where(sq >= 0, 1.0, -1.0), bk)
+        true = torch.dot(q, k)
+        true_dots.append(true.item())
+        float_sq_errs.append(abs(est_float.item() - true.item()))
+        both_signed_errs.append(abs(est_both.item() - true.item()))
+
+    mae_float = sum(float_sq_errs) / n
+    mae_both = sum(both_signed_errs) / n
+    # Unbiased ProdQJL must beat angle-style both-signed hashing on MAE.
+    assert mae_float < mae_both
+    # Also check the pipeline path against true dots on a batched case.
+    q_b = torch.randn(1, 2, 1, d)
+    k_b = torch.randn(1, 2, 8, d)
+    payload = pipeline.compress_tensor(k_b, mode="key")
+    est = pipeline.estimate_inner_products(q_b, payload)
+    true_b = torch.einsum("bhqd,bhkd->bhqk", q_b.float(), k_b.float())
+    corr = torch.corrcoef(torch.stack([est.flatten(), true_b.flatten()]))[0, 1]
+    assert corr > 0.5
+
+
 def test_qjl_attention_fidelity_uses_estimator():
     compressor = QJLCompressor()
     query = torch.randn(1, 8, 4, 128)

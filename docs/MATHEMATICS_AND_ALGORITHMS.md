@@ -142,22 +142,24 @@ Store \(\|k\|_2\) separately.
 
 Implementation: `qjl.py::qjl_decode`.
 
-### 4.4 Asymmetric inner-product estimator
+### 4.4 Asymmetric inner-product estimator (literature ProdQJL)
 
-For query \(q\) and compressed key \((b_k, \|k\|)\):
+For query \(q\) and compressed key \((b_k, \|k\|_2)\), keep the query projection in floating point and sign-quantize **only** the key (Zandieh et al., Def. 3.1 / Eq. 4):
 
 \[
-S_q = \mathrm{sign}(Sq)
+Sq = S q \in \mathbb{R}^m \quad \text{(float; not sign-quantized)}
 \]
 
 \[
-q \cdot k \approx \frac{\sqrt{\pi/2}}{m} \|k\| \cdot (S_q^\top b_k)
+q \cdot k \approx \frac{\sqrt{\pi/2}}{m} \|k\|_2 \cdot \langle Sq,\, b_k \rangle
 \]
+
+Signing both \(Sq\) and \(Sk\) estimates angle rather than an unbiased inner product and is **not** used.
 
 **Per query head** (GQA index \( \text{kv} = \lfloor \text{qi} / \text{group} \rfloor \)):
 
 \[
-\hat{A}_{b,h_q,t,t'} = \frac{1}{\sqrt{d}} \cdot \frac{\sqrt{\pi/2}}{m} \|k_{t'}\| \cdot \langle S_q^{(h_q,t)}, b_k^{(\text{kv},t')} \rangle
+\hat{A}_{b,h_q,t,t'} = \frac{1}{\sqrt{d}} \cdot \frac{\sqrt{\pi/2}}{m} \|k_{t'}\|_2 \cdot \langle (S q^{(h_q,t)}),\, b_k^{(\text{kv},t')} \rangle
 \]
 
 Implementation: `QJLPipeline._estimate_from_signs`, `estimate_attention_scores`.
@@ -168,7 +170,7 @@ Implementation: `QJLPipeline._estimate_from_signs`, `estimate_attention_scores`.
 QJL_ATTENTION(Q, compressed_keys, S):
   for each query head h_q:
     kv ← MAP_GQA(h_q)
-    Sq ← sign(S @ q[h_q])
+    Sq ← S @ q[h_q]          # float JL projection (do NOT sign)
     for each key position t':
       score[h_q,t,t'] ← (sqrt(π/2)/m) * ||k[t']|| * dot(Sq[t], sign_bits[kv,t'])
   return score / sqrt(d)

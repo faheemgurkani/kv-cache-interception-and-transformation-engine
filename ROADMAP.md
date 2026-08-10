@@ -1,6 +1,6 @@
-# KVBench Roadmap
+# Roadmap — KV Cache Interception and Transformation Engine
 
-Research manuscript in preparation. This roadmap lists planned extensions; ordering may change as the evaluation study evolves.
+Research manuscript (**KVBench**) in preparation. This roadmap lists planned extensions to the engine and evaluation grid; ordering may change as the study evolves.
 
 ## Near term
 

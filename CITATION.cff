@@ -4,9 +4,10 @@ type: software
 title: "KVBench: Bridging Offline Fidelity and Online Inference Evaluation for KV Cache Compression in Small Language Models"
 abstract: >-
   KVBench is a reproducible benchmarking framework for KV-cache compression on
-  small language models. It provides a unified interception engine, plug-in
-  compressors, and dual offline (Section A) / online (Section B) evaluation
-  metrics. Research manuscript in preparation.
+  small language models. It is implemented as the KV Cache Interception and
+  Transformation Engine: a unified interception stack, plug-in compressors, and
+  dual offline (Section A) / online (Section B) evaluation metrics. Research
+  manuscript in preparation.
 authors:
   - family-names: Faheem
     given-names: Muhammad

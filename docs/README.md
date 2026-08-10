@@ -1,6 +1,8 @@
 # Documentation
 
-Public documentation for **KVBench** (Apache-2.0). Research manuscript in preparation — see the root [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [CONTRIBUTING.md](../CONTRIBUTING.md).
+Public documentation for the **KV Cache Interception and Transformation Engine** (Apache-2.0). The reproducible benchmarking protocol and case-study write-up are branded **KVBench** (research manuscript in preparation — see [conference_101719.tex](research_paper_writeup/conference_101719.tex)).
+
+See also the root [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 | Doc | Purpose |
 |---|---|

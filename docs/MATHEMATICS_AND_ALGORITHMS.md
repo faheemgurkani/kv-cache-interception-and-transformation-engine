@@ -1,6 +1,6 @@
 # Mathematics and Algorithms
 
-Formal definitions for the KV interception engine, compression methods, and evaluation metrics. Symbols match the implementation in `quantizers/` and `eval/`.
+Formal definitions for the **KV Cache Interception and Transformation Engine**, its compression methods, and evaluation metrics. Symbols match the implementation in `quantizers/` and `eval/`.
 
 Methodology context: [METHODOLOGY.md](METHODOLOGY.md)
 

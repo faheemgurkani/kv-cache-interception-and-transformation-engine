@@ -1,6 +1,6 @@
 # Phase 5 Evaluation Results
 
-Case-study numbers for the **KV-Cache Interception and Transformation Engine** on Qwen3-1.7B. Methods are compared under one pipeline — not as standalone paper reproductions.
+Case-study numbers for the **KV Cache Interception and Transformation Engine** on Qwen3-1.7B. Methods are compared under one pipeline — not as standalone paper reproductions.
 
 Qwen3-1.7B · WikiText-2 test · ctx **128 / 256 / 512** · Modal A10G · July 2026 (post-fix sweeps).
 

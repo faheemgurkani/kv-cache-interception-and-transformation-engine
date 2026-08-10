@@ -1,6 +1,6 @@
 # Reproducibility Guide
 
-How to reproduce the **KV-Cache Interception and Transformation Engine** evaluations from scratch — locally (smoke / dev) or on Modal (full Phase 5 sweeps).
+How to reproduce **KV Cache Interception and Transformation Engine** evaluations from scratch — locally (smoke / dev) or on Modal (full Phase 5 sweeps).
 
 Related: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) · [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) · [MODAL_GPU_EVAL_DESIGN.md](MODAL_GPU_EVAL_DESIGN.md)
 

@@ -1,4 +1,4 @@
-# OLMo 2 1B — architecture probe (KVBench)
+# OLMo 2 1B — architecture probe (KV Cache Interception and Transformation Engine)
 
 **Model:** `allenai/OLMo-2-0425-1B` → `models/olmo2_1b`  
 **Status:** Wired for Phase-5 Modal sweeps (Identity / TurboQuant / QJL / RocketKV × ctx 128/256/512).

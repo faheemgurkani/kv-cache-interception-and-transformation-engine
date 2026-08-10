@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-If you discover a security issue in KVBench (for example, accidental secret handling, unsafe deserialization of result payloads, or supply-chain concerns in scripts), please **do not** open a public GitHub issue with exploit details.
+If you discover a security issue in this repository (the KV Cache Interception and Transformation Engine / KVBench codebase — for example, accidental secret handling, unsafe deserialization of result payloads, or supply-chain concerns in scripts), please **do not** open a public GitHub issue with exploit details.
 
 Email the maintainer at **faheemgurkani@gmail.com** with:
 

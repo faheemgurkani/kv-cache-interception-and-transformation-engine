@@ -1,6 +1,6 @@
 # Results
 
-Published **summary** evaluation bundles for KVBench Phase-5 sweeps live here.
+Published **summary** evaluation bundles for the KV Cache Interception and Transformation Engine (KVBench Phase-5 sweeps) live here.
 
 | Path | Contents |
 |---|---|

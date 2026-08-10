@@ -1,6 +1,6 @@
-# Contributing to KVBench
+# Contributing to the KV Cache Interception and Transformation Engine
 
-Thank you for your interest in KVBench. This project is an open evaluation framework for KV-cache compression on small language models. A research manuscript is in preparation; community contributions that strengthen the framework are welcome.
+Thank you for your interest in this project. The repository implements a unified KV interception and transformation engine with plug-in compressors and dual Section A/B evaluation. The reproducible benchmarking study is published under the name **KVBench** (research manuscript in preparation). Community contributions that strengthen the engine or evaluations are welcome.
 
 ## Ways to contribute
 

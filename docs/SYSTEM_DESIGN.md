@@ -1,4 +1,4 @@
-# System Design — KV-Cache Interception and Transformation Engine
+# System Design — KV Cache Interception and Transformation Engine
 
 **Purpose:** compression task analysis and benchmarking. Fixed model + eval stack; **only `compressors/` changes per method.**
 

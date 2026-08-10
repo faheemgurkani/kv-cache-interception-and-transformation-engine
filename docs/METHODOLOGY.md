@@ -1,6 +1,6 @@
 # Methodology
 
-Complete methodology for the **KV-Cache Interception and Transformation Engine**: system architecture, compression plug-ins, online inference paths, and evaluation protocol. Verified against the implementation in `framework/`, `compressors/`, `quantizers/`, and `eval/`.
+Complete methodology for the **KV Cache Interception and Transformation Engine**: system architecture, compression plug-ins, online inference paths, and evaluation protocol. Verified against the implementation in `framework/`, `compressors/`, `quantizers/`, and `eval/`.
 
 Equations: [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) · Results: [RESULTS_COMPLETE.md](RESULTS_COMPLETE.md) · Reproduce: [REPRODUCIBILITY.md](REPRODUCIBILITY.md)
 

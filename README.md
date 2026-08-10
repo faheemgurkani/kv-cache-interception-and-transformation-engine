@@ -1,23 +1,25 @@
-# KVBench
+# KV Cache Interception and Transformation Engine
 
-**A unified online and offline evaluation framework for KV-cache compression in small language models (SLMs).**
+**A unified interception engine and dual-metric evaluation stack for KV-cache compression in small language models (SLMs).**
+
+This repository implements the **KV Cache Interception and Transformation Engine**: it intercepts K/V tensors at the decode boundary, transforms them through interchangeable compression plug-ins, and measures both offline fidelity and online generation quality under incremental decode. The reproducible benchmarking protocol and case-study results are published under the name **[KVBench](docs/research_paper_writeup/conference_101719.tex)** (research manuscript in preparation).
 
 ```text
 Model (fixed) → KVCacheEngine (fixed) → KVCompressor (variable) → eval/ (fixed)
 ```
 
-KVBench is a reproducible **benchmarking and evaluation framework**, not a single-algorithm reproduction. It fixes the model, incremental decode loop, and metrics while exposing KV-cache compressors as interchangeable plug-ins, and always reports:
+The engine is **not** a single-algorithm reproduction. It fixes the model, incremental decode loop, and metrics while exposing KV-cache compressors as interchangeable plug-ins, and always reports:
 
 - **Section A (offline fidelity):** tensor RMSE, attention-score preservation, memory accounting  
 - **Section B (online inference):** sliding-window perplexity and throughput with compressed KV in the autoregressive loop  
 
 **License:** [Apache-2.0](LICENSE) · **Status:** research manuscript in preparation · **Contributions:** welcome ([CONTRIBUTING.md](CONTRIBUTING.md)) · **Roadmap:** [ROADMAP.md](ROADMAP.md)
 
-> Research manuscript in preparation. We welcome contributions that improve the framework, expand evaluations, or add new KV-compression methods. Significant research contributions may be considered for co-authorship in accordance with academic authorship standards.
+> We welcome contributions that improve the engine, expand evaluations, or add new KV-compression methods. Significant research contributions may be considered for co-authorship in accordance with academic authorship standards.
 
-## Why KVBench?
+## Why this project?
 
-Published KV-compression methods are hard to compare: protocols differ, and offline tensor/attention metrics often fail to predict online decode quality. KVBench makes that gap measurable under one incremental engine on resource-constrained SLMs (~1B-scale), where full factorial sweeps are feasible on a single GPU.
+Published KV-compression methods are hard to compare: protocols differ, and offline tensor/attention metrics often fail to predict online decode quality. The interception-and-transformation engine makes that gap measurable under one incremental loop on resource-constrained SLMs (~1B-scale), where full factorial sweeps are feasible on a single GPU. **KVBench** is the name we use for this standardized evaluation framework and its empirical study.
 
 ## Main results @ context length 512
 
@@ -129,10 +131,11 @@ Record `git rev-parse HEAD` when citing results. Use `--no-resume` on Modal afte
 | [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) | Reproduction guide |
 | [MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md) | Modal runbook |
 | [ROADMAP.md](ROADMAP.md) | Planned work |
+| [research paper write-up](docs/research_paper_writeup/conference_101719.tex) | KVBench manuscript (title unchanged) |
 
 ## Citation
 
-If you use KVBench in research, please cite this repository (see [CITATION.cff](CITATION.cff)):
+If you use this engine or the KVBench evaluation study in research, please cite the repository (see [CITATION.cff](CITATION.cff)):
 
 ```bibtex
 @software{kvbench2026,
@@ -140,7 +143,7 @@ If you use KVBench in research, please cite this repository (see [CITATION.cff](
   title  = {{KVBench}: Bridging Offline Fidelity and Online Inference Evaluation for {KV} Cache Compression in Small Language Models},
   year   = {2026},
   url    = {https://github.com/faheemgurkani/kv-cache-compression-benchmark-},
-  note   = {Research manuscript in preparation}
+  note   = {Implementation: KV Cache Interception and Transformation Engine. Research manuscript in preparation.}
 }
 ```
 

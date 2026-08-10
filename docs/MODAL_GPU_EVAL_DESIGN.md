@@ -1,6 +1,6 @@
 # Modal GPU Evaluation
 
-CUDA sweeps for the **KV-Cache Interception and Transformation Engine** on [Modal](https://modal.com). Same eval code as local; only device and orchestration differ.
+CUDA sweeps for the **KV Cache Interception and Transformation Engine** on [Modal](https://modal.com). Same eval code as local; only device and orchestration differ.
 
 Overview: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) · Results: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) · Reproducibility: [REPRODUCIBILITY.md](REPRODUCIBILITY.md)
 

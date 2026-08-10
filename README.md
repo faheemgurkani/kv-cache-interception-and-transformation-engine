@@ -27,7 +27,7 @@ Published KV-compression methods are hard to compare: protocols differ, and offl
 |---|---|---:|---:|---:|---:|
 | Identity | — | 14.11 | 1.0× | 1.0× | 13.85 |
 | TurboQuant | `tq_full_b4` | 18.6 | **1.3×** | **3.1×** | 0.08 |
-| QJL | `qjl_default` | ~1e8 | ≫1 | 1.9× | 0.27 |
+| QJL | `qjl_default` | ~2.2e5 | ≫1 | 1.9× | 0.36 |
 | RocketKV | `rocketkv_r256` | ~6.8e6 | ≫1 | 2.0× | 9.25 |
 
 ### OLMo 2 1B (MHA) · same protocol
@@ -36,7 +36,7 @@ Published KV-compression methods are hard to compare: protocols differ, and offl
 |---|---|---:|---:|---:|---:|
 | Identity | — | 8.31 | 1.0× | 1.0× | 22.49 |
 | TurboQuant | `tq_full_b4` | 8.51 | **1.02×** | **3.12×** | 0.14 |
-| QJL | `qjl_default` | 873 | 105× | 1.85× | 0.36 |
+| QJL | `qjl_default` | 359 | 43× | 1.85× | 0.58 |
 | RocketKV | `rocketkv_r256` | 8.77 | **1.05×** | **1.99×** | 14.76 |
 
 **Takeaway:** offline fidelity does **not** predict online quality, and rankings can flip across attention layouts (GQA vs MHA). Full tables: [docs/PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md), [docs/OLMO2_RESULTS_COMPLETE.md](docs/OLMO2_RESULTS_COMPLETE.md).

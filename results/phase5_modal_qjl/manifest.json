@@ -1,10 +1,11 @@
 {
   "sweep_id": "phase5_modal_qjl",
   "method": "qjl",
-  "shared_baseline": "../phase5_modal_baseline/",
-  "modal_app_id": "ap-LDOu0QHLjrRrwtZriSfh9d",
-  "modal_app_url": "https://modal.com/apps/faheemgurkani/main/ap-LDOu0QHLjrRrwtZriSfh9d",
-  "completed_at_utc": "2026-07-05T20:25:32Z",
+  "estimator": "prodqjl_float_sq",
+  "modal_profile": "i220485",
+  "modal_app_id": "ap-ibFSyIyzccDZgZImhlgD27",
+  "modal_app_url": "https://modal.com/apps/i220485/main/ap-ibFSyIyzccDZgZImhlgD27",
+  "completed_at_utc": "2026-08-10T14:41:24Z",
   "jobs_total": 3,
   "jobs_ok": 3,
   "jobs_error": 0,
@@ -18,7 +19,9 @@
   ],
   "files": {
     "jobs_dir": "jobs/",
-    "merged_csv": "phase5_modal_qjl_20260705T202532Z.csv",
-    "merged_json": "phase5_modal_qjl_20260705T202532Z.json"
-  }
+    "merged_csv": "phase5_modal_qjl_20260810T144126Z.csv",
+    "merged_json": "phase5_modal_qjl_20260810T144126Z.json"
+  },
+  "notes": "ProdQJL re-run (float S@q; sign-quantize keys only). Supersedes pre-fix both-sides-signed sweeps.",
+  "shared_baseline": "../phase5_modal_baseline/"
 }

@@ -68,8 +68,10 @@ results/*
 !results/olmo2_phase5_baseline/**
 !results/olmo2_phase5_turboquant/
 !results/olmo2_phase5_turboquant/**
-!results/olmo2_phase5_qjl/
-!results/olmo2_phase5_qjl/**
+!results/phase5_modal_qjl_prodqjl/
+!results/phase5_modal_qjl_prodqjl/**
+!results/olmo2_phase5_qjl_prodqjl/
+!results/olmo2_phase5_qjl_prodqjl/**
 !results/olmo2_phase5_rocketkv/
 !results/olmo2_phase5_rocketkv/**
 !results/olmo2_phase5_summary.json

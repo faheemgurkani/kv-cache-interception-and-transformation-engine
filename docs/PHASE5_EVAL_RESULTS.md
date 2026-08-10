@@ -20,7 +20,7 @@ Raw JSON/CSV: `results/` (gitignored). **Full tables (every stat + per-layer + l
 |---|---|---:|---:|---:|---:|
 | Identity | — | 14.11 | 1.0× | 1.0× | 13.85 |
 | TurboQuant | `tq_full_b4` | 18.6 | 1.3× | 3.1× | 0.08 |
-| QJL | `qjl_default` | 101M | ~7.2M× | 1.9× | 0.27 |
+| QJL | `qjl_default` | 219K | ~15.5k× | 1.9× | 0.36 |
 | RocketKV | `rocketkv_r256` | 6.76M | ~479k× | 2.0× | 9.25 |
 
 ## TurboQuant — perplexity (Section B)
@@ -38,19 +38,17 @@ Baseline PPL at each ctx: 14.21 / 17.66 / 14.11.
 
 ## QJL (`qjl_default`)
 
-Post-fix: asymmetric QJL attention estimator online + per-query-head GQA scoring.
-
-**Aug 2026 estimator note:** Code now uses literature ProdQJL (float `S q`, sign only on keys). QJL numbers in this file were measured with the older both-sides-signed estimator and need a re-sweep.
+Literature ProdQJL online estimator (float `S q`, sign only on keys) + per-query-head GQA scoring. Re-swept August 2026 on Modal profile `i220485`.
 
 | ctx | compress | attn cos | PPL | tok/s |
 |---:|---:|---:|---:|---:|
-| 128 | 1.84× | 0.628 | 42.5M | 0.85 |
-| 256 | 1.85× | 0.546 | 72.9M | 0.65 |
-| 512 | 1.85× | 0.411 | 101M | 0.27 |
+| 128 | 1.84× | 0.647 | 178K | 1.08 |
+| 256 | 1.85× | 0.617 | 275K | 0.66 |
+| 512 | 1.85× | 0.597 | 219K | 0.36 |
 
-Key RMSE ~6.7–6.9; attn RMSE ~44–50. High PPL reflects 1-bit key signs on Qwen3-1.7B under this pipeline, not a decompress-vs-estimator mismatch.
+Key RMSE ~6.7–6.9; attn RMSE ~7.6–8.0. PPL remains orders of magnitude above baseline under 1-bit key signs on Qwen3-1.7B GQA.
 
-Source: `results/phase5_modal_qjl/phase5_modal_qjl_20260705T202532Z.csv`
+Source: `results/phase5_modal_qjl/phase5_modal_qjl_20260810T144126Z.csv` · bundle: `results/phase5_modal_qjl_prodqjl/`
 
 ## RocketKV
 
@@ -69,7 +67,7 @@ Source: `results/phase5_modal_rocketkv/phase5_modal_rocketkv_20260705T202549Z.cs
 ## Findings (framework lens)
 
 - **TurboQuant 4-bit** is the only method with paper-plausible quality (~1.3× baseline PPL, ~3× memory) at ctx≥256 in this pipeline; online inference is very slow.
-- **QJL** saves ~1.9× memory with faithful online estimator; attn cosine 0.41–0.63 but PPL remains catastrophic vs baseline.
+- **QJL** saves ~1.9× memory with literature ProdQJL estimator; attn cosine 0.60–0.65 but PPL remains catastrophic vs baseline ($\sim$10$^5$ vs $\sim$14).
 - **RocketKV** preserves near-baseline throughput but PPL stays in the millions even with largest budgets; smallest budget (`r256`) yields best PPL at ctx=512.
 - These results illustrate **what the framework exposes**, not final claims about each upstream paper.
 

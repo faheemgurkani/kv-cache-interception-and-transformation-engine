@@ -1,0 +1,21 @@
+{
+  "sweep_id": "olmo2_phase5_qjl_prodqjl",
+  "method": "qjl",
+  "estimator": "prodqjl_float_sq",
+  "modal_profile": "i220485",
+  "modal_app_id": "ap-JKKIiWZ5AgH6P6RQ9sEkhy",
+  "modal_app_url": "https://modal.com/apps/i220485/main/ap-JKKIiWZ5AgH6P6RQ9sEkhy",
+  "completed_at_utc": "2026-08-10T14:51:57Z",
+  "jobs_total": 3,
+  "jobs_ok": 3,
+  "jobs_error": 0,
+  "context_lengths": [128, 256, 512],
+  "configs": ["qjl_default"],
+  "files": {
+    "jobs_dir": "jobs/",
+    "merged_csv": "olmo2_phase5_qjl_prodqjl_20260810T145158Z.csv",
+    "merged_json": "olmo2_phase5_qjl_prodqjl_20260810T145158Z.json",
+    "rerun_log": "logs/qjl_prodqjl_rerun.log"
+  },
+  "notes": "ProdQJL re-run (float S@q; sign-quantize keys only). Supersedes pre-fix both-sides-signed QJL sweeps."
+}

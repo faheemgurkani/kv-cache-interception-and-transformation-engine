@@ -1,8 +1,11 @@
 {
   "sweep_id": "olmo2_phase5_qjl",
-  "model_name": "allenai/OLMo-2-0425-1B",
-  "role": "qjl_sweep",
-  "completed_at_utc": "2026-08-02T19:37:51.270998+00:00",
+  "method": "qjl",
+  "estimator": "prodqjl_float_sq",
+  "modal_profile": "i220485",
+  "modal_app_id": "ap-JKKIiWZ5AgH6P6RQ9sEkhy",
+  "modal_app_url": "https://modal.com/apps/i220485/main/ap-JKKIiWZ5AgH6P6RQ9sEkhy",
+  "completed_at_utc": "2026-08-10T14:51:57Z",
   "jobs_total": 3,
   "jobs_ok": 3,
   "jobs_error": 0,
@@ -16,7 +19,9 @@
   ],
   "files": {
     "jobs_dir": "jobs/",
-    "merged_csv": "olmo2_phase5_qjl_20260802T193751Z.csv",
-    "merged_json": "olmo2_phase5_qjl_20260802T193751Z.json"
-  }
+    "merged_csv": "olmo2_phase5_qjl_20260810T145158Z.csv",
+    "merged_json": "olmo2_phase5_qjl_20260810T145158Z.json"
+  },
+  "notes": "ProdQJL re-run (float S@q; sign-quantize keys only). Supersedes pre-fix both-sides-signed sweeps.",
+  "shared_baseline": "../olmo2_phase5_baseline/"
 }

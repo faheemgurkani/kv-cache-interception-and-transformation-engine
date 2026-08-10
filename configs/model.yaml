@@ -1,5 +1,5 @@
-model_name: Qwen/Qwen3-1.7B
-local_path: models/qwen3_1.7b
+model_name: allenai/OLMo-2-0425-1B
+local_path: models/olmo2_1b
 
 context_lengths:
   - 128

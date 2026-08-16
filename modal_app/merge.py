@@ -10,13 +10,33 @@ from typing import Any
 
 
 def flatten_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    """Flatten EvaluationResult.to_dict() structure for CSV export."""
-    section_a = payload.get("section_a_fidelity") or {}
-    section_b = payload.get("section_b_inference") or {}
-    tensor = section_a.get("tensor") or {}
-    attention = section_a.get("attention") or {}
-    memory = section_a.get("memory") or {}
-    throughput = section_b.get("throughput") or {}
+    """Flatten EvaluationResult.to_dict() structure for CSV export.
+
+    Supports both the current FIDELITY/BEHAVIOR/SYSTEM payload shape and the legacy
+    section_a_fidelity/section_b_inference shape still present in older results/
+    bundles on disk, so both can be merged into one CSV.
+    """
+    is_legacy = "section_a_fidelity" in payload
+    if is_legacy:
+        fidelity = payload.get("section_a_fidelity") or {}
+        behavior = payload.get("section_b_inference") or {}
+        representation = fidelity.get("tensor") or {}
+        attention = fidelity.get("attention") or {}
+        memory = fidelity.get("memory") or {}
+        throughput = behavior.get("throughput") or {}
+        perplexity = behavior.get("perplexity")
+        perplexity_baseline = behavior.get("perplexity_baseline")
+    else:
+        fidelity = payload.get("fidelity") or {}
+        behavior = payload.get("behavior") or {}
+        system = payload.get("system") or {}
+        representation = fidelity.get("representation") or {}
+        attention = fidelity.get("attention") or {}
+        memory = fidelity.get("memory") or {}
+        throughput = system.get("latency_throughput") or {}
+        task_quality = behavior.get("task_quality") or {}
+        perplexity = task_quality.get("perplexity")
+        perplexity_baseline = task_quality.get("perplexity_baseline")
 
     return {
         "label": payload.get("label"),
@@ -24,8 +44,8 @@ def flatten_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "bitwidth": payload.get("bitwidth"),
         "stage": payload.get("stage"),
         "context_length": payload.get("context_length"),
-        "key_rmse": tensor.get("key_rmse"),
-        "value_rmse": tensor.get("value_rmse"),
+        "key_rmse": representation.get("key_rmse"),
+        "value_rmse": representation.get("value_rmse"),
         "attention_rmse": attention.get("rmse"),
         "attention_cosine": attention.get("cosine_similarity"),
         "attention_max_error": attention.get("max_error"),
@@ -34,10 +54,11 @@ def flatten_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "compression_ratio": memory.get("compression_ratio"),
         "effective_bits_per_kv_element": memory.get("effective_bits_per_kv_element"),
         "shared_metadata_bytes": memory.get("shared_metadata_bytes"),
-        "perplexity_compressed": section_b.get("perplexity"),
-        "perplexity_baseline": section_b.get("perplexity_baseline"),
+        "perplexity_compressed": perplexity,
+        "perplexity_baseline": perplexity_baseline,
         "tokens_per_second": throughput.get("tokens_per_second"),
         "latency_ms_per_token": throughput.get("latency_ms_per_token"),
+        "ttft_ms": throughput.get("ttft_ms"),
         "online_compressed_kv": throughput.get("online_compressed_kv"),
         "finished_at": payload.get("finished_at"),
     }
@@ -63,6 +84,7 @@ CSV_FIELDNAMES = [
     "perplexity_baseline",
     "tokens_per_second",
     "latency_ms_per_token",
+    "ttft_ms",
     "online_compressed_kv",
     "finished_at",
 ]
@@ -106,7 +128,7 @@ def load_payloads_from_directory(
         if path.name.endswith(".error.json"):
             continue
         data = json.loads(path.read_text())
-        if isinstance(data, dict) and "section_a_fidelity" in data:
+        if isinstance(data, dict) and ("section_a_fidelity" in data or "fidelity" in data):
             payload = data
         elif isinstance(data, dict) and "results" in data:
             payloads.extend(data["results"])

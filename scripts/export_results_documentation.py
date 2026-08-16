@@ -82,7 +82,10 @@ def _error_jobs() -> list[str]:
 
 def _per_layer_section(job_path: Path) -> list[str]:
     data = json.loads(job_path.read_text())
-    att = (data.get("section_a_fidelity") or {}).get("attention") or {}
+    # Historical bundles use "section_a_fidelity"; runs since the FIDELITY/BEHAVIOR/SYSTEM
+    # redesign use "fidelity". Support both so old result archives still regenerate docs.
+    fidelity = data.get("fidelity") or data.get("section_a_fidelity") or {}
+    att = fidelity.get("attention") or {}
     per_layer = att.get("per_layer") or []
     if not per_layer:
         return []

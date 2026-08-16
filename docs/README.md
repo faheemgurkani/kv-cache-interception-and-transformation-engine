@@ -6,7 +6,8 @@ See also the root [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [C
 
 | Doc | Purpose |
 |---|---|
-| [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) | Interception engine architecture |
+| [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) | Interception engine architecture (high-level) |
+| [ENGINE_INTERNALS.md](ENGINE_INTERNALS.md) | Complete implementation walkthrough — every file, the full execution flow, and a concrete plan for supporting model architectures beyond dense transformers |
 | [METHODOLOGY.md](METHODOLOGY.md) | Experimental / evaluation methodology |
 | [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) | Equations and algorithm notes |
 | [REPRODUCIBILITY.md](REPRODUCIBILITY.md) | How to reproduce local and Modal sweeps |

@@ -347,5 +347,6 @@ Implementation: `framework/storage_accounting.py`, payload `storage_bits()` meth
 | Online QJL attention | `framework/qjl_online.py` |
 | Online RocketKV attention | `framework/rocketkv_online.py` |
 | KV engine | `framework/kv_engine.py` |
-| Section A metrics | `eval/fidelity.py`, `eval/attention_score_error.py`, `eval/memory.py` |
-| Section B metrics | `eval/perplexity.py`, `eval/throughput.py` |
+| FIDELITY metrics | `eval/fidelity/representation.py`, `eval/fidelity/attention.py`, `eval/fidelity/memory.py` |
+| BEHAVIOR metrics | `eval/behavior/task_quality.py`, `eval/behavior/retrieval.py`, `eval/behavior/instruction_following.py`, `eval/behavior/reasoning.py` |
+| SYSTEM metrics | `eval/system/latency_throughput.py`, `eval/system/vram.py`, `eval/system/memory_bandwidth.py`, `eval/system/kernel_cost.py`, `eval/system/gpu_utilization.py` |

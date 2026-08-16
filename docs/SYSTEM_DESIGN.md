@@ -2,7 +2,7 @@
 
 **Purpose:** compression task analysis and benchmarking. Fixed model + eval stack; **only `compressors/` changes per method.**
 
-This is a **generic evaluation framework**, not a TurboQuant-only implementation. The engine provides unified KV interception, plug-in compressors, Section A (offline fidelity), and Section B (online perplexity + throughput). Published KV-compression papers propose new algorithms; this repo standardizes how those algorithms are measured under online inference.
+This is a **generic evaluation framework**, not a TurboQuant-only implementation. The engine provides unified KV interception, plug-in compressors, and three evaluation branches — **FIDELITY** (did the transformation preserve the KV representation and attention behavior?), **BEHAVIOR** (does the model still behave correctly after KV transformation?), and **SYSTEM** (does the compression actually make inference better?). Published KV-compression papers propose new algorithms; this repo standardizes how those algorithms are measured under online inference.
 
 ## Architecture
 
@@ -83,9 +83,13 @@ Stub in `compressors/kivi.py` — not implemented.
 
 ## Evaluation
 
-**Section A (offline):** tensor RMSE, attention score error, memory — `eval/fidelity.py`, `eval/attention_score_error.py`, `eval/memory.py`
+Three branches instead of an offline/online split — `eval/runner.py` (`EvaluationRunner.run()`) always runs FIDELITY; BEHAVIOR and SYSTEM sub-metrics are opt-in flags.
 
-**Section B (online):** sliding-window perplexity + throughput through `KVCacheEngine` — `eval/perplexity.py`, `eval/throughput.py`
+**FIDELITY** (`eval/fidelity/`, single offline forward pass): tensor RMSE/relative-error/cosine similarity (`representation.py`), QK^T score MSE/RMSE/cosine/max-error + attention-output RMSE + attention-distribution KL divergence (`attention.py`), compression ratio + actual bytes + metadata overhead (`memory.py`).
+
+**BEHAVIOR** (`eval/behavior/`, through `KVCacheEngine`): sliding-window perplexity (`task_quality.py`, on by default), needle-in-haystack retrieval (`retrieval.py`, opt-in), instruction-following format compliance (`instruction_following.py`, opt-in), synthetic arithmetic reasoning (`reasoning.py`, opt-in).
+
+**SYSTEM** (`eval/system/`, through `KVCacheEngine`): TTFT + inter-token latency (mean/p50/p99) + tokens/sec + end-to-end latency (`latency_throughput.py`, on by default), peak CUDA memory (`vram.py`, opt-in), analytical KV-bandwidth (`memory_bandwidth.py`, opt-in), compress/decompress vs. rest-of-forward-pass time (`kernel_cost.py`, opt-in), best-effort NVML sampling (`gpu_utilization.py`, opt-in).
 
 Orchestrator: `eval/runner.py`. WikiText-2 samples concatenated to target length via `data/loader.py`.
 
@@ -113,7 +117,7 @@ CoreML, Ollama/GGUF (no KV access), MLX, FlashAttention, multi-GPU layer split.
 framework/     model, kv_engine, kv_cache, device, rocketkv_online
 compressors/   identity, turboquant, qjl, rocketkv, kivi (stub)
 quantizers/    hadamard, lloyd_max, turboquant_pipeline, qjl_pipeline, rocketkv
-eval/          fidelity, perplexity, throughput, runner
+eval/          fidelity/, behavior/, system/, runner
 modal_app/     worker, sweep, job_spec, merge
 configs/       model.yaml, eval.yaml, modal.yaml, modal_sweeps.yaml
 ```

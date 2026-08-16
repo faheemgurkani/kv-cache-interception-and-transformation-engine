@@ -17,8 +17,8 @@ Equations: [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) · Res
 | Dataset | WikiText-2 test (`wikitext-2-raw-v1`) | `configs/eval.yaml` |
 | Context lengths | 128, 256, 512 | `configs/model.yaml` |
 | PPL stride | 512 | `configs/eval.yaml` |
-| Section A window | 512 tokens (trailing) | `attention_fidelity_tokens` |
-| Throughput | 64 generated tokens | `generated_tokens` |
+| FIDELITY attention window | 512 tokens (trailing) | `attention_fidelity_tokens` |
+| Throughput (SYSTEM) | 64 generated tokens | `generated_tokens` |
 | Batch size | 1 | `configs/eval.yaml` |
 | GPU (reference sweeps) | Modal NVIDIA A10G | `configs/modal.yaml` |
 
@@ -184,7 +184,7 @@ At decode time, select up to `hsa_budget` tokens for attention:
 
 Local cache indices differ from global sequence positions after eviction. The compressor maintains `current_global` and `permanent_prefix_global` per layer; attention masks are aligned/truncated to stored cache length.
 
-### 5.4 Section A fidelity
+### 5.4 FIDELITY
 
 `RocketKVCompressor.reconstruction_error` and `attention_fidelity` measure **post-selection** kept tokens (not identity on full cache). This avoids misleading RMSE = 0 when tokens are evicted offline.
 

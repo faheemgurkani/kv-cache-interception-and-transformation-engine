@@ -1,17 +1,20 @@
 # KV Cache Interception and Transformation Engine
 
-**A unified interception engine and dual-metric evaluation stack for KV-cache compression in small language models (SLMs).**
+**A unified interception engine and three-dimensional evaluation stack for KV-cache compression in small language models (SLMs).**
 
-This repository implements the **KV Cache Interception and Transformation Engine**: it intercepts K/V tensors at the decode boundary, transforms them through interchangeable compression plug-ins, and measures both offline fidelity and online generation quality under incremental decode. The reproducible benchmarking protocol and case-study results are published under the name **[KVBench](docs/research_paper_writeup/conference_101719.tex)** (research manuscript in preparation).
+This repository implements the **KV Cache Interception and Transformation Engine**: it intercepts K/V tensors at the decode boundary, transforms them through interchangeable compression plug-ins, and measures fidelity, generation behavior, and system-level inference cost under incremental decode. The reproducible benchmarking protocol and case-study results are published under the name **[KVBench](docs/research_paper_writeup/conference_101719.tex)** (research manuscript in preparation).
 
 ```text
 Model (fixed) → KVCacheEngine (fixed) → KVCompressor (variable) → eval/ (fixed)
 ```
 
-The engine is **not** a single-algorithm reproduction. It fixes the model, incremental decode loop, and metrics while exposing KV-cache compressors as interchangeable plug-ins, and always reports:
+The engine is **not** a single-algorithm reproduction. It fixes the model, incremental decode loop, and metrics while exposing KV-cache compressors as interchangeable plug-ins, and always reports three independent evaluation dimensions instead of a coarse offline/online split:
 
-- **Section A (offline fidelity):** tensor RMSE, attention-score preservation, memory accounting  
-- **Section B (online inference):** sliding-window perplexity and throughput with compressed KV in the autoregressive loop  
+- **FIDELITY** *(did the transformation preserve the KV representation and attention behavior?)* — tensor RMSE, relative reconstruction error, cosine similarity, attention-score/output RMSE, attention-distribution KL divergence, compression ratio, actual memory reduction, metadata overhead.
+- **BEHAVIOR** *(does the model still behave correctly after KV transformation?)* — sliding-window perplexity, plus opt-in needle-in-haystack retrieval, instruction-following compliance, and synthetic reasoning accuracy, all measured through real compressed-KV decoding, not a single forward pass.
+- **SYSTEM** *(does the compression actually make inference better?)* — TTFT, inter-token latency, decode/end-to-end latency, tokens/sec, peak VRAM, actual KV memory, compress/decompress time, and (best-effort) memory bandwidth and GPU utilization. A method with a higher compression ratio can still lose here if it adds enough per-step compute.
+
+FIDELITY does not reliably predict BEHAVIOR — that gap is the central finding this framework is built to surface — and SYSTEM exists as its own branch because a compression ratio win on paper can be a runtime loss in practice.
 
 **License:** [Apache-2.0](LICENSE) · **Status:** research manuscript in preparation · **Contributions:** welcome ([CONTRIBUTING.md](CONTRIBUTING.md)) · **Roadmap:** [ROADMAP.md](ROADMAP.md)
 
@@ -87,7 +90,13 @@ python scripts/run_eval.py --compressor identity --context-length 512
 python scripts/run_eval.py --compressor turboquant --stage full --context-length 512
 python scripts/run_eval.py --compressor qjl --context-length 512
 python scripts/run_eval.py --compressor rocketkv --context-length 512
+
+# Opt-in BEHAVIOR / SYSTEM sub-metrics (each adds its own generate() pass)
+python scripts/run_eval.py --compressor turboquant --retrieval --instruction-following
+python scripts/run_eval.py --compressor turboquant --peak-memory --memory-bandwidth --kernel-cost
 ```
+
+FIDELITY always runs; BEHAVIOR/task_quality (perplexity) and SYSTEM/latency_throughput run by default. Retrieval, instruction-following, reasoning, peak VRAM, memory bandwidth, kernel cost, and GPU utilization are opt-in flags — see `python scripts/run_eval.py --help`.
 
 **Modal sweeps** — see [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md)
 

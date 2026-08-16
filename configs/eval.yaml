@@ -14,8 +14,13 @@ c4:
   streaming: true
 
 metrics:
-  - perplexity
+  # FIDELITY (always on)
+  - representation
+  - attention
   - memory
+  # BEHAVIOR (task_quality on by default; retrieval/reasoning/instruction_following are opt-in flags)
+  - perplexity
+  # SYSTEM (latency_throughput on by default; the rest are opt-in flags)
   - throughput
 
 batch_size: 1

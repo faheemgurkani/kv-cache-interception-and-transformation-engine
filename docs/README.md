@@ -16,5 +16,6 @@ See also the root [README.md](../README.md), [ROADMAP.md](../ROADMAP.md), and [C
 | [OLMO2_PHASE5_EVAL_RESULTS.md](OLMO2_PHASE5_EVAL_RESULTS.md) | OLMo 2 1B summary tables |
 | [OLMO2_RESULTS_COMPLETE.md](OLMO2_RESULTS_COMPLETE.md) | OLMo 2 full metrics + run logs |
 | [OLMO2_ARCHITECTURE_PROBE.md](OLMO2_ARCHITECTURE_PROBE.md) | OLMo 2 architecture coupling notes |
+| [SLM_COMPATIBILITY.md](SLM_COMPATIBILITY.md) | Which of the 6 local SLMs work with FIDELITY/BEHAVIOR/SYSTEM, and exactly what's missing for the ones that don't |
 
 Merged CSV/JSON summary bundles: [`../results/`](../results/README.md).

@@ -202,42 +202,76 @@ When `token_budget ≥ seq_len`, no eviction occurs (compression ratio ≈ 1.0).
 
 ## 6. Evaluation methodology
 
-Orchestrator: `eval/runner.py` · Modal worker: `modal_app/worker.py` (same code path).
+Orchestrator: `eval/runner.py` (`EvaluationRunner.run()`) · Modal worker: `modal_app/worker.py` (same code path). Every run produces three independent branches instead of an offline/online split — FIDELITY always runs (single forward pass, cheap); BEHAVIOR and SYSTEM sub-metrics are opt-in flags since each adds its own `KVCacheEngine.generate()` pass.
 
-### 6.1 Section A — offline fidelity (`eval/fidelity.py`)
+```text
+KVBench
+   │
+   ├── FIDELITY   — did the transformation preserve the KV representation and attention behavior?
+   ├── BEHAVIOR   — does the model still behave correctly after KV transformation?
+   └── SYSTEM     — does the compression actually make inference better?
+```
+
+### 6.1 FIDELITY (`eval/fidelity/`)
 
 Single forward pass with `use_cache=True`, `output_hidden_states=True`:
 
 | Metric | Module | Definition |
 |---|---|---|
-| Key / value RMSE | `eval/fidelity.py` | Mean over layers of RMSE(compress→decompress) |
-| Attention MSE/RMSE/cosine/max | `eval/attention_score_error.py` | Compare \(QK^\top/\sqrt{d}\) before vs after compression |
-| Memory | `eval/memory.py` | Uncompressed vs compressed bytes, ratio, eff. bits/KV |
+| Key / value RMSE | `eval/fidelity/representation.py` | Mean over layers of RMSE(compress→decompress); uses the compressor's `reconstruction_error` hook when available (e.g. RocketKV's post-selection semantics), else the round trip directly |
+| Relative reconstruction error | `eval/fidelity/representation.py` | \( \lVert x - \hat{x} \rVert_2 / \lVert x \rVert_2 \), always via `compress_kv` → `decompress_kv` round trip |
+| Cosine similarity | `eval/fidelity/representation.py` | \( \cos(x, \hat{x}) \) on flattened K/V, always via the same round trip |
+| Attention MSE/RMSE/cosine/max error | `eval/fidelity/attention.py` | Compare \(QK^\top/\sqrt{d}\) before vs after compression |
+| Attention-output RMSE | `eval/fidelity/attention.py` | RMSE between \(\mathrm{softmax}(\text{scores})V\) computed from FP scores vs. quantized scores (same reconstructed V both sides) — what actually reaches the next layer, not just the raw score error |
+| Attention-distribution KL divergence | `eval/fidelity/attention.py` | \( \mathrm{KL}(\mathrm{softmax}(\text{scores}_{fp}) \Vert \mathrm{softmax}(\text{scores}_{quant})) \), row-mean over query positions |
+| Compression ratio / actual memory reduction / metadata overhead | `eval/fidelity/memory.py` | Uncompressed vs compressed bytes, ratio, eff. bits/KV, `shared_metadata_bytes` |
 
 **Attention fidelity window:** Last `attention_fidelity_tokens` (512) query/key positions to limit \(O(n^2)\) memory.
 
 **Method-specific attention path:**
 
-- QJL / RocketKV: `compressor.attention_fidelity()` (estimator or post-selection)
-- Others: compress → decompress → standard matmul
+- QJL / RocketKV: `compressor.attention_fidelity()` (estimator or post-selection) — this hook returns distortion scalars only, not the raw quantized score tensor, so attention-output RMSE / KL divergence are `None` for these layers (documented in `eval/fidelity/attention.py`)
+- Others (including QJL's `estimate_attention_scores` path and the default compress→decompress path): raw quantized scores are available, so attention-output RMSE / KL divergence are computed
 
-**State isolation:** `compressor.reset_state()` after Section A before Section B.
+**State isolation:** `compressor.reset_state()` after FIDELITY, before BEHAVIOR/SYSTEM.
 
-### 6.2 Section B — online inference
+### 6.2 BEHAVIOR (`eval/behavior/`)
 
-**Order constraint:** Baseline PPL runs **before** `KVCacheEngine` construction (RocketKV/QJL patch attention).
+Runs through `KVCacheEngine`, i.e. compressed KV actually driving autoregressive decode — not a single forward pass. **Order constraint:** baseline PPL runs **before** `KVCacheEngine` construction (RocketKV/QJL patch attention).
 
-| Metric | Module | Protocol |
-|---|---|---|
-| Perplexity (baseline) | `eval/perplexity.py` | Sliding-window NLL, stride 512, standard HF forward |
-| Perplexity (compressed) | `eval/perplexity.py` | Token-by-token `engine.step`, single persistent cache, explicit mask + position_ids |
-| Throughput | `eval/throughput.py` | `engine.generate`, 64 new tokens, wall-clock tok/s |
+| Metric | Module | Protocol | Default |
+|---|---|---|---|
+| Perplexity (baseline) | `eval/behavior/task_quality.py` | Sliding-window NLL, stride 512, standard HF forward | on (`include_baselines`) |
+| Perplexity (compressed) | `eval/behavior/task_quality.py` | Token-by-token `engine.step`, single persistent cache, explicit mask + position_ids | **on** |
+| Retrieval | `eval/behavior/retrieval.py` | Needle-in-haystack: unique numeric code embedded at a controlled depth in a synthetic filler context; exact-match accuracy on recall via `engine.generate` | opt-in (`--retrieval`) |
+| Instruction following | `eval/behavior/instruction_following.py` | Yes/no format-constrained prompts; fraction of completions that are a single word from the allowed set, checked structurally (not content-correctness) | opt-in (`--instruction-following`) |
+| Reasoning | `eval/behavior/reasoning.py` | Synthetic multi-step add/subtract chains; exact-match accuracy on the final integer | opt-in (`--reasoning`) |
 
 **PPL formula:** \( \mathrm{PPL} = \exp\left(\frac{1}{N}\sum_i \mathrm{NLL}_i\right) \) over scored tokens in sliding windows.
 
 **Compressed PPL scoring:** For each stride window, score tokens from `prev_end_loc + 1` through `end_loc - 1` using logits from incremental decode.
 
-### 6.3 Shared baseline
+Retrieval/instruction-following/reasoning are synthetic, generated in-repo (no external benchmark dependency, no license/contamination risk) — deliberately simple so a compressor's BEHAVIOR failure mode is legible, not because the framework can't run LongBench/RULER-scale tasks. See `docs/CURRENT_STATE.md` for known coverage limits.
+
+### 6.3 SYSTEM (`eval/system/`)
+
+Also runs through `KVCacheEngine`. Answers whether compression actually helps inference, not just whether it shrinks the cache — a method with a higher compression ratio (FIDELITY/memory) can still lose here if it adds enough per-step compute.
+
+| Metric | Module | Protocol | Default |
+|---|---|---|---|
+| TTFT | `eval/system/latency_throughput.py` | Wall-clock time of the first `engine.step()` call (prefill + compressing the full prompt's KV) | **on** |
+| Inter-token latency (ITL: mean/p50/p99) | `eval/system/latency_throughput.py` | Wall-clock time of each subsequent `engine.step()` call | **on** |
+| Decode latency, tokens/sec, end-to-end latency | `eval/system/latency_throughput.py` | Derived from the same step loop | **on** |
+| Peak VRAM | `eval/system/vram.py` | `torch.cuda.max_memory_allocated`/`reserved` around `engine.generate()`; `None` off CUDA | opt-in (`--peak-memory`) |
+| Actual KV memory | `eval/runner.py` | `fidelity.memory.compressed_bytes`, threaded into `SystemMetrics.actual_kv_memory_bytes` so a SYSTEM-only view doesn't require cross-referencing FIDELITY | via `run_system=True` |
+| Compress/decompress time | `eval/system/kernel_cost.py` | Wraps `compress_kv`/`decompress_kv` to accumulate wall time, vs. total step time | opt-in (`--kernel-cost`) |
+| Attention execution time (proxy) | `eval/system/kernel_cost.py` | Total step time minus measured compress/decompress time ("everything else" in the forward pass — no CUDA kernel trace available) | opt-in (`--kernel-cost`) |
+| Memory bandwidth (analytical) | `eval/system/memory_bandwidth.py` | \( 2 \times \sum_{\text{steps}} \text{cache.nbytes} \) (decompress-read + recompress-write per step) ÷ elapsed time | opt-in (`--memory-bandwidth`) |
+| GPU utilization | `eval/system/gpu_utilization.py` | Best-effort NVML sampling thread during `engine.generate()`; requires CUDA + `pynvml`, else reports unavailable (not an error) | opt-in (`--gpu-utilization`) |
+
+**Caveat (kernel_cost + RocketKV):** RocketKV's online path calls `compress_layer_from_kv` directly rather than `compress_kv`, so its per-step compression cost is not captured by the timed wrapper and reads as attention time.
+
+### 6.4 Shared baseline
 
 Identity baseline (`identity_baseline`) runs once under Modal preset `baseline`. Method jobs report `perplexity_baseline` per job (should match shared baseline within noise).
 
@@ -263,6 +297,8 @@ Result bundles: `results/phase5_modal_*/` with `jobs/*.json`, merged CSV/JSON, `
 See [CURRENT_STATE.md](CURRENT_STATE.md):
 
 - Single model, single dataset, ctx ≤ 512
-- Section A does not always predict Section B PPL
+- FIDELITY does not always predict BEHAVIOR/PPL
 - TurboQuant online throughput dominated by per-step compress/decompress
 - QJL/RocketKV catastrophic PPL on Qwen3-1.7B under this pipeline reflects measured behavior, not implementation shortcuts (post-audit)
+- BEHAVIOR's retrieval/reasoning/instruction-following are synthetic in-repo generators, not external benchmarks — legible failure modes, not benchmark-scale coverage
+- SYSTEM's peak VRAM and GPU utilization require CUDA (report `None`/unavailable on MPS/CPU, not an error)

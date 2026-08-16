@@ -413,7 +413,7 @@ class RocketKVCompressor(KVCompressor):
 
         import torch.nn.functional as F
 
-        from eval.attention_score_error import attention_scores, expand_kv_heads
+        from eval.fidelity.attention import attention_scores, expand_kv_heads
 
         saved = self._layer_state.get(layer)
         self.reset_state()

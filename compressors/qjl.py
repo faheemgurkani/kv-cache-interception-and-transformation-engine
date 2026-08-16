@@ -86,7 +86,7 @@ class QJLCompressor(KVCompressor):
 
         import torch.nn.functional as F
 
-        from eval.attention_score_error import attention_scores, expand_kv_heads
+        from eval.fidelity.attention import attention_scores, expand_kv_heads
 
         key_exp = expand_kv_heads(key, num_q_heads, num_kv_heads)
         scores_fp = attention_scores(query, key_exp, head_dim)

@@ -1,4 +1,4 @@
-"""Attention-score preservation metrics (QK^T fidelity, offline)."""
+"""FIDELITY / Attention: QK^T score preservation after KV compression."""
 
 from __future__ import annotations
 
@@ -20,16 +20,25 @@ class LayerAttentionMetrics:
     rmse: float
     cosine_similarity: float
     max_error: float
+    output_rmse: float | None
+    distribution_kl_divergence: float | None
 
 
 @dataclass
 class AttentionMetrics:
-    """Aggregate attention-score distortion after KV compression."""
+    """Aggregate attention-score distortion after KV compression.
+
+    `output_rmse` / `distribution_kl_divergence` are averaged only over layers where
+    they could be computed (some compressors expose a distortion-only hook that
+    doesn't return the raw quantized score tensor needed for those two metrics).
+    """
 
     mse: float
     rmse: float
     cosine_similarity: float
     max_error: float
+    output_rmse: float | None
+    distribution_kl_divergence: float | None
     per_layer: list[LayerAttentionMetrics]
 
     def to_dict(self) -> dict:
@@ -62,6 +71,26 @@ def _score_distortion(scores_fp: torch.Tensor, scores_quant: torch.Tensor) -> tu
     cosine = F.cosine_similarity(scores_fp.flatten(), scores_quant.flatten(), dim=0).item()
     max_error = diff.abs().max().item()
     return mse, rmse, cosine, max_error
+
+
+def _attention_output_and_divergence(
+    scores_fp: torch.Tensor,
+    scores_quant: torch.Tensor,
+    value_hat: torch.Tensor,
+) -> tuple[float, float]:
+    """Attention-output RMSE and KL(softmax(fp) || softmax(quant)), the two
+    downstream-facing views of score distortion: what actually reaches the next
+    layer (weighted V), and how much the attention distribution itself shifted."""
+    probs_fp = F.softmax(scores_fp.float(), dim=-1)
+    probs_quant = F.softmax(scores_quant.float(), dim=-1)
+
+    output_fp = torch.matmul(probs_fp, value_hat.float())
+    output_quant = torch.matmul(probs_quant, value_hat.float())
+    output_rmse = (output_fp - output_quant).pow(2).mean().sqrt().item()
+
+    eps = 1e-8
+    kl = (probs_fp * ((probs_fp + eps).log() - (probs_quant + eps).log())).sum(dim=-1).mean().item()
+    return output_rmse, kl
 
 
 def _compute_layer_queries(
@@ -133,20 +162,26 @@ def evaluate_attention_fidelity(
     rmse_sum = 0.0
     cosine_sum = 0.0
     max_error = 0.0
+    output_rmse_sum = 0.0
+    kl_sum = 0.0
+    output_layers = 0
     layers = 0
 
-    for layer_idx, (key, _value) in enumerate(iter_layer_kv(outputs.past_key_values)):
+    for layer_idx, (key, value) in enumerate(iter_layer_kv(outputs.past_key_values)):
         query = _compute_layer_queries(model_layer, layer_idx, hidden_states[layer_idx], position_embeddings)
         key_exp = expand_kv_heads(key, num_q_heads, num_kv_heads)
         query, key_exp = _slice_score_window(query, key_exp, score_tokens)
 
         scores_fp = attention_scores(query, key_exp, head_dim)
+        scores_quant = None
 
         if hasattr(compressor, "attention_fidelity"):
+            # Distortion-only hook: no raw quantized score tensor is returned, so
+            # output_rmse / distribution_kl_divergence can't be computed for this layer.
             mse, rmse, cosine, layer_max = compressor.attention_fidelity(
                 query,
                 key,
-                _value,
+                value,
                 head_dim,
                 num_q_heads,
                 num_kv_heads,
@@ -165,6 +200,21 @@ def evaluate_attention_fidelity(
             scores_quant = attention_scores(query, key_hat_exp, head_dim)
             mse, rmse, cosine, layer_max = _score_distortion(scores_fp, scores_quant)
 
+        output_rmse: float | None = None
+        kl: float | None = None
+        if scores_quant is not None:
+            value_payload = compressor.compress_kv(value, layer=layer_idx, mode="value")
+            value_hat = compressor.decompress_kv(value_payload, mode="value").to(device=query.device)
+            value_hat_exp = expand_kv_heads(value_hat, num_q_heads, num_kv_heads)
+            if score_tokens > 0 and value_hat_exp.shape[-2] > score_tokens:
+                value_hat_exp = value_hat_exp[..., -score_tokens:, :]
+            if value_hat_exp.shape[-2] == scores_quant.shape[-1]:
+                output_rmse, kl = _attention_output_and_divergence(scores_fp, scores_quant, value_hat_exp)
+                output_rmse_sum += output_rmse
+                kl_sum += kl
+                output_layers += 1
+            del value_payload, value_hat, value_hat_exp
+
         per_layer.append(
             LayerAttentionMetrics(
                 layer=layer_idx,
@@ -172,6 +222,8 @@ def evaluate_attention_fidelity(
                 rmse=rmse,
                 cosine_similarity=cosine,
                 max_error=layer_max,
+                output_rmse=output_rmse,
+                distribution_kl_divergence=kl,
             )
         )
         mse_sum += mse
@@ -183,7 +235,7 @@ def evaluate_attention_fidelity(
         del query, key_exp, scores_fp
         if "key_payload" in locals():
             del key_payload
-        if "scores_quant" in locals():
+        if scores_quant is not None:
             del scores_quant
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -196,5 +248,7 @@ def evaluate_attention_fidelity(
         rmse=rmse_sum / layers,
         cosine_similarity=cosine_sum / layers,
         max_error=max_error,
+        output_rmse=(output_rmse_sum / output_layers) if output_layers else None,
+        distribution_kl_divergence=(kl_sum / output_layers) if output_layers else None,
         per_layer=per_layer,
     )

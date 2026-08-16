@@ -1,4 +1,4 @@
-"""Perplexity evaluation with compressed KV in the autoregressive loop."""
+"""BEHAVIOR / Task quality: sliding-window perplexity with compressed KV in the loop."""
 
 from __future__ import annotations
 

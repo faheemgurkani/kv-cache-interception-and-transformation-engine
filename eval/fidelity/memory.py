@@ -1,4 +1,4 @@
-"""KV-cache memory evaluation (paper-independent)."""
+"""FIDELITY / Memory: KV-cache storage accounting (paper-independent)."""
 
 from __future__ import annotations
 

@@ -40,8 +40,17 @@ def main() -> None:
         action="store_true",
         help="Run all context lengths from configs/model.yaml.",
     )
-    parser.add_argument("--skip-perplexity", action="store_true")
-    parser.add_argument("--skip-throughput", action="store_true")
+    parser.add_argument("--skip-perplexity", action="store_true", help="Skip BEHAVIOR/task_quality (perplexity).")
+    parser.add_argument("--skip-throughput", action="store_true", help="Skip SYSTEM/latency_throughput.")
+    parser.add_argument("--retrieval", action="store_true", help="Run BEHAVIOR/retrieval (needle-in-haystack).")
+    parser.add_argument(
+        "--instruction-following", action="store_true", help="Run BEHAVIOR/instruction_following."
+    )
+    parser.add_argument("--reasoning", action="store_true", help="Run BEHAVIOR/reasoning (synthetic arithmetic).")
+    parser.add_argument("--peak-memory", action="store_true", help="Run SYSTEM/vram (peak CUDA memory).")
+    parser.add_argument("--memory-bandwidth", action="store_true", help="Run SYSTEM/memory_bandwidth.")
+    parser.add_argument("--kernel-cost", action="store_true", help="Run SYSTEM/kernel_cost (compress/decompress time).")
+    parser.add_argument("--gpu-utilization", action="store_true", help="Run SYSTEM/gpu_utilization (CUDA + pynvml only).")
     parser.add_argument("--include-baselines", action="store_true", help="Also run uncompressed baseline PPL/throughput.")
     parser.add_argument("--output", default="eval_results", help="Output filename stem.")
     args = parser.parse_args()
@@ -54,23 +63,27 @@ def main() -> None:
     compressor = get_compressor(args.compressor, **kwargs)
     runner = EvaluationRunner(compressor=compressor)
 
+    run_kwargs = {
+        "run_perplexity": not args.skip_perplexity,
+        "run_retrieval": args.retrieval,
+        "run_reasoning": args.reasoning,
+        "run_instruction_following": args.instruction_following,
+        "run_throughput": not args.skip_throughput,
+        "run_peak_memory": args.peak_memory,
+        "run_memory_bandwidth": args.memory_bandwidth,
+        "run_kernel_cost": args.kernel_cost,
+        "run_gpu_utilization": args.gpu_utilization,
+        "include_baselines": args.include_baselines,
+    }
+
     if args.all_context_lengths:
         results = runner.run_all_context_lengths(
             context_lengths=model_config["context_lengths"],
-            run_perplexity=not args.skip_perplexity,
-            run_throughput=not args.skip_throughput,
-            include_baselines=args.include_baselines,
+            **run_kwargs,
         )
     else:
         context_length = args.context_length or eval_config.get("default_context_length", 512)
-        results = [
-            runner.run(
-                context_length,
-                run_perplexity=not args.skip_perplexity,
-                run_throughput=not args.skip_throughput,
-                include_baselines=args.include_baselines,
-            )
-        ]
+        results = [runner.run(context_length, **run_kwargs)]
 
     reporter = ResultReporter()
     reporter.save_json(results, args.output)

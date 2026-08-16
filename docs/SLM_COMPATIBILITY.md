@@ -12,6 +12,19 @@ Three independent gates, not one. A model can pass one and fail another:
 2. **`framework/model_adapter.py::load_attention_ops` gate** — hardcoded to `{"qwen3", "qwen2", "olmo2"}`. Required for **FIDELITY/attention** (recomputes RoPE'd queries for every compressor, always) and for **BEHAVIOR/SYSTEM under `qjl`/`rocketkv`** (`enable_qjl_online`/`enable_rocketkv_online` both call `load_attention_ops(model.config)` directly).
 3. **Per-model quirks inside gate 2** even when `model_type` matches — e.g. a model with a fine-grained RoPE scheme that a single shared `rotary_emb(hidden_states, position_ids)` call can't serve.
 
+## The 6 models, by architecture type
+
+| Model | Architecture type | Detail |
+|---|---|---|
+| **Qwen3-1.7B** | Plain dense transformer, GQA | 16Q/8KV heads, per-head Q/K-norm, single shared RoPE |
+| **OLMo 2 1B** | Plain dense transformer, MHA | 16Q/16KV heads (no GQA), flat Q/K-norm, post-norm, single shared RoPE |
+| **Granite 4.0 350M** | Plain dense transformer, GQA (this checkpoint only) | 16Q/4KV heads, **no** Q/K-norm, single shared RoPE — packaged as a "MoE-Hybrid" class but this checkpoint has 0 active MoE/Mamba layers |
+| **Gemma3-270M** | Plain dense transformer, GQA — but **dual RoPE** | 4Q/1KV heads, per-head Q/K-norm, alternates local (`sliding_attention`) / global (`full_attention`) layers, each with its own RoPE table |
+| **MiniCPM4-0.5B** | Plain dense transformer, GQA (unconfirmed — custom code) | 16Q/2KV heads, `longrope` RoPE scaling, ships its own Python modeling code (`trust_remote_code`) instead of using a transformers-native class |
+| **Qwen3.5-0.8B** | **Hybrid** linear-attention + full-attention | 24 layers: 18 recurrent linear-attention layers (no K/V cache at all) + 6 standard attention layers |
+
+Five of six are, at core, ordinary dense decoder-only transformers (differing only in GQA ratio, norm placement, and RoPE details). One (Qwen3.5) is architecturally a different class entirely — a hybrid model that mixes recurrent linear-attention state with conventional K/V attention. The engine, by design, supports **dense, decoder-only transformers with a uniform per-layer K/V cache** — full detail on what that means and a concrete plan for extending beyond it: [ENGINE_INTERNALS.md §8](ENGINE_INTERNALS.md#8-diversifying-to-other-architecture-families).
+
 ---
 
 ## 1. Qwen3-1.7B (`qwen3_1.7b`)

@@ -2,7 +2,7 @@
 
 A from-first-principles walkthrough of the KV Cache Interception and Transformation Engine: every component, how they connect, and the exact execution flow from `scripts/run_eval.py` down to a single compressed tensor. Closes with a concrete engineering analysis of what it would take to support model architectures beyond dense, decoder-only, uniform-K/V-cache transformers.
 
-This document is the "how it actually works, wire by wire" reference. For narrower views: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) (high-level architecture), [METHODOLOGY.md](METHODOLOGY.md) (experimental protocol + per-compressor math), [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) (equations), [SLM_ARCHITECTURES.md](SLM_ARCHITECTURES.md) / [SLM_COMPATIBILITY.md](SLM_COMPATIBILITY.md) (which models work today and why).
+This document is the "how it actually works, wire by wire" reference. For narrower views: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) (high-level architecture), [METHODOLOGY.md](METHODOLOGY.md) (experimental protocol + per-compressor math), [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) (equations), [SLM_COMPATIBILITY.md](SLM_COMPATIBILITY.md) (which models work today and why).
 
 ---
 
@@ -277,7 +277,7 @@ Every `engine.step()`/`engine.generate()` call above internally does: decompress
 
 ## 8. Diversifying to other architecture families
 
-Building directly on [SLM_ARCHITECTURES.md](SLM_ARCHITECTURES.md)'s finding — the engine supports **dense, decoder-only transformers with a uniform per-layer K/V cache**, and within that class needs one more thing (a `model_adapter.py` branch) for full FIDELITY/attention + QJL/RocketKV support — this section is the concrete engineering plan for closing that gap, ordered by how structurally deep the change is.
+Building directly on [SLM_COMPATIBILITY.md](SLM_COMPATIBILITY.md)'s finding — the engine supports **dense, decoder-only transformers with a uniform per-layer K/V cache**, and within that class needs one more thing (a `model_adapter.py` branch) for full FIDELITY/attention + QJL/RocketKV support — this section is the concrete engineering plan for closing that gap, ordered by how structurally deep the change is.
 
 ### 8.1 Tier 0 (no code change needed): FIDELITY/representation, FIDELITY/memory, BEHAVIOR/SYSTEM under `identity`/`turboquant`
 

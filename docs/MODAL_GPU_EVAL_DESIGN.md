@@ -87,12 +87,12 @@ Workers mount repo at `/root/kv-cache-engine`; configs resolved via `KV_PROJECT_
 
 `configs/modal.yaml` — GPU, volumes, secrets, timeout.
 
-`configs/eval.yaml` — `perplexity_stride: 512`, `attention_fidelity_tokens: 512` (Section A window for long ctx).
+`configs/eval.yaml` — `perplexity_stride: 512`, `attention_fidelity_tokens: 512` (FIDELITY attention window for long ctx).
 
 ## Limits
 
 - Online PPL must stay sequential — batched forwards would change the metric.
-- Section A uses windowed QK fidelity (512 tokens) to avoid OOM at long ctx on A10G.
+- FIDELITY uses windowed QK fidelity (512 tokens) to avoid OOM at long ctx on A10G.
 - Eager attention required (same as local).
 
 ## References

@@ -134,7 +134,7 @@ For each key vector \( k \in \mathbb{R}^d \):
 
 Reconstruct \( \hat{k} = \frac{\sqrt{\pi/2}}{m} S^\top b \cdot \|k\| \).
 
-### 4.3 Asymmetric attention estimator (Section A + online Section B)
+### 4.3 Asymmetric attention estimator (FIDELITY + BEHAVIOR)
 
 Do **not** decompress keys for attention. Use the literature ProdQJL estimator (Zandieh et al., Def. 3.1 / Eq. 4):
 

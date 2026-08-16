@@ -100,26 +100,37 @@ Modal uses **scipy WHT** (no `fast-hadamard-transform` in the image). Local CUDA
 
 ## 5. Evaluation protocol
 
-### Section A — offline fidelity
+Three branches instead of an offline/online split — FIDELITY always runs; BEHAVIOR/SYSTEM sub-metrics beyond perplexity + throughput are opt-in flags (`--retrieval`, `--instruction-following`, `--reasoning`, `--peak-memory`, `--memory-bandwidth`, `--kernel-cost`, `--gpu-utilization` on `scripts/run_eval.py`).
+
+### FIDELITY — did the transformation preserve the KV representation and attention behavior?
 
 Single forward pass on a fixed WikiText-2 window:
 
-- Key / value tensor RMSE (after compress → decompress)
-- Attention score error (method-specific: QJL uses estimator; RocketKV uses post-selection kept tokens)
-- Memory: uncompressed vs compressed bytes, compression ratio, effective bits/KV
+- Key / value tensor RMSE, relative reconstruction error, cosine similarity (after compress → decompress)
+- Attention score MSE/RMSE/cosine/max-error (method-specific: QJL uses estimator; RocketKV uses post-selection kept tokens), plus attention-output RMSE and attention-distribution KL divergence where the compressor exposes raw quantized scores
+- Memory: uncompressed vs compressed bytes, compression ratio, effective bits/KV, metadata overhead
 
 Window capped at `attention_fidelity_tokens` (512) for long contexts to avoid OOM.
 
-### Section B — online inference
+### BEHAVIOR — does the model still behave correctly after KV transformation?
 
 Autoregressive loop through `KVCacheEngine`:
 
 1. Baseline PPL runs **first** (before RocketKV / QJL attention patches)
 2. Compressed KV updated incrementally each decode step
-3. Sliding-window perplexity (`perplexity_stride: 512`)
-4. Throughput: 64 new tokens through compressed path
+3. Sliding-window perplexity (`perplexity_stride: 512`) — on by default
+4. Retrieval (needle-in-haystack), instruction-following (format compliance), reasoning (synthetic arithmetic) — opt-in, each an additional `engine.generate()` pass
 
 Modal jobs set `include_baselines=True` so each JSON carries `perplexity_baseline` for that context length. Phase 5 tables use the **shared identity baseline** from preset `baseline` (run once); per-job baselines should match within noise.
+
+### SYSTEM — does the compression actually make inference better?
+
+Also through `KVCacheEngine`:
+
+1. TTFT, inter-token latency (mean/p50/p99), decode/end-to-end latency, tokens/sec — on by default (64 new tokens through compressed path)
+2. Peak VRAM, memory bandwidth (analytical GB/s), kernel cost (compress/decompress vs. rest of forward pass), GPU utilization (CUDA + `pynvml` only) — opt-in
+
+A higher FIDELITY compression ratio can still lose on SYSTEM if it adds enough per-step compute — this is why SYSTEM is a separate branch rather than folded into FIDELITY.
 
 ---
 
@@ -139,6 +150,10 @@ python scripts/run_eval.py --compressor qjl --context-length 512
 
 # RocketKV (defaults: token_budget=512; match modal_sweeps.yaml for full grid)
 python scripts/run_eval.py --compressor rocketkv --context-length 512
+
+# Opt-in BEHAVIOR/SYSTEM sub-metrics (each adds its own generate() pass)
+python scripts/run_eval.py --compressor turboquant --retrieval --instruction-following --reasoning
+python scripts/run_eval.py --compressor turboquant --peak-memory --memory-bandwidth --kernel-cost --gpu-utilization
 ```
 
 For non-default RocketKV budgets (`r256`, `r1024`), kwargs are not exposed on `run_eval.py` CLI — use the Modal preset or Python:
@@ -277,10 +292,13 @@ results/
 
 Each job JSON includes:
 
-- `section_a_fidelity` — RMSE, attention, memory
-- `section_b_inference` — `perplexity`, `perplexity_baseline`, throughput
+- `fidelity` — representation (RMSE/relative-error/cosine), attention (score + output RMSE, KL divergence), memory
+- `behavior` — `task_quality.perplexity`, `task_quality.perplexity_baseline`, and (if enabled) `retrieval`/`instruction_following`/`reasoning`
+- `system` — `latency_throughput` (TTFT, ITL, tok/s, end-to-end latency), and (if enabled) `peak_memory`/`memory_bandwidth`/`kernel_cost`/`gpu_utilization`
 - `job` — full compressor kwargs (bitwidth, budgets, seed)
 - `started_at` / `finished_at` — UTC timestamps
+
+Older bundles (before the FIDELITY/BEHAVIOR/SYSTEM redesign) instead use `section_a_fidelity` / `section_b_inference` keys; `modal_app/merge.py` and `scripts/export_results_documentation.py` read both shapes so historical archives still merge and regenerate docs correctly.
 
 Published tables: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md). Raw bundles are gitignored; regenerate via Modal steps above.
 
@@ -316,7 +334,7 @@ Documented in [CURRENT_STATE.md](CURRENT_STATE.md):
 - Single model / dataset / ctx ≤512 — not a multi-benchmark study yet
 - TurboQuant online speed ~0.08 tok/s @ ctx=512 (implementation overhead)
 - QJL / RocketKV PPL catastrophic on Qwen3-1.7B under this pipeline — faithful implementation, not paper-matched quality
-- Section A metrics do not always predict Section B PPL (by design)
+- FIDELITY metrics do not always predict BEHAVIOR/PPL (by design)
 
 ## 10. Documentation index
 

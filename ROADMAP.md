@@ -31,7 +31,7 @@ Research manuscript (**KVBench**) in preparation. This roadmap lists planned ext
 
 - [ ] Contributor tutorials for new compressors and SLM adapters
 - [ ] Published arXiv manuscript + updated `CITATION.cff`
-- [ ] Example notebooks for inspecting Section A/B artifacts
+- [ ] Example notebooks for inspecting FIDELITY/BEHAVIOR/SYSTEM artifacts
 
 ## Explicitly out of scope (for now)
 

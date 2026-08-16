@@ -12,10 +12,10 @@ Related: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) · [PHASE5_EVAL_RESULTS.md](PHASE5
 |---|---|
 | Model: Qwen3-1.7B, FP16, eager attention | `compressors/*` plug-in |
 | Dataset: WikiText-2 test (`wikitext-2-raw-v1`) | Preset in `configs/modal_sweeps.yaml` |
-| Eval code: `eval/runner.py`, Section A + B | Bitwidth, stage, token budget, seed |
+| Eval code: `eval/runner.py`, FIDELITY + BEHAVIOR + SYSTEM | Bitwidth, stage, token budget, seed |
 | Context lengths: 128, 256, 512 | |
-| PPL stride: 512; Section A window: 512 tokens | |
-| Throughput: 64 generated tokens per run | |
+| PPL stride: 512; FIDELITY attention window: 512 tokens | |
+| Throughput: 64 generated tokens per run | Opt-in BEHAVIOR/SYSTEM sub-metrics (`--retrieval`, `--kernel-cost`, etc.) |
 
 Every method job runs **the same** `EvaluationRunner` path. Only the compressor and its kwargs change.
 

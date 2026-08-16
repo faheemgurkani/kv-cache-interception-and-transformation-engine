@@ -34,7 +34,7 @@ A = \frac{Q K^\top}{\sqrt{d}} \in \mathbb{R}^{B \times H_q \times T_q \times T_k
 
 **Softmax attention weights:** \( \mathrm{softmax}(A) \) along \(T_k\).
 
-Implementation: `eval/attention_score_error.py::attention_scores`, `expand_kv_heads`.
+Implementation: `eval/fidelity/attention.py::attention_scores`, `expand_kv_heads`.
 
 ---
 
@@ -307,7 +307,7 @@ For windows starting at `begin_loc` with stride \(S\):
 
 Labels mask: tokens before `prev_end_loc` within each window set to `-100` (baseline path).
 
-**Compressed path:** NLL computed only on tokens scored incrementally via `engine.step` logits (see `eval/perplexity.py`).
+**Compressed path:** NLL computed only on tokens scored incrementally via `engine.step` logits (see `eval/behavior/task_quality.py`).
 
 ### 7.5 Throughput
 

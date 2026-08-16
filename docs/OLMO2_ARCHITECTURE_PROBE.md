@@ -32,7 +32,7 @@
 
 - `framework/model_adapter.py` — family registry (`qwen3` / `olmo2`)
 - `framework/qjl_online.py`, `framework/rocketkv_online.py` — use adapter (also fixes per-layer closure bind)
-- `eval/attention_score_error.py` — post-norm + derived `head_dim`
+- `eval/fidelity/attention.py` — post-norm + derived `head_dim`
 - `configs/model.yaml` → OLMo2; Qwen3 backup in `configs/model_qwen3.yaml`
 - `configs/modal.yaml` → volumes `kv-engine-olmo2` / `kv-engine-results-olmo2`
 - `modal_app/worker.py` — dynamic `_model_dir()` from `local_path` basename

@@ -130,9 +130,11 @@ Record `git rev-parse HEAD` when citing results. Use `--no-resume` on Modal afte
 
 | Doc | Contents |
 |---|---|
-| [SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Architecture |
+| [SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Architecture (high-level) |
+| [ENGINE_INTERNALS.md](docs/ENGINE_INTERNALS.md) | Complete implementation walkthrough + generalizing to other model architectures |
 | [METHODOLOGY.md](docs/METHODOLOGY.md) | Experimental methodology |
 | [MATHEMATICS_AND_ALGORITHMS.md](docs/MATHEMATICS_AND_ALGORITHMS.md) | Equations and pseudocode |
+| [SLM_COMPATIBILITY.md](docs/SLM_COMPATIBILITY.md) | Which local SLMs work with FIDELITY/BEHAVIOR/SYSTEM, and why |
 | [PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md) | Qwen3 Phase-5 summary |
 | [RESULTS_COMPLETE.md](docs/RESULTS_COMPLETE.md) | Qwen3 full metrics |
 | [OLMO2_RESULTS_COMPLETE.md](docs/OLMO2_RESULTS_COMPLETE.md) | OLMo 2 full metrics + logs |

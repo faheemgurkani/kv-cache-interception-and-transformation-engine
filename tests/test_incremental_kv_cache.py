@@ -9,7 +9,7 @@ import torch
 from compressors.identity import IdentityCompressor
 from compressors.turboquant import TurboQuantCompressor
 from data.loader import build_long_context_ids, load_wikitext2
-from eval.perplexity import evaluate_perplexity, evaluate_perplexity_baseline
+from eval.behavior.task_quality import evaluate_perplexity, evaluate_perplexity_baseline
 from framework.kv_cache import decompress_to_legacy_cache, iter_layer_kv
 from framework.kv_engine import KVCacheEngine
 from framework.model import ModelLayer

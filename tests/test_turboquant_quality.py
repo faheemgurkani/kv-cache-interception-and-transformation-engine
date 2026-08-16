@@ -9,7 +9,7 @@ from compressors.identity import IdentityCompressor
 from compressors.identity import IdentityCompressor
 from compressors.turboquant import TurboQuantCompressor
 from data.loader import build_long_context_ids, load_wikitext2
-from eval.perplexity import evaluate_perplexity
+from eval.behavior.task_quality import evaluate_perplexity
 from framework.model import ModelLayer
 from quantizers.turboquant_pipeline import TurboQuantStage
 
@@ -69,7 +69,7 @@ def test_full_turboquant_online_ppl_is_reasonable():
 
 @pytest.mark.skipif(not MODEL_DIR.exists(), reason="Model not downloaded")
 def test_full_turboquant_attention_rmse_is_reasonable():
-    from eval.attention_score_error import evaluate_attention_fidelity
+    from eval.fidelity.attention import evaluate_attention_fidelity
 
     model_layer = ModelLayer()
     ids = _eval_ids(model_layer)

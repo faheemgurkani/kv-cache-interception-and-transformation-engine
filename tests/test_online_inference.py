@@ -6,8 +6,8 @@ import pytest
 
 from compressors.identity import IdentityCompressor
 from data.loader import build_long_context_ids, load_wikitext2
-from eval.perplexity import evaluate_perplexity, evaluate_perplexity_baseline
-from eval.throughput import evaluate_throughput, evaluate_throughput_baseline
+from eval.behavior.task_quality import evaluate_perplexity, evaluate_perplexity_baseline
+from eval.system.latency_throughput import evaluate_throughput, evaluate_throughput_baseline
 from framework.kv_engine import KVCacheEngine
 from framework.model import ModelLayer
 

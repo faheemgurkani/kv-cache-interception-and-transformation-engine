@@ -5,7 +5,7 @@ import math
 import torch
 
 from compressors.qjl import QJLCompressor
-from eval.attention_score_error import attention_scores
+from eval.fidelity.attention import attention_scores
 from quantizers.qjl import projection_matrix, qjl_decode, qjl_encode
 
 

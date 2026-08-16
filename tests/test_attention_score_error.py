@@ -7,7 +7,7 @@ import torch
 
 from compressors.identity import IdentityCompressor
 from compressors.turboquant import TurboQuantCompressor
-from eval.attention_score_error import evaluate_attention_fidelity
+from eval.fidelity.attention import evaluate_attention_fidelity
 from framework.model import ModelLayer
 from quantizers.turboquant_pipeline import TurboQuantStage
 
@@ -36,7 +36,7 @@ def test_turboquant_attention_fidelity_is_measured():
 
 
 def test_attention_scores_shape():
-    from eval.attention_score_error import attention_scores
+    from eval.fidelity.attention import attention_scores
 
     q = torch.randn(1, 16, 4, 128)
     k = torch.randn(1, 16, 4, 128)

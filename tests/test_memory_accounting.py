@@ -3,7 +3,7 @@
 import torch
 
 from compressors.turboquant import TurboQuantCompressor
-from eval.memory import kv_cache_bytes
+from eval.fidelity.memory import kv_cache_bytes
 from framework.storage_accounting import bits_to_bytes, sign_storage_bits
 from quantizers.turboquant_pipeline import TurboQuantStage, TurboQuantTensorPayload
 

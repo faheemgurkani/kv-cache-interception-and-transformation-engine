@@ -85,22 +85,26 @@ class ResultReporter:
                         "bitwidth": result.bitwidth,
                         "stage": result.stage,
                         "context_length": result.context_length,
-                        "key_rmse": fidelity.representation.key_rmse,
-                        "value_rmse": fidelity.representation.value_rmse,
-                        "key_relative_error": fidelity.representation.key_relative_error,
-                        "value_relative_error": fidelity.representation.value_relative_error,
-                        "key_cosine_similarity": fidelity.representation.key_cosine_similarity,
-                        "value_cosine_similarity": fidelity.representation.value_cosine_similarity,
-                        "attention_rmse": fidelity.attention.rmse,
-                        "attention_cosine": fidelity.attention.cosine_similarity,
-                        "attention_max_error": fidelity.attention.max_error,
-                        "attention_output_rmse": fidelity.attention.output_rmse,
-                        "attention_distribution_kl_divergence": fidelity.attention.distribution_kl_divergence,
-                        "uncompressed_bytes": fidelity.memory.uncompressed_bytes,
-                        "compressed_bytes": fidelity.memory.compressed_bytes,
-                        "compression_ratio": fidelity.memory.compression_ratio,
-                        "effective_bits_per_kv_element": fidelity.memory.effective_bits_per_kv_element,
-                        "shared_metadata_bytes": fidelity.memory.shared_metadata_bytes,
+                        "key_rmse": fidelity.representation.key_rmse if fidelity else None,
+                        "value_rmse": fidelity.representation.value_rmse if fidelity else None,
+                        "key_relative_error": fidelity.representation.key_relative_error if fidelity else None,
+                        "value_relative_error": fidelity.representation.value_relative_error if fidelity else None,
+                        "key_cosine_similarity": fidelity.representation.key_cosine_similarity if fidelity else None,
+                        "value_cosine_similarity": fidelity.representation.value_cosine_similarity if fidelity else None,
+                        "attention_rmse": fidelity.attention.rmse if fidelity else None,
+                        "attention_cosine": fidelity.attention.cosine_similarity if fidelity else None,
+                        "attention_max_error": fidelity.attention.max_error if fidelity else None,
+                        "attention_output_rmse": fidelity.attention.output_rmse if fidelity else None,
+                        "attention_distribution_kl_divergence": (
+                            fidelity.attention.distribution_kl_divergence if fidelity else None
+                        ),
+                        "uncompressed_bytes": fidelity.memory.uncompressed_bytes if fidelity else None,
+                        "compressed_bytes": fidelity.memory.compressed_bytes if fidelity else None,
+                        "compression_ratio": fidelity.memory.compression_ratio if fidelity else None,
+                        "effective_bits_per_kv_element": (
+                            fidelity.memory.effective_bits_per_kv_element if fidelity else None
+                        ),
+                        "shared_metadata_bytes": fidelity.memory.shared_metadata_bytes if fidelity else None,
                         "perplexity_compressed": behavior.perplexity if behavior else None,
                         "perplexity_baseline": behavior.perplexity_baseline if behavior else None,
                         "retrieval_accuracy": (
@@ -147,10 +151,15 @@ class ResultReporter:
             parts = [
                 f"[{result.compressor}] ctx={result.context_length}",
                 f"stage={result.stage}" if result.stage else None,
-                f"attn_rmse={fidelity.attention.rmse:.4f}",
-                f"ratio={fidelity.memory.compression_ratio:.2f}x",
-                f"bits/kv={fidelity.memory.effective_bits_per_kv_element:.2f}",
             ]
+            if fidelity is not None:
+                parts.extend(
+                    [
+                        f"attn_rmse={fidelity.attention.rmse:.4f}",
+                        f"ratio={fidelity.memory.compression_ratio:.2f}x",
+                        f"bits/kv={fidelity.memory.effective_bits_per_kv_element:.2f}",
+                    ]
+                )
             parts = [p for p in parts if p]
             if behavior and behavior.perplexity is not None:
                 parts.append(f"ppl={behavior.perplexity:.4f}")

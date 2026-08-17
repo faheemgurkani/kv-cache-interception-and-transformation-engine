@@ -45,6 +45,7 @@ class EvaluationResult:
     system: SystemMetrics | None
     stage: str | None = None
     model_capabilities: ModelCapabilities | None = field(default=None, repr=False)
+    model_metadata: dict[str, object] | None = field(default=None, repr=False)
 
     # --- back-compat accessors (previous Section A/B field names) ---
     @property
@@ -60,27 +61,12 @@ class EvaluationResult:
         return self.system.throughput if self.system else None
 
     def to_dict(self) -> dict:
-        caps = self.model_capabilities
-        model_meta = None
-        if caps is not None:
-            base = get_model_eval_metadata(self.model_layer_config) if hasattr(self, "model_layer_config") else None
-            if base is None:
-                base = {
-                    "model_type": caps.model_type,
-                    "attention_family": caps.attention_family,
-                    "state_type": caps.state_type.value,
-                    "rope_mode": caps.rope_mode,
-                    "adapter": caps.model_type,
-                    "adapter_registered": caps.adapter_registered,
-                    "state_semantics_complete": caps.state_semantics_complete,
-                }
-            model_meta = base
         return {
             "compressor": self.compressor,
             "bitwidth": self.bitwidth,
             "stage": self.stage,
             "context_length": self.context_length,
-            "model": model_meta,
+            "model": self.model_metadata,
             "fidelity": None if self.fidelity is None else self.fidelity.to_dict(),
             "behavior": None if self.behavior is None else self.behavior.to_dict(),
             "system": None if self.system is None else self.system.to_dict(),
@@ -189,6 +175,10 @@ class EvaluationRunner:
             system=system,
             stage=_compressor_stage(self.compressor),
             model_capabilities=resolve_model_capabilities(self.model_layer.config),
+            model_metadata=get_model_eval_metadata(
+                self.model_layer.config,
+                local_path=str(self.model_layer.model_path),
+            ),
         )
 
     def run_all_context_lengths(

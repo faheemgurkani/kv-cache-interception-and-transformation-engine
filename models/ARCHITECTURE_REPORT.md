@@ -2,18 +2,25 @@
 
 Conformance verified 2026-08-18 by loading each checkpoint with `AutoModelForCausalLM.from_pretrained(..., attn_implementation="eager")`, running a real forward pass (`"The quick brown fox"`, `use_cache=True`), and inspecting the actual returned `past_key_values` object/shapes — not just `config.json` fields. `transformers==5.8.1` (this repo's `.venv`).
 
-## Directory layout (as of 2026-08-19)
+## Directory layout (as of 2026-08-19, OLMo slots swapped 2026-08-20)
 
-- `models/legacy/` — the two models the prior FIDELITY/BEHAVIOR/SYSTEM evaluation runs actually used (`qwen3_1.7b` = primary/default model in `configs/model.yaml`, `olmo2_1b` = the second fully-verified model per `docs/CURRENT_STATE.md`). Kept, untouched, for reproducing existing published numbers.
-- `models/` (top level) — the 5-model architecture matrix shortlist (MHA/MQA/GQA/MLA/Hybrid), for future engine-extension work. `olmo1b` included here, *not* in legacy — see the two-OLMo comparison below.
+- `models/legacy/` — the two models the prior FIDELITY/BEHAVIOR/SYSTEM evaluation runs actually used: `qwen3_1.7b` (primary/default model in `configs/model.yaml`) and, as of the swap below, `olmo1b` (`allenai/OLMo-1B-hf`, the 2024 OLMo-1 generation).
+- `models/` (top level) — the 5-model architecture matrix shortlist (MHA/MQA/GQA/MLA/Hybrid), for future engine-extension work: `olmo2_1b` (swapped in as the MHA representative — same head geometry as OLMo-1, but the more recent 2025 generation, per user preference), `qwen3_0.6b`, `gemma3_270m`, `tinydeepseek_0.5b`, `falcon_h1_0.5b`.
 - Deleted entirely (not shortlisted, not legacy): `granite_4.0_350m`, `qwen3.5_0.8b`, `minicpm4_0.5b` — these were earlier candidate-probe downloads (`scripts/download_candidate_models.py`) superseded by the shortlist decision; all were already documented as broken/blocked in `docs/CURRENT_STATE.md`/`docs/SLM_COMPATIBILITY.md` (adapter gate, hybrid-cache gate, or `trust_remote_code` load failure respectively) and add no further value sitting on disk.
+
+## OLMo slot swap (2026-08-20)
+
+Originally `olmo2_1b` (the model the prior eval framework used) sat in `legacy/`, and `olmo1b` (newly downloaded) was in the shortlist. **Swapped on request**: since both are MHA with identical 16Q/16KV head geometry, the user preferred evaluating the architecture-matrix's MHA slot on the *more recent* generation. Now:
+
+- `models/olmo2_1b` (shortlist, MHA representative) — `allenai/OLMo-2-0425-1B`, 2025 generation.
+- `models/legacy/olmo1b` — `allenai/OLMo-1B-hf`, 2024 generation, moved into `legacy/` alongside `qwen3_1.7b`.
 
 ## Two OLMo checkpoints — which is which
 
-| | `models/legacy/olmo2_1b` | `models/olmo1b` |
+| | `models/olmo2_1b` (shortlist) | `models/legacy/olmo1b` |
 |---|---|---|
 | HF repo | `allenai/OLMo-2-0425-1B` | `allenai/OLMo-1B-hf` |
-| Release | **2025** (OLMo 2 generation) | **2024** (original OLMo generation) — the *older*/legacy model family, despite living outside `models/legacy/` in this repo's directory layout |
+| Release | **2025** (OLMo 2 generation) — more recent | **2024** (original OLMo generation) — older |
 | `model_type` / class | `olmo2` / `Olmo2ForCausalLM` | `olmo` / `OlmoForCausalLM` |
 | Norm placement | **post-norm** (norm applied after attention/MLP sublayers — a genuine architectural difference from OLMo-1) | **pre-norm** (standard Llama-style, norm before each sublayer) |
 | Embeddings | untied (`tie_word_embeddings: false`) | tied (`tie_word_embeddings: true`) |
@@ -23,15 +30,21 @@ Conformance verified 2026-08-18 by loading each checkpoint with `AutoModelForCau
 | Attention heads | 16 Q / 16 KV (MHA) — identical head geometry | 16 Q / 16 KV (MHA) — identical head geometry |
 | Params (measured) | ~1.48B | ~1.18B |
 | Checkpoint's own `transformers_version` | 4.50.3 | 4.40.0 |
-| Role in this repo | **Legacy** — one of the two models the existing evaluation framework (TurboQuant/QJL/RocketKV results in `docs/RESULTS_COMPLETE.md` etc.) was actually run against; `framework/model_adapter.py` already has a dedicated `olmo2` branch | **Shortlist** — newly downloaded as the architecture-matrix's clean MHA representative; same head-count MHA geometry as OLMo2 but a structurally different (older, pre-norm, tied-embedding) model family — `framework/model_adapter.py` has **no** `olmo` (non-2) branch yet, only `olmo2` |
+| Role in this repo | **Shortlist MHA representative** (post-swap) — `framework/model_adapter.py` already has a dedicated `olmo2` branch, so this is also effectively a zero-engine-modification control, same as Qwen3-0.6B/GQA | **Legacy** — one of the two models the existing evaluation framework (TurboQuant/QJL/RocketKV results in `docs/RESULTS_COMPLETE.md` etc.) was actually run against; `framework/model_adapter.py` has **no** `olmo` (non-2) branch, only `olmo2` |
 
-Despite sharing the "OLMo" name and identical 16/16 MHA head counts, these are **two distinct model generations** with real architectural differences (norm placement, embedding tying, RoPE theta, tokenizer/vocab) — not two copies of the same checkpoint. `olmo2_1b` is the one already wired into `framework/model_adapter.py::load_attention_ops` (`model_type == "olmo2"`); `olmo1b` will need its own `model_type == "olmo"` branch before FIDELITY/attention or QJL/RocketKV online paths work on it (see "Adding an SLM" in `CLAUDE.md`).
+Despite sharing the "OLMo" name and identical 16/16 MHA head counts, these are **two distinct model generations** with real architectural differences (norm placement, embedding tying, RoPE theta, tokenizer/vocab) — not two copies of the same checkpoint. `olmo2_1b` is the one already wired into `framework/model_adapter.py::load_attention_ops` (`model_type == "olmo2"`); `olmo1b` (now in `legacy/`) would need its own `model_type == "olmo"` branch if it were ever brought back into active eval (see "Adding an SLM" in `CLAUDE.md`).
 
-## allenai/OLMo-1B-hf → `olmo1b` (MHA) — ✅ CONFORMS
+## allenai/OLMo-2-0425-1B → `olmo2_1b` (MHA, shortlist) — ✅ CONFORMS
+
+- `model_type`: olmo2 · `hidden_size`: 2048 · `num_hidden_layers`: 16 · `num_attention_heads`: 16 · `num_key_value_heads`: 16
+- weight files: `model.safetensors` · other artifacts: tokenizer/config files (standard HF layout)
+- **Conformance:** already verified live in an earlier session (`docs/CURRENT_STATE.md` — FIDELITY+BEHAVIOR+SYSTEM run end to end with `identity`/`turboquant`, TurboQuant ratio cross-checked against the Qwen3 published number). Same 16Q/16KV MHA geometry as `olmo1b`; **fully wired** into `framework/model_adapter.py` (`model_type == "olmo2"` branch) — no adapter work needed to use it in the architecture-matrix slot.
+
+## allenai/OLMo-1B-hf → `legacy/olmo1b` (MHA) — ✅ CONFORMS (moved to legacy)
 
 - `model_type`: olmo · `hidden_size`: 2048 · `num_hidden_layers`: 16 · `num_attention_heads`: 16 · `num_key_value_heads`: 16
 - weight files: `model.safetensors` · other artifacts: `generation_config.json`, `special_tokens_map.json`, `tokenizer.json`, `tokenizer_config.json`
-- **Live probe:** loads as `OlmoForCausalLM`, forward pass succeeds. Cache: 16 `DynamicLayer`s, layer0 keys/values shape `(1, 16, 5, 128)` — 16 K-heads == 16 V-heads == `num_attention_heads`, confirming **true MHA** (no KV head sharing, matching the 1:1 Q:KV ratio the family claim requires).
+- **Live probe:** loads as `OlmoForCausalLM`, forward pass succeeds. Cache: 16 `DynamicLayer`s, layer0 keys/values shape `(1, 16, 5, 128)` — 16 K-heads == 16 V-heads == `num_attention_heads`, confirming **true MHA** (no KV head sharing, matching the 1:1 Q:KV ratio the family claim requires). No longer in the active shortlist slot as of the 2026-08-20 swap, but the model and this conformance result remain valid — kept in `models/legacy/` for reference/reproducibility.
 
 ## Qwen/Qwen3-0.6B → `qwen3_0.6b` (GQA) — ✅ CONFORMS
 

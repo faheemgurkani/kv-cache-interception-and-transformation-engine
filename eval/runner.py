@@ -12,14 +12,15 @@ split:
        +-- SYSTEM    -- does the compression actually make inference better?
                         (eval/system)
 
-FIDELITY always runs (it's a single offline forward pass and is cheap). BEHAVIOR and
-SYSTEM sub-metrics are opt-in flags on `run()` since each adds its own generate()
-pass through KVCacheEngine.
+FIDELITY runs by default (single offline forward pass). Pass ``run_fidelity=False`` or
+``scripts/run_eval.py --skip-fidelity`` to collect BEHAVIOR/SYSTEM on models whose
+attention adapter is not yet registered. BEHAVIOR and SYSTEM sub-metrics are opt-in
+flags on ``run()`` since each adds its own generate() pass through KVCacheEngine.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import torch
 
@@ -31,6 +32,7 @@ from eval.fidelity import FidelityMetrics, evaluate_fidelity
 from eval.system import SystemMetrics, evaluate_system
 from framework.config import load_eval_config, load_model_config
 from framework.model import ModelLayer
+from framework.model_capabilities import ModelCapabilities, resolve_model_capabilities
 
 
 @dataclass
@@ -38,10 +40,11 @@ class EvaluationResult:
     compressor: str
     bitwidth: int | None
     context_length: int
-    fidelity: FidelityMetrics
+    fidelity: FidelityMetrics | None
     behavior: BehaviorMetrics | None
     system: SystemMetrics | None
     stage: str | None = None
+    model_capabilities: ModelCapabilities | None = field(default=None, repr=False)
 
     # --- back-compat accessors (previous Section A/B field names) ---
     @property
@@ -50,19 +53,30 @@ class EvaluationResult:
 
     @property
     def memory(self):
-        return self.fidelity.memory
+        return self.fidelity.memory if self.fidelity else None
 
     @property
     def throughput(self):
         return self.system.throughput if self.system else None
 
     def to_dict(self) -> dict:
+        caps = self.model_capabilities
         return {
             "compressor": self.compressor,
             "bitwidth": self.bitwidth,
             "stage": self.stage,
             "context_length": self.context_length,
-            "fidelity": self.fidelity.to_dict(),
+            "model": None
+            if caps is None
+            else {
+                "model_type": caps.model_type,
+                "attention_family": caps.attention_family,
+                "state_type": caps.state_type.value,
+                "rope_mode": caps.rope_mode,
+                "adapter_registered": caps.adapter_registered,
+                "state_semantics_complete": caps.state_semantics_complete,
+            },
+            "fidelity": None if self.fidelity is None else self.fidelity.to_dict(),
             "behavior": None if self.behavior is None else self.behavior.to_dict(),
             "system": None if self.system is None else self.system.to_dict(),
         }
@@ -124,9 +138,9 @@ class EvaluationRunner:
         num_new_tokens = generated_tokens or self.eval_config.get("generated_tokens", 64)
 
         if not run_fidelity:
-            raise ValueError("FIDELITY metrics are required for every evaluation run.")
-
-        fidelity = evaluate_fidelity(self.model_layer, input_ids, self.compressor)
+            fidelity = None
+        else:
+            fidelity = evaluate_fidelity(self.model_layer, input_ids, self.compressor)
 
         behavior: BehaviorMetrics | None = None
         if run_behavior:
@@ -146,6 +160,7 @@ class EvaluationRunner:
 
         system: SystemMetrics | None = None
         if run_system:
+            compressed_bytes = fidelity.memory.compressed_bytes if fidelity else None
             system = evaluate_system(
                 self.model_layer,
                 input_ids,
@@ -157,7 +172,7 @@ class EvaluationRunner:
                 run_gpu_utilization=run_gpu_utilization,
                 include_baseline=include_baselines,
                 num_new_tokens=num_new_tokens,
-                actual_kv_memory_bytes=fidelity.memory.compressed_bytes,
+                actual_kv_memory_bytes=compressed_bytes,
             )
 
         return EvaluationResult(
@@ -168,6 +183,7 @@ class EvaluationRunner:
             behavior=behavior,
             system=system,
             stage=_compressor_stage(self.compressor),
+            model_capabilities=resolve_model_capabilities(self.model_layer.config),
         )
 
     def run_all_context_lengths(

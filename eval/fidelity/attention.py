@@ -148,9 +148,10 @@ def evaluate_attention_fidelity(
 
     hidden_states = outputs.hidden_states
     position_ids = torch.arange(input_ids.shape[1], device=device).unsqueeze(0)
-    position_embeddings = model.model.rotary_emb(hidden_states[0], position_ids)
-
     from framework.model_adapter import resolve_head_dim
+    from framework.rope import build_rope_context
+
+    rope_context = build_rope_context(model, hidden_states[0], position_ids, config=model.config)
 
     config = model_layer.config
     head_dim = resolve_head_dim(config)
@@ -168,7 +169,12 @@ def evaluate_attention_fidelity(
     layers = 0
 
     for layer_idx, (key, value) in enumerate(iter_layer_kv(outputs.past_key_values)):
-        query = _compute_layer_queries(model_layer, layer_idx, hidden_states[layer_idx], position_embeddings)
+        query = _compute_layer_queries(
+            model_layer,
+            layer_idx,
+            hidden_states[layer_idx],
+            rope_context.get_rope(layer_idx),
+        )
         key_exp = expand_kv_heads(key, num_q_heads, num_kv_heads)
         query, key_exp = _slice_score_window(query, key_exp, score_tokens)
 

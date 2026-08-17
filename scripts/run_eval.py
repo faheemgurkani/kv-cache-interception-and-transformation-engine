@@ -41,6 +41,7 @@ def main() -> None:
         help="Run all context lengths from configs/model.yaml.",
     )
     parser.add_argument("--skip-perplexity", action="store_true", help="Skip BEHAVIOR/task_quality (perplexity).")
+    parser.add_argument("--skip-fidelity", action="store_true", help="Skip FIDELITY (representation/memory/attention).")
     parser.add_argument("--skip-throughput", action="store_true", help="Skip SYSTEM/latency_throughput.")
     parser.add_argument("--retrieval", action="store_true", help="Run BEHAVIOR/retrieval (needle-in-haystack).")
     parser.add_argument(
@@ -64,6 +65,7 @@ def main() -> None:
     runner = EvaluationRunner(compressor=compressor)
 
     run_kwargs = {
+        "run_fidelity": not args.skip_fidelity,
         "run_perplexity": not args.skip_perplexity,
         "run_retrieval": args.retrieval,
         "run_reasoning": args.reasoning,

@@ -50,4 +50,5 @@ __all__ = [
     "load_model_config",
     "resolve_model_capabilities",
     "total_state_bytes",
+    "visible_state_bytes",
 ]

@@ -48,7 +48,7 @@ Do not commit `.env`, model weights, or Modal secrets. Use `.env.example` as the
 2. Extend `framework/model_adapter.py` for that `model_type` (Q/K-norm layout, RoPE import, pre/post-norm).  
 3. Add `configs/model_<name>.yaml` and Modal volume settings.  
 4. Run identity + TurboQuant smoke tests, then online methods (QJL / RocketKV) if adapters exist.  
-5. Record architecture notes under `docs/` (see `OLMO2_ARCHITECTURE_PROBE.md`).
+5. Record architecture notes under `docs/architecture/` (see `MODEL_ARCHITECTURE_MATRIX.md`).
 
 ## Pull requests
 

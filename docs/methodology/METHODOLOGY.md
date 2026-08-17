@@ -2,7 +2,7 @@
 
 Complete methodology for the **KV Cache Interception and Transformation Engine**: system architecture, compression plug-ins, online inference paths, and evaluation protocol. Verified against the implementation in `framework/`, `compressors/`, `quantizers/`, and `eval/`.
 
-Equations: [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) · Results: [RESULTS_COMPLETE.md](RESULTS_COMPLETE.md) · Reproduce: [REPRODUCIBILITY.md](REPRODUCIBILITY.md)
+Equations: [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) · Results: [Qwen3-1.7B](../results/qwen3_1.7b/RESULTS_COMPLETE.md) · [OLMo2-1B](../results/olmo2_1b/RESULTS_COMPLETE.md) · Reproduce: [REPRODUCIBILITY.md](../reproducibility/REPRODUCIBILITY.md)
 
 ---
 
@@ -302,3 +302,11 @@ See [CURRENT_STATE.md](CURRENT_STATE.md):
 - QJL/RocketKV catastrophic PPL on Qwen3-1.7B under this pipeline reflects measured behavior, not implementation shortcuts (post-audit)
 - BEHAVIOR's retrieval/reasoning/instruction-following are synthetic in-repo generators, not external benchmarks — legible failure modes, not benchmark-scale coverage
 - SYSTEM's peak VRAM and GPU utilization require CUDA (report `None`/unavailable on MPS/CPU, not an error)
+
+---
+
+## 9. Historical run ordering and forward-looking scope
+
+**Recommended first evaluation run** (the order the original TurboQuant Phase 1 validation actually used, before Phase 5's full sweep grid existed — still a reasonable order for smoke-testing a new compressor or model): (1) Memory Compression, (2) Attention Preservation, (3) Perplexity (WikiText-2), (4) Throughput — i.e. cheapest/fastest-to-compute FIDELITY metrics first, BEHAVIOR next, SYSTEM last.
+
+**Long-context scaling (future work, not yet implemented):** context lengths currently top out at 512 (`configs/model.yaml`). The most valuable follow-up sweep is running all three branches (FIDELITY/memory, BEHAVIOR/perplexity+retrieval, SYSTEM/throughput+VRAM+bandwidth) at 4K/8K/16K/32K — this is where KV compression matters most, and where needle-in-haystack retrieval becomes a real test of "does compression lose buried information" rather than a near-trivial short-context check. Tracked in `ROADMAP.md` ("Longer contexts (2K–8K) within SLM VRAM budgets").

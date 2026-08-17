@@ -93,9 +93,9 @@ Three branches instead of an offline/online split — `eval/runner.py` (`Evaluat
 
 Orchestrator: `eval/runner.py`. WikiText-2 samples concatenated to target length via `data/loader.py`.
 
-Results: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) · Complete: [RESULTS_COMPLETE.md](RESULTS_COMPLETE.md) · Reproducibility: [REPRODUCIBILITY.md](REPRODUCIBILITY.md). Known limits: [CURRENT_STATE.md](CURRENT_STATE.md).
+Results: [Qwen3-1.7B](../results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md) · [OLMo2-1B](../results/olmo2_1b/PHASE5_EVAL_RESULTS.md) · [5-model shortlist](../results/shortlist_5model_eval/) · Reproducibility: [REPRODUCIBILITY.md](../reproducibility/REPRODUCIBILITY.md). Known limits: [CURRENT_STATE.md](../methodology/CURRENT_STATE.md).
 
-Methodology: [METHODOLOGY.md](METHODOLOGY.md) · Equations: [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md).
+Methodology: [METHODOLOGY.md](../methodology/METHODOLOGY.md) · Equations: [MATHEMATICS_AND_ALGORITHMS.md](../methodology/MATHEMATICS_AND_ALGORITHMS.md).
 
 ## Runtimes
 
@@ -105,7 +105,7 @@ Methodology: [METHODOLOGY.md](METHODOLOGY.md) · Equations: [MATHEMATICS_AND_ALG
 | Use | pytest, smoke | Full sweeps |
 | Entry | `scripts/run_eval.py` | `modal_app/sweep.py` |
 
-Modal details: [MODAL_GPU_EVAL_DESIGN.md](MODAL_GPU_EVAL_DESIGN.md)
+Modal details: [REPRODUCIBILITY.md §11](../reproducibility/REPRODUCIBILITY.md)
 
 ## Non-goals
 

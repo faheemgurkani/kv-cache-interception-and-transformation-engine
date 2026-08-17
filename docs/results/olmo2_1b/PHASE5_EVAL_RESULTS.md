@@ -1,42 +1,11 @@
-# OLMo 2 1B — Complete Phase-5 Results, Metrics & Logs
+# OLMo 2 1B — Phase-5 Modal Evaluation Results
 
-**Generated (UTC):** 2026-08-02T19:37:51.206658+00:00
-**Model:** `allenai/OLMo-2-0425-1B` (`Olmo2ForCausalLM`, MHA 16/16, 16 layers, head_dim 128, FP16, eager attn)
-**Hardware:** Modal NVIDIA A10G
-**Dataset:** WikiText-2 test, batch=1, contexts `{128,256,512}`
-**Grid:** Identity×3 + TurboQuant×12 + QJL×3 + RocketKV×9 = **27/27 OK, 0 errors**
-**Volumes:** `kv-engine-olmo2` (weights), `kv-engine-results-olmo2` (job JSON)
-**Local raw:** `results/modal_volume_olmo2/`
-**Bundles:** `results/olmo2_phase5_{baseline,turboquant,qjl,rocketkv}/`
-**Inventory CSV:** `results/olmo2_phase5_inventory.csv`
-**Paper:** `docs/research_paper_writeup/conference_101719.tex` §\ref{sec:olmo2}
-
-## Completeness checklist
-
-| Check | Status |
-|---|---|
-| Remote Modal result files | 27 ok / 0 error |
-| Local fetched JSON | 27 |
-| Expected filename grid | 27/27 |
-| Section A (tensor/attn/memory) present | PASS |
-| Section B (PPL + throughput) present | PASS |
-| Per-layer attention (16 layers) | PASS |
-| Timestamps + model_name stamped | PASS |
-
-## Metric catalog (every job)
-
-### Section A — offline fidelity
-- `key_rmse`, `value_rmse` (tensor reconstruction)
-- Attention: `mse`, `rmse`, `cosine_similarity`, `max_error`, `per_layer[16]`
-- Memory: `uncompressed_bytes`, `compressed_bytes`, `shared_metadata_bytes`, `compression_ratio`, `effective_bits_per_kv_element`, `process_memory_mb`
-
-### Section B — online inference
-- `perplexity`, `perplexity_baseline` (sliding-window WikiText-2)
-- Throughput: `tokens_per_second`, `latency_ms_per_token`, `generated_tokens` (=64), `elapsed_seconds`, `online_compressed_kv`
-
-### Job metadata / logs
-- `label`, `compressor`, `bitwidth`, `stage`, `context_length`, `job` kwargs
-- `model_name`, `model_path`, `started_at`, `finished_at`, `status`
+**Model:** `allenai/OLMo-2-0425-1B` (MHA 16/16, 16 layers, head_dim 128)
+**Generated (UTC):** 2026-08-02T19:37:51.207151+00:00
+**Jobs:** 27/27 ok (Identity 3 + TurboQuant 12 + QJL 3 + RocketKV 9)
+**Volumes:** `kv-engine-olmo2` / `kv-engine-results-olmo2`
+**Raw JSON:** `results/modal_volume_olmo2/`
+**Full report:** [`RESULTS_COMPLETE.md`](RESULTS_COMPLETE.md)
 
 ## Master results table (all 27 jobs)
 
@@ -45,9 +14,9 @@
 | identity_baseline | 128 | 0.000 | 0.000 | 1.000 | 1.00 | 16.00 | 10.99 | 10.99 | 1.00 | 38.605 | 25.9 |
 | identity_baseline | 256 | 0.000 | 0.000 | 0.999 | 1.00 | 16.00 | 12.22 | 12.23 | 1.00 | 32.399 | 30.9 |
 | identity_baseline | 512 | 0.000 | 0.000 | 0.994 | 1.00 | 16.00 | 8.31 | 8.31 | 1.00 | 22.486 | 44.5 |
-| qjl_default | 128 | 2.156 | 0.000 | 0.696 | 1.84 | 8.69 | 716.72 | 10.99 | 65.19 | 1.531 | 653.2 |
-| qjl_default | 256 | 2.159 | 0.000 | 0.696 | 1.85 | 8.66 | 841.44 | 12.23 | 68.81 | 1.124 | 889.8 |
-| qjl_default | 512 | 2.157 | 0.000 | 0.729 | 1.85 | 8.64 | 873.44 | 8.31 | 105.06 | 0.361 | 2,770.94 |
+| qjl_default | 128 | 2.156 | 0.000 | 0.767 | 1.84 | 8.69 | 384.0 | 10.99 | 34.9 | 1.95 | 513.3 |
+| qjl_default | 256 | 2.159 | 0.000 | 0.771 | 1.85 | 8.66 | 390.2 | 12.23 | 31.9 | 1.12 | 890.3 |
+| qjl_default | 512 | 2.157 | 0.000 | 0.806 | 1.85 | 8.64 | 358.7 | 8.31 | 43.2 | 0.58 | 1,735.2 |
 | rocketkv_r1024 | 128 | 0.000 | 0.000 | 1.000 | 1.00 | 16.06 | 10.99 | 10.99 | 1.00 | 31.349 | 31.9 |
 | rocketkv_r1024 | 256 | 0.000 | 0.000 | 0.999 | 1.00 | 16.06 | 12.22 | 12.23 | 1.00 | 28.518 | 35.1 |
 | rocketkv_r1024 | 512 | 0.000 | 0.000 | 0.994 | 1.00 | 16.06 | 8.31 | 8.31 | 1.00 | 23.839 | 41.9 |
@@ -99,9 +68,11 @@
 
 | File | Started (UTC) | Finished (UTC) | Status |
 |---|---|---|---|
-| `qjl_default_ctx128_b1_na.json` | 2026-07-31T21:39:08.363049+00:00 | 2026-07-31T21:40:36.538974+00:00 | ok |
-| `qjl_default_ctx256_b1_na.json` | 2026-07-31T21:38:35.789690+00:00 | 2026-07-31T21:41:30.384385+00:00 | ok |
-| `qjl_default_ctx512_b1_na.json` | 2026-07-31T21:38:46.592513+00:00 | 2026-07-31T21:52:44.078074+00:00 | ok |
+| `qjl_default_ctx128_b1_na.json` | 2026-08-10T14:28:47+00:00 | 2026-08-10T14:44:10+00:00 | ok |
+| `qjl_default_ctx256_b1_na.json` | 2026-08-10T14:31:38+00:00 | 2026-08-10T14:45:51+00:00 | ok |
+| `qjl_default_ctx512_b1_na.json` | 2026-08-10T14:41:24+00:00 | 2026-08-10T14:51:57+00:00 | ok |
+
+*QJL rows above are from the August 2026 ProdQJL re-sweep (Modal `i220485`); bundle `results/olmo2_phase5_qjl_prodqjl/`.*
 
 ## RocketKV — run log
 
@@ -124,23 +95,14 @@
 | Identity | 8.31 | 1.00 | 1.00 | 22.49 | 0.994 |
 | TurboQuant 4-bit full | 8.51 | 1.02 | 3.12 | 0.14 | 0.993 |
 | TurboQuant 4-bit WHT | 8.50 | 1.02 | 3.56 | 0.17 | 0.993 |
-| QJL | 873.44 | 105.06 | 1.85 | 0.36 | 0.729 |
+| QJL | 358.7 | 43.2 | 1.85 | 0.58 | 0.806 |
 | RocketKV B=256 | 8.77 | 1.05 | 1.99 | 14.76 | 0.759 |
 | RocketKV B=512 | 8.31 | 1.00 | 1.00 | 13.89 | 0.994 |
 | RocketKV B=1024 | 8.31 | 1.00 | 1.00 | 23.84 | 0.994 |
 
-## Artifact index
+## See also
 
-| Path | Contents |
-|---|---|
-| `results/modal_volume_olmo2/*.json` | Per-job raw Modal outputs (27) |
-| `results/olmo2_phase5_baseline/` | Identity merged CSV/JSON + jobs/ + manifest |
-| `results/olmo2_phase5_turboquant/` | TurboQuant merged CSV/JSON + jobs/ + manifest |
-| `results/olmo2_phase5_qjl/` | QJL merged CSV/JSON + jobs/ + manifest |
-| `results/olmo2_phase5_rocketkv/` | RocketKV merged CSV/JSON + jobs/ + manifest |
-| `results/olmo2_phase5_summary.json` | Compact numeric summary for paper sync |
-| `results/olmo2_phase5_inventory.csv` | Flat KPI inventory (all metrics) |
-| `docs/OLMO2_ARCHITECTURE_PROBE.md` | Architecture coupling notes |
-| `docs/OLMO2_PHASE5_EVAL_RESULTS.md` | Condensed tables |
-| `docs/research_paper_writeup/conference_101719.tex` | IEEE tables §OLMo~2 |
+- Full metrics + run logs: [`RESULTS_COMPLETE.md`](RESULTS_COMPLETE.md)
+- Architecture + implementation history: [`MODEL_ARCHITECTURE_MATRIX.md`](../../architecture/MODEL_ARCHITECTURE_MATRIX.md)
+- Paper: `research_paper_writeup/conference_101719.tex` (§OLMo~2 1B Replication)
 

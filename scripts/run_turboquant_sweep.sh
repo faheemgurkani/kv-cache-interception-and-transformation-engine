@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full TurboQuant evaluation sweep per docs/EVALUATION_PLAN.md
+# Full TurboQuant evaluation sweep per docs/methodology/METHODOLOGY.md §9 (historical run ordering)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

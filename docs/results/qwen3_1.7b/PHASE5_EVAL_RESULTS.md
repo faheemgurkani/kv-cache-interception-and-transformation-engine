@@ -4,7 +4,7 @@ Case-study numbers for the **KV Cache Interception and Transformation Engine** o
 
 Qwen3-1.7B · WikiText-2 test · ctx **128 / 256 / 512** · Modal A10G · July 2026 (post-fix sweeps).
 
-Raw JSON/CSV: `results/` (gitignored). **Full tables (every stat + per-layer + logs):** [RESULTS_COMPLETE.md](RESULTS_COMPLETE.md). To reproduce: [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
+Raw JSON/CSV: `results/` (gitignored). **Full tables (every stat + per-layer + logs):** [RESULTS_COMPLETE.md](RESULTS_COMPLETE.md). To reproduce: [REPRODUCIBILITY.md](../../reproducibility/REPRODUCIBILITY.md).
 
 ## Identity baseline
 

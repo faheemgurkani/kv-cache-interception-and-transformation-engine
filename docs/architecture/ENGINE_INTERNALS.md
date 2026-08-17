@@ -2,7 +2,7 @@
 
 A from-first-principles walkthrough of the KV Cache Interception and Transformation Engine: every component, how they connect, and the exact execution flow from `scripts/run_eval.py` down to a single compressed tensor. Closes with a concrete engineering analysis of what it would take to support model architectures beyond dense, decoder-only, uniform-K/V-cache transformers.
 
-This document is the "how it actually works, wire by wire" reference. For narrower views: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) (high-level architecture), [METHODOLOGY.md](METHODOLOGY.md) (experimental protocol + per-compressor math), [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) (equations), [SLM_COMPATIBILITY.md](SLM_COMPATIBILITY.md) (which models work today and why).
+This document is the "how it actually works, wire by wire" reference. For narrower views: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) (high-level architecture), [METHODOLOGY.md](../methodology/METHODOLOGY.md) (experimental protocol + per-compressor math), [MATHEMATICS_AND_ALGORITHMS.md](../methodology/MATHEMATICS_AND_ALGORITHMS.md) (equations), [SLM_COMPATIBILITY.md](SLM_COMPATIBILITY.md) (which models work today and why), [MODEL_ARCHITECTURE_MATRIX.md](MODEL_ARCHITECTURE_MATRIX.md) (deep per-model probes + engine-correspondence gap analysis for the current 5-model shortlist).
 
 ---
 
@@ -189,7 +189,7 @@ New compressors register in `compressors/registry.py`'s `COMPRESSORS: dict[str, 
 
 ## 5. `eval/` — FIDELITY / BEHAVIOR / SYSTEM
 
-Full protocol tables already live in [METHODOLOGY.md §6](METHODOLOGY.md#6-evaluation-methodology); this section covers the *mechanics* — how the three branches are wired together and what each one actually touches.
+Full protocol tables already live in [METHODOLOGY.md §6](../methodology/METHODOLOGY.md#6-evaluation-methodology); this section covers the *mechanics* — how the three branches are wired together and what each one actually touches.
 
 ### 5.1 `eval/fidelity/` — single offline forward pass
 
@@ -277,11 +277,11 @@ Every `engine.step()`/`engine.generate()` call above internally does: decompress
 
 ## 8. Diversifying to other architecture families
 
-Building directly on [SLM_COMPATIBILITY.md](SLM_COMPATIBILITY.md)'s finding — the engine supports **dense, decoder-only transformers with a uniform per-layer K/V cache**, and within that class needs one more thing (a `model_adapter.py` branch) for full FIDELITY/attention + QJL/RocketKV support — this section is the concrete engineering plan for closing that gap, ordered by how structurally deep the change is.
+Building directly on [SLM_COMPATIBILITY.md](SLM_COMPATIBILITY.md)'s finding — the engine supports **dense, decoder-only transformers with a uniform per-layer K/V cache**, and within that class needs one more thing (a `model_adapter.py` branch) for full FIDELITY/attention + QJL/RocketKV support — this section is the concrete engineering plan for closing that gap, ordered by how structurally deep the change is. The tier framework below is general and durable; the specific example model at each tier has been updated to the current 5-model architecture-matrix shortlist (`olmo2_1b`/`qwen3_0.6b`/`gemma3_270m`/`falcon_h1_0.5b`/`tinydeepseek_0.5b` — see [MODEL_ARCHITECTURE_MATRIX.md](MODEL_ARCHITECTURE_MATRIX.md) for the live-probed detail behind each). The originally-named examples (Granite 4.0 350M, MiniCPM4-0.5B, Qwen3.5-0.8B) were deleted from `models/` once the shortlist was finalized — the mechanisms below still apply to their successors in the current shortlist.
 
 ### 8.1 Tier 0 (no code change needed): FIDELITY/representation, FIDELITY/memory, BEHAVIOR/SYSTEM under `identity`/`turboquant`
 
-Any model that (a) loads via `AutoModelForCausalLM.from_pretrained(..., attn_implementation="eager")` and (b) returns a `past_key_values` where every layer exposes one `(key, value)` tensor pair already works for this entire subset — no `model_adapter.py` involvement. This is a strictly larger class than "the two wired families" — it's why Granite and Gemma3 already pass these metrics today.
+Any model that (a) loads via `AutoModelForCausalLM.from_pretrained(..., attn_implementation="eager")` and (b) returns a `past_key_values` where every layer exposes one `(key, value)` tensor pair already works for this entire subset — no `model_adapter.py` involvement. This is a strictly larger class than "the two wired families" — it's why `gemma3_270m` and `tinydeepseek_0.5b` (loaded via `AutoModelForCausalLM` without `trust_remote_code`, which resolves to transformers' *native* `deepseek_v3` architecture rather than the checkpoint's vendored custom code — see [MODEL_ARCHITECTURE_MATRIX.md](MODEL_ARCHITECTURE_MATRIX.md)) already pass FIDELITY/representation+memory today, mechanically, with zero adapter work.
 
 ### 8.2 Tier 1: generalize `load_attention_ops` from an if/elif chain to a registry + auto-derivation
 
@@ -308,9 +308,9 @@ def _try_auto_import(model_type: str) -> AttentionOps | None:
 
 ...used only when no explicit branch matches, with explicit branches remaining the source of truth for known-correct configurations (Qwen3/Qwen2/OLMo2 today, Granite/Gemma3 once added — §8.3/8.4). This turns "add a family" from "read the HF source, hand-write a branch" into "verify the auto-derived branch is correct, optionally override two fields" for the common case — real time savings, but **not a substitute for per-family verification**, since `has_input_layernorm`, `qk_norm_layout`, and sliding-window handling are genuine semantic differences auto-import can't infer from symbol presence alone.
 
-### 8.3 Tier 1: add a third `qk_norm_layout` — fixes Granite
+### 8.3 Tier 1: add a third `qk_norm_layout` — fixes Falcon-H1
 
-`project_qkv` currently branches on exactly two layouts. Granite 4.0 350M (and likely other Q/K-norm-free families) needs a third:
+`project_qkv` currently branches on exactly two layouts. Falcon-H1-0.5B's attention module (confirmed live: `FalconH1Attention` has neither `q_norm` nor `k_norm`) needs a third:
 
 ```python
 if ops.qk_norm_layout == "flat":
@@ -323,7 +323,7 @@ else:  # "per_head" — Qwen3, Gemma3
     ...
 ```
 
-Plus one new `load_attention_ops` branch importing from `transformers.models.granitemoehybrid.modeling_granitemoehybrid` (needs verification these exports exist with matching signatures — GraniteMoeHybrid's attention layers may have a different calling convention even without Q/K-norm). Smallest fix in this document; recommended first.
+Plus one new `load_attention_ops` branch importing from `transformers.models.falcon_h1.modeling_falcon_h1` (needs verification these exports exist with matching signatures — Falcon-H1's attention layer additionally carries its own `attention_in_multiplier`/`attn_out_multiplier`/`key_multiplier` gating scalars not present in Qwen3/OLMo2, so the calling convention may differ even once `qk_norm_layout="none"` is added). Smallest *adapter-only* fix in this document, but note Falcon-H1 also needs the Tier 3 hybrid-cache work below (§8.6) before it's fully correct — the adapter fix alone unblocks FIDELITY/attention and QJL/RocketKV online, but doesn't fix `iter_layer_kv` silently dropping its Mamba state.
 
 ### 8.4 Tier 2: per-layer RoPE tables — fixes Gemma3
 
@@ -347,20 +347,22 @@ cos, sin = rope_tables[ops.layer_types[layer_idx]]
 
 This is a real (if mechanical) change to three files (`eval/fidelity/attention.py`, `framework/qjl_online.py`, `framework/rocketkv_online.py`), not a one-line fix — but it's a well-understood, already-shipped-in-transformers pattern, not new research.
 
-### 8.5 Tier 2: `trust_remote_code` — unblocks MiniCPM4 (and any custom-code model)
+### 8.5 Tier 2: MLA-native state — TinyDeepSeek's real blocker isn't `trust_remote_code`
 
-Not a code-complexity problem — a **trust-boundary decision**. `trust_remote_code=True` executes arbitrary Python shipped inside the model repository. Proposal: an explicit, opt-in config flag (`configs/model.yaml: trust_remote_code: false` by default) threaded through to both `AutoTokenizer.from_pretrained` and `AutoModelForCausalLM.from_pretrained` in `ModelLayer.__init__`, with a loud warning logged when enabled, and documentation telling users to only set it for models whose custom code they've reviewed (MiniCPM4's `modeling_minicpm.py` is already sitting in `models/minicpm4_0.5b/` — reviewable before flipping the flag). Once loaded, MiniCPM4 would still need its own `model_adapter.py` branch (its custom attention module's exact structure is unverified, since loading is blocked upstream of that check today) — likely Tier 1 or Tier 2 depending on what that structure turns out to be.
+The original version of this section (when the shortlist candidate was named MiniCPM4-0.5B) proposed a `trust_remote_code` opt-in flag as the blocker to solve. **For the current shortlist's MLA model, TinyDeepSeek-0.5B, that turned out not to be the actual gate**: `framework/model.py::ModelLayer.__init__` never passes `trust_remote_code`, and — confirmed live — `AutoModelForCausalLM.from_pretrained` on `models/tinydeepseek_0.5b` without it **succeeds**, resolving to transformers' native `DeepseekV3ForCausalLM` (the config's `model_type="deepseek_v3"` matches a real, already-supported transformers architecture) instead of the checkpoint's vendored `modeling_tinydeepseek.py`. The vendored custom code (which *does* fail to import against this repo's `transformers==5.8.1`) is simply never reached by the engine's actual load path. See [MODEL_ARCHITECTURE_MATRIX.md](MODEL_ARCHITECTURE_MATRIX.md) for the full trace, including the live-probed `DeepseekV3Attention` module (`kv_a_layernorm`, `kv_a_proj_with_mqa`, `kv_b_proj`, `kv_lora_rank`, `qk_nope_head_dim`, `qk_rope_head_dim`, `v_head_dim` — genuine MLA machinery) and the observed cache shape (asymmetric key/value last-dim: keys carry the nope+rope split, values don't).
+
+The `trust_remote_code` policy proposal (opt-in config flag, loud warning, review-before-enable) is still generically valid engine hygiene for *some future* model that genuinely requires vendored code with no native-transformers fallback — just not the blocker for TinyDeepSeek specifically. TinyDeepSeek's actual remaining gap is a plain Tier 1 `load_attention_ops` branch for `model_type == "deepseek_v3"` (same category as Falcon-H1 above), **plus** a deeper question once that adapter exists: whether `iter_layer_kv`'s generic `(keys, values)` extraction — which today reads the native implementation's already-expanded per-head cache, not DeepSeek's actual compressed latent (`kv_lora_rank`-dim) representation — is scientifically the right thing to benchmark, or whether a real MLA-state type (per §8.6's typed-layer direction) is needed to compress the *native* latent representation instead of a post-hoc reconstruction.
 
 ### 8.6 Tier 3 (new engine capability, not an adapter): heterogeneous / hybrid caches
 
-**This is the real ceiling, illustrated exactly by Qwen3.5-0.8B.** `iter_layer_kv`'s core assumption — every layer's cache entry has `.keys`/`.values` (or occupies one slot in parallel `.key_cache`/`.value_cache` lists) — is simply false for a hybrid model where some layers are recurrent linear-attention (no K/V at all; a fixed-size state matrix instead) and others are standard attention. This is **gate 1** (§8.1's "generic engine compatibility"), the most fundamental of the three gates — it fails before `model_adapter.py` is ever consulted, so no adapter registration can fix it.
+**This is the real ceiling, illustrated exactly by Falcon-H1-0.5B** (Qwen3.5-0.8B, the originally-named example, showed the same failure mode but has since been removed from `models/`). `iter_layer_kv`'s core assumption — every layer's cache entry has `.keys`/`.values` (or occupies one slot in parallel `.key_cache`/`.value_cache` lists) — is **misleadingly, not cleanly, false** for Falcon-H1: its cache layer class (`LinearAttentionAndFullAttentionLayer`) *does* expose `.keys`/`.values`, so `iter_layer_kv` doesn't crash (unlike Qwen3.5's `LinearAttentionLayer`, which has no such attributes at all) — but those attributes only cover the attention half of a genuinely dual-state layer. The other 24 (of 36) Mamba-mixer heads' worth of recurrent state per layer is invisible to the engine entirely, so today any compression run against Falcon-H1 would silently produce plausible-looking but incorrect memory/compression-ratio numbers rather than an honest error. This is **gate 1** (§8.1's "generic engine compatibility"), the most fundamental of the three gates — it fails before `model_adapter.py` is ever consulted, so no adapter registration can fix it, and Falcon-H1's case is *worse* than Qwen3.5's clean crash because it fails silently.
 
 **What real support would require** (scoped, not a one-line change, but also not unbounded research):
 
-1. **Layer classification.** `iter_layer_kv` (and everything built on it — `apply_compressor`, `decompress_to_legacy_cache`, `compress_token_slice`'s callers) would need to know, per layer, whether it's `"attention"` (has real K/V, compressible) or `"other"` (recurrent/Mamba/linear-attention state, opaque). Most hybrid HF models already expose this as `config.layer_types` (confirmed present on both Granite's config and Qwen3.5's `text_config` in this session's probing) — a natural, already-standardized signal to key off.
-2. **Selective interception.** `KVCacheEngine` would compress/decompress only `"attention"`-typed layers, passing `"other"`-typed layers' state through the engine untouched (read on decompress, write back unmodified on compress) — architecturally a filter, not a rewrite of the core step loop.
-3. **What's explicitly *not* included:** actually compressing recurrent/linear-attention state. That state isn't a growing K/V sequence; it's a fixed-size accumulator with completely different information-theoretic properties, and "how do you meaningfully compress a Mamba SSM state" is a genuinely open research question, not an engineering gap. Scoping the work to "pass hybrid layers through uncompressed, compress only the attention layers" keeps this a bounded engine change rather than a new research program — and is arguably the *right* scope for a KV-cache-compression benchmark specifically, since hybrid architectures' recurrent layers aren't KV-cache-bound the way attention layers are (that's the whole point of mixing in linear attention).
-4. **Near-term alternative, already noted in [SLM_COMPATIBILITY.md](SLM_COMPATIBILITY.md):** until (1)–(2) are built, an explicit guard at `ModelLayer`/`KVCacheEngine` construction time — reject any model whose `config.layer_types` contains a non-attention entry, with a clear error message — is strictly better than today's behavior (a raw `AttributeError` deep inside `iter_layer_kv`).
+1. **Layer classification.** `iter_layer_kv` (and everything built on it — `apply_compressor`, `decompress_to_legacy_cache`, `compress_token_slice`'s callers) would need to know, per layer, whether it's `"attention"` (has real K/V, compressible), `"recurrent"` (Mamba/linear-attention state, opaque), or — Falcon-H1's actual case — **both simultaneously on the same layer object**. `config.layer_types` is `["hybrid"] * 36` for Falcon-H1 (not a per-layer attention-vs-recurrent split like some other hybrid families use) — the type signal alone doesn't disambiguate; the fix needs to inspect the cache-layer class itself (`LinearAttentionAndFullAttentionLayer` vs. plain `DynamicLayer`) or the decoder-layer's submodules (presence of both `self_attn`-style projections and a `.mamba` submodule, both confirmed present on `FalconH1DecoderLayer`).
+2. **Selective interception.** `KVCacheEngine` would compress/decompress only the attention-typed state, passing recurrent/Mamba state through the engine untouched (read on decompress, write back unmodified on compress) — architecturally a filter, not a rewrite of the core step loop.
+3. **What's explicitly *not* included:** actually compressing recurrent/linear-attention state. That state isn't a growing K/V sequence; it's a fixed-size accumulator with completely different information-theoretic properties, and "how do you meaningfully compress a Mamba SSM state" is a genuinely open research question, not an engineering gap. Scoping the work to "pass hybrid layers through uncompressed, compress only the attention layers" keeps this a bounded engine change rather than a new research program.
+4. **Near-term alternative, already noted in [SLM_COMPATIBILITY.md](SLM_COMPATIBILITY.md):** until (1)–(2) are built, an explicit guard at `ModelLayer`/`KVCacheEngine` construction time — reject any model whose decoder layer carries both attention and recurrent submodules (or whose cache layer class isn't a plain `DynamicLayer`/`DynamicSlidingWindowLayer`), with a clear error message — is strictly better than today's behavior for Falcon-H1 specifically, which is a **silent under-count**, not even a raised exception.
 
 ### 8.7 A conformance test as the real definition of "supported"
 
@@ -368,12 +370,15 @@ Whatever tier a new family lands in, the practical bar for calling it "supported
 
 ### 8.8 Summary: effort ordering
 
-| Tier | Fixes | Scope | Effort |
+| Tier | Fixes (current shortlist) | Scope | Effort |
 |---|---|---|---|
-| 0 | Nothing (already works) | FIDELITY/repr+mem, BEHAVIOR/SYSTEM under identity/turboquant, for any dense transformer with a standard cache | none |
-| 1 | Granite | One `qk_norm_layout` value + one `load_attention_ops` branch | small, contained |
+| 0 | Nothing (already works) | `olmo2_1b`, `qwen3_0.6b` fully; `gemma3_270m`/`tinydeepseek_0.5b` FIDELITY/repr+mem and BEHAVIOR/SYSTEM under identity/turboquant | none |
+| 1 | Falcon-H1 (adapter only, not the cache gap) | One `qk_norm_layout="none"` value + one `load_attention_ops` branch | small, contained |
+| 1 | TinyDeepSeek (adapter only, not the latent-state question) | One `load_attention_ops` branch for `model_type="deepseek_v3"` | small, contained |
 | 2a | Gemma3 | Per-layer RoPE table, touching 3 call sites | medium, mechanical, well-understood pattern |
-| 2b | MiniCPM4 | `trust_remote_code` plumbing (policy decision) + unknown-until-tested adapter work after | small code / non-technical blocker first |
-| 3 | Qwen3.5 (and any Mamba/linear-attention/MoE-hybrid family) | Layer-type-aware cache interception in the core engine (`iter_layer_kv` and everything built on it) | substantial, but bounded if scoped to "pass non-attention layers through uncompressed" rather than "compress everything" |
+| 3 | Falcon-H1 (full correctness — the silent Mamba-state undercount) | Layer-type-aware cache interception in the core engine (`iter_layer_kv` and everything built on it) | substantial, but bounded if scoped to "pass non-attention layers through uncompressed" rather than "compress everything" |
+| 3 | TinyDeepSeek (benchmarking the *native* latent representation, not a reconstruction) | Same typed-state direction as Falcon-H1, applied to a compressed-latent state instead of recurrent state | substantial, open scientific question on top of the engineering work |
+
+Full per-model live-probe evidence behind every row above: [MODEL_ARCHITECTURE_MATRIX.md](MODEL_ARCHITECTURE_MATRIX.md).
 
 **Bottom line:** the framework's dense-transformer ceiling isn't a hard architectural wall for Granite or Gemma3 — both are reachable with contained, well-scoped changes to `framework/model_adapter.py` (and, for Gemma3, three call sites that assume one shared RoPE table). The real wall is hybrid/recurrent architectures (§8.6), which need a genuine new capability — selective, layer-type-aware interception — added to the core engine, not just a new adapter branch. That capability is buildable without solving the open research question of compressing recurrent state, by explicitly scoping it to attention-layer interception only.

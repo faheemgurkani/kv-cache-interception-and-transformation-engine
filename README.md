@@ -44,7 +44,7 @@ Published KV-compression methods are hard to compare: protocols differ, and offl
 | QJL | `qjl_default` | 359 | 43× | 1.85× | 0.58 |
 | RocketKV | `rocketkv_r256` | 8.77 | **1.05×** | **1.99×** | 14.76 |
 
-**Takeaway:** offline fidelity does **not** predict online quality, and rankings can flip across attention layouts (GQA vs MHA). Full tables: [docs/PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md), [docs/OLMO2_RESULTS_COMPLETE.md](docs/OLMO2_RESULTS_COMPLETE.md).
+**Takeaway:** offline fidelity does **not** predict online quality, and rankings can flip across attention layouts (GQA vs MHA). Full tables: [docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md](docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md), [docs/results/olmo2_1b/RESULTS_COMPLETE.md](docs/results/olmo2_1b/RESULTS_COMPLETE.md).
 
 ## Compressors (plug-ins)
 
@@ -98,7 +98,7 @@ python scripts/run_eval.py --compressor turboquant --peak-memory --memory-bandwi
 
 FIDELITY always runs; BEHAVIOR/task_quality (perplexity) and SYSTEM/latency_throughput run by default. Retrieval, instruction-following, reasoning, peak VRAM, memory bandwidth, kernel cost, and GPU utilization are opt-in flags — see `python scripts/run_eval.py --help`.
 
-**Modal sweeps** — see [docs/MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md)
+**Modal sweeps** — see [docs/reproducibility/REPRODUCIBILITY.md §11](docs/reproducibility/REPRODUCIBILITY.md)
 
 ```bash
 pip install modal
@@ -114,7 +114,7 @@ Configs: `configs/model.yaml`, `configs/eval.yaml`, `configs/modal.yaml`, `confi
 
 ## Reproducibility
 
-Step-by-step: **[docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md)**
+Step-by-step: **[docs/reproducibility/REPRODUCIBILITY.md](docs/reproducibility/REPRODUCIBILITY.md)**
 
 | Step | Command |
 |---|---|
@@ -130,17 +130,17 @@ Record `git rev-parse HEAD` when citing results. Use `--no-resume` on Modal afte
 
 | Doc | Contents |
 |---|---|
-| [SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Architecture (high-level) |
-| [ENGINE_INTERNALS.md](docs/ENGINE_INTERNALS.md) | Complete implementation walkthrough + generalizing to other model architectures |
-| [METHODOLOGY.md](docs/METHODOLOGY.md) | Experimental methodology |
-| [MATHEMATICS_AND_ALGORITHMS.md](docs/MATHEMATICS_AND_ALGORITHMS.md) | Equations and pseudocode |
-| [SLM_COMPATIBILITY.md](docs/SLM_COMPATIBILITY.md) | Which local SLMs work with FIDELITY/BEHAVIOR/SYSTEM, and why |
-| [PHASE5_EVAL_RESULTS.md](docs/PHASE5_EVAL_RESULTS.md) | Qwen3 Phase-5 summary |
-| [RESULTS_COMPLETE.md](docs/RESULTS_COMPLETE.md) | Qwen3 full metrics |
-| [OLMO2_RESULTS_COMPLETE.md](docs/OLMO2_RESULTS_COMPLETE.md) | OLMo 2 full metrics + logs |
-| [OLMO2_ARCHITECTURE_PROBE.md](docs/OLMO2_ARCHITECTURE_PROBE.md) | OLMo 2 coupling notes |
-| [REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md) | Reproduction guide |
-| [MODAL_GPU_EVAL_DESIGN.md](docs/MODAL_GPU_EVAL_DESIGN.md) | Modal runbook |
+| [SYSTEM_DESIGN.md](docs/architecture/SYSTEM_DESIGN.md) | Architecture (high-level) |
+| [ENGINE_INTERNALS.md](docs/architecture/ENGINE_INTERNALS.md) | Complete implementation walkthrough + generalizing to other model architectures |
+| [MODEL_ARCHITECTURE_MATRIX.md](docs/architecture/MODEL_ARCHITECTURE_MATRIX.md) | Current 5-model architecture-matrix shortlist (MHA/GQA/MQA/MLA/Hybrid), engine-support status, adoption plan |
+| [SLM_COMPATIBILITY.md](docs/architecture/SLM_COMPATIBILITY.md) | Historical: original 6-candidate SLM compatibility probe |
+| [METHODOLOGY.md](docs/methodology/METHODOLOGY.md) | Experimental methodology |
+| [MATHEMATICS_AND_ALGORITHMS.md](docs/methodology/MATHEMATICS_AND_ALGORITHMS.md) | Equations and pseudocode |
+| [PHASE5_EVAL_RESULTS.md](docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md) | Qwen3 Phase-5 summary |
+| [RESULTS_COMPLETE.md](docs/results/qwen3_1.7b/RESULTS_COMPLETE.md) | Qwen3 full metrics |
+| [OLMo2 RESULTS_COMPLETE.md](docs/results/olmo2_1b/RESULTS_COMPLETE.md) | OLMo 2 full metrics + logs |
+| [shortlist_5model_eval/](docs/results/shortlist_5model_eval/) | Live eval-framework run against the 5-model shortlist |
+| [REPRODUCIBILITY.md](docs/reproducibility/REPRODUCIBILITY.md) | Reproduction guide (local + Modal) |
 | [ROADMAP.md](ROADMAP.md) | Planned work |
 | [research paper write-up](docs/research_paper_writeup/conference_101719.tex) | KVBench manuscript (title unchanged) |
 

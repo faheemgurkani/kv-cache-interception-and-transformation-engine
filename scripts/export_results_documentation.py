@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate docs/RESULTS_COMPLETE.md from Phase 5 result bundles."""
+"""Generate docs/results/qwen3_1.7b/RESULTS_COMPLETE.md from Phase 5 result bundles."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DOCS_OUT = PROJECT_ROOT / "docs" / "RESULTS_COMPLETE.md"
+DOCS_OUT = PROJECT_ROOT / "docs" / "results" / "qwen3_1.7b" / "RESULTS_COMPLETE.md"
 
 BUNDLES = [
     ("Identity baseline", PROJECT_ROOT / "results" / "phase5_modal_baseline"),

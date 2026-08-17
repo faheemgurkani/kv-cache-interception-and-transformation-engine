@@ -1,5 +1,5 @@
-model_name: Qwen/Qwen3-1.7B
-local_path: models/legacy/qwen3_1.7b
+model_name: FreedomIntelligence/TinyDeepSeek-0.5B-base
+local_path: models/tinydeepseek_0.5b
 
 context_lengths:
   - 128

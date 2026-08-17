@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the full TurboQuant evaluation grid from docs/EVALUATION_PLAN.md."""
+"""Run the full TurboQuant evaluation grid from docs/methodology/METHODOLOGY.md §9 (historical run ordering)."""
 
 from __future__ import annotations
 

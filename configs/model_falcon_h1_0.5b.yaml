@@ -1,5 +1,5 @@
-model_name: Qwen/Qwen3-1.7B
-local_path: models/legacy/qwen3_1.7b
+model_name: tiiuae/Falcon-H1-0.5B-Base
+local_path: models/falcon_h1_0.5b
 
 context_lengths:
   - 128

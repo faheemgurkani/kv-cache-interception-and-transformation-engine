@@ -1,5 +1,5 @@
-model_name: Qwen/Qwen3-1.7B
-local_path: models/legacy/qwen3_1.7b
+model_name: Qwen/Qwen3-0.6B
+local_path: models/qwen3_0.6b
 
 context_lengths:
   - 128

@@ -10,9 +10,9 @@ Generated: 2026-07-07 14:03:43 UTC
 
 Model: **Qwen3-1.7B** · Dataset: **WikiText-2 test** · GPU: **Modal A10G** · Contexts: **128 / 256 / 512**.
 
-Summary tables: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) · Reproduce: [REPRODUCIBILITY.md](REPRODUCIBILITY.md).
+Summary tables: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) · Reproduce: [REPRODUCIBILITY.md](../../reproducibility/REPRODUCIBILITY.md).
 
-**OLMo~2 1B companion sweep (27/27 OK):** [OLMO2_RESULTS_COMPLETE.md](OLMO2_RESULTS_COMPLETE.md) · [OLMO2_PHASE5_EVAL_RESULTS.md](OLMO2_PHASE5_EVAL_RESULTS.md) · architecture notes: [OLMO2_ARCHITECTURE_PROBE.md](OLMO2_ARCHITECTURE_PROBE.md).
+**OLMo~2 1B companion sweep (27/27 OK):** [RESULTS_COMPLETE.md](../olmo2_1b/RESULTS_COMPLETE.md) · [PHASE5_EVAL_RESULTS.md](../olmo2_1b/PHASE5_EVAL_RESULTS.md) · architecture notes: [MODEL_ARCHITECTURE_MATRIX.md](../../architecture/MODEL_ARCHITECTURE_MATRIX.md).
 
 ---
 

@@ -13,7 +13,7 @@ Published **summary** evaluation bundles for the KV Cache Interception and Trans
 | `olmo2_phase5_qjl_prodqjl/` | OLMo 2 QJL ProdQJL re-run bundle |
 | `olmo2_phase5_*` | Other OLMo 2 1B bundles + `olmo2_phase5_summary.json` / inventory CSV |
 
-Human-readable tables: [`docs/PHASE5_EVAL_RESULTS.md`](../docs/PHASE5_EVAL_RESULTS.md), [`docs/OLMO2_RESULTS_COMPLETE.md`](../docs/OLMO2_RESULTS_COMPLETE.md), [`docs/RESULTS_COMPLETE.md`](../docs/RESULTS_COMPLETE.md).
+Human-readable tables: [`docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md`](../docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md), [`docs/results/olmo2_1b/RESULTS_COMPLETE.md`](../docs/results/olmo2_1b/RESULTS_COMPLETE.md), [`docs/results/qwen3_1.7b/RESULTS_COMPLETE.md`](../docs/results/qwen3_1.7b/RESULTS_COMPLETE.md).
 
 ## Not tracked in git
 

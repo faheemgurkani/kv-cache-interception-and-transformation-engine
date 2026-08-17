@@ -2,7 +2,7 @@
 
 How to reproduce **KV Cache Interception and Transformation Engine** evaluations from scratch — locally (smoke / dev) or on Modal (full Phase 5 sweeps).
 
-Related: [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) · [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) · [MODAL_GPU_EVAL_DESIGN.md](MODAL_GPU_EVAL_DESIGN.md)
+Related: [SYSTEM_DESIGN.md](../architecture/SYSTEM_DESIGN.md) · [Qwen3-1.7B PHASE5_EVAL_RESULTS.md](../results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md) · [OLMo2-1B PHASE5_EVAL_RESULTS.md](../results/olmo2_1b/PHASE5_EVAL_RESULTS.md)
 
 ---
 
@@ -63,7 +63,7 @@ Pin that SHA in papers / issue reports so others can check out the same code.
 |---|---|
 | macOS | `fast-hadamard-transform` often fails to build — skip it; TurboQuant uses scipy WHT fallback |
 | Local CPU/MPS | Good for smoke tests; PPL/throughput differ from Modal CUDA |
-| Modal | Recommended for Phase 5 numbers in [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) |
+| Modal | Recommended for Phase 5 numbers in [Qwen3-1.7B PHASE5_EVAL_RESULTS.md](../results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md) |
 
 ---
 
@@ -193,7 +193,7 @@ cp .env.example .env && # set HF_TOKEN
 bash scripts/modal_setup_model.sh  # Qwen3-1.7B → Modal volume kv-engine-qwen3
 ```
 
-Create Modal secret `huggingface-secret` with key `HF_TOKEN` (see [MODAL_GPU_EVAL_DESIGN.md](MODAL_GPU_EVAL_DESIGN.md)).
+Create Modal secret `huggingface-secret` with key `HF_TOKEN` (see the Modal summary table in §11 below).
 
 ### Full sweep order
 
@@ -300,7 +300,7 @@ Each job JSON includes:
 
 Older bundles (before the FIDELITY/BEHAVIOR/SYSTEM redesign) instead use `section_a_fidelity` / `section_b_inference` keys; `modal_app/merge.py` and `scripts/export_results_documentation.py` read both shapes so historical archives still merge and regenerate docs correctly.
 
-Published tables: [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md). Raw bundles are gitignored; regenerate via Modal steps above.
+Published tables: [Qwen3-1.7B PHASE5_EVAL_RESULTS.md](../results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md) · [OLMo2-1B PHASE5_EVAL_RESULTS.md](../results/olmo2_1b/PHASE5_EVAL_RESULTS.md). Raw bundles are gitignored; regenerate via Modal steps above.
 
 ---
 
@@ -323,26 +323,89 @@ bash scripts/modal_fetch_results.sh
 python scripts/restructure_modal_results.py
 ```
 
-Compare merged CSV to [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md). Identity baseline PPL at each context length should match within ~1%.
+Compare merged CSV to the relevant `PHASE5_EVAL_RESULTS.md`. Identity baseline PPL at each context length should match within ~1%.
 
 ---
 
 ## 10. Known non-reproducibility sources
 
-Documented in [CURRENT_STATE.md](CURRENT_STATE.md):
+Documented in [CURRENT_STATE.md](../methodology/CURRENT_STATE.md):
 
-- Single model / dataset / ctx ≤512 — not a multi-benchmark study yet
+- Single model family per published sweep / dataset / ctx ≤512 per run — not a multi-benchmark study yet
 - TurboQuant online speed ~0.08 tok/s @ ctx=512 (implementation overhead)
-- QJL / RocketKV PPL catastrophic on Qwen3-1.7B under this pipeline — faithful implementation, not paper-matched quality
+- QJL / RocketKV PPL catastrophic under this pipeline on some configs — faithful implementation, not paper-matched quality
 - FIDELITY metrics do not always predict BEHAVIOR/PPL (by design)
 
-## 10. Documentation index
+---
+
+## 11. Modal GPU evaluation (infrastructure reference)
+
+CUDA sweeps on [Modal](https://modal.com). Same eval code as local; only device and orchestration differ. This section was previously its own `MODAL_GPU_EVAL_DESIGN.md` file — merged here since its runbook was pure duplication of §7 above; only the infra-specific reference material is kept.
+
+### Summary
+
+| Item | Value |
+|---|---|
+| GPU | A10G (24 GB) per job; fallbacks L4, any |
+| Parallelism | One job = one GPU via `eval_worker.spawn_map()` (up to ~30) |
+| Within-job PPL | Sequential (by design) |
+| Model volume | `kv-engine-qwen3` → `/models/qwen3_1.7b/` (per-model volumes for other model configs, see `configs/modal_qwen3.yaml`) |
+| Results volume | `kv-engine-results` → `/results/{stem}.json` |
+| Secret | `huggingface-secret` (`HF_TOKEN`) |
+| Timeout | 4 h/job (`configs/modal.yaml`) |
+
+```text
+Local: modal run --detach modal_app/sweep.py::main
+         │
+         ▼
+   spawn_map → N × eval_worker @ A10G
+         │
+         ▼
+   eval/runner.py (same as local) → JSON on volume
+```
+
+**Not in image:** `fast-hadamard-transform` — scipy WHT fallback on CUDA.
+
+### Layout
+
+```text
+modal_app/
+  image.py, settings.py, worker.py, sweep.py, job_spec.py, merge.py
+scripts/
+  modal_setup_model.sh, modal_run_sweep*.sh, modal_smoke_eval.sh, modal_fetch_results.sh
+configs/modal.yaml, configs/modal_sweeps.yaml
+```
+
+Workers mount repo at `/root/kv-cache-engine`; configs resolved via `KV_PROJECT_ROOT` in `modal_app/settings.py`.
+
+### Config highlights
+
+`configs/modal.yaml` — GPU, volumes, secrets, timeout.
+
+`configs/eval.yaml` — `perplexity_stride: 512`, `attention_fidelity_tokens: 512` (FIDELITY attention window for long ctx).
+
+### Limits
+
+- Online PPL must stay sequential — batched forwards would change the metric.
+- FIDELITY uses windowed QK fidelity (512 tokens) to avoid OOM at long ctx on A10G.
+- Eager attention required (same as local).
+
+### References
+
+- [Modal GPU](https://modal.com/docs/guide/gpu) · [spawn_map](https://modal.com/docs/guide/scale) · [Volumes](https://modal.com/docs/guide/volumes)
+
+---
+
+## 12. Documentation index
 
 | Document | Purpose |
 |---|---|
-| [METHODOLOGY.md](METHODOLOGY.md) | System design + compression + eval protocol |
-| [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) | Equations and pseudocode |
-| [RESULTS_COMPLETE.md](RESULTS_COMPLETE.md) | Every Phase 5 metric, per-layer stats, logs |
-| [PHASE5_EVAL_RESULTS.md](PHASE5_EVAL_RESULTS.md) | Summary tables for papers/README |
+| [METHODOLOGY.md](../methodology/METHODOLOGY.md) | System design + compression + eval protocol |
+| [MATHEMATICS_AND_ALGORITHMS.md](../methodology/MATHEMATICS_AND_ALGORITHMS.md) | Equations and pseudocode |
+| [Qwen3-1.7B RESULTS_COMPLETE.md](../results/qwen3_1.7b/RESULTS_COMPLETE.md) | Every Phase 5 metric, per-layer stats, logs |
+| [Qwen3-1.7B PHASE5_EVAL_RESULTS.md](../results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md) | Summary tables for papers/README |
+| [OLMo2-1B RESULTS_COMPLETE.md](../results/olmo2_1b/RESULTS_COMPLETE.md) | Every Phase 5 metric for the OLMo2 replication |
+| [OLMo2-1B PHASE5_EVAL_RESULTS.md](../results/olmo2_1b/PHASE5_EVAL_RESULTS.md) | OLMo2 summary tables |
+| [shortlist_5model_eval/](../results/shortlist_5model_eval/) | Evaluation-framework correspondence for the 5-model architecture-matrix shortlist (MHA/GQA/MQA/MLA/Hybrid) |
 
 Regenerate complete results: `python scripts/export_results_documentation.py`

@@ -34,6 +34,11 @@ def extract_layer_kv(past_key_values, layer_idx: int = 0) -> tuple[torch.Tensor,
 
 
 def get_cache_size_bytes(past_key_values) -> int:
+    """Attention K/V bytes only — backward-compatible compatibility view.
+
+    For full visible inference-state accounting (including hybrid recurrent/Mamba
+    tensors), use ``framework.state_interface.visible_state_bytes``.
+    """
     total = 0
     for key, value in iter_layer_kv(past_key_values):
         total += key.numel() * key.element_size()

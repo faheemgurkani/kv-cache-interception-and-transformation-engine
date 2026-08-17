@@ -83,6 +83,12 @@ def _infer_state_type(attention: AttentionKVState | None, recurrent: RecurrentSt
     return StateType.CONVENTIONAL_KV
 
 
+def _tensor_bytes(tensor: torch.Tensor | None) -> int:
+    if tensor is None:
+        return 0
+    return tensor.numel() * tensor.element_size()
+
+
 def iter_layer_states(
     past_key_values,
     *,
@@ -91,7 +97,7 @@ def iter_layer_states(
     """Yield typed per-layer inference state.
 
     ``iter_layer_kv()`` in ``framework/kv_cache.py`` remains the compatibility view
-    for conventional K/V only.
+    for conventional attention K/V only.
     """
     latent_note = capabilities.expanded_kv_disclosure if capabilities else None
     for layer_idx, layer in enumerate(_cache_layers(past_key_values)):
@@ -111,39 +117,70 @@ def iter_layer_states(
         )
 
 
-def state_semantics_issues(past_key_values, capabilities: ModelCapabilities) -> list[str]:
-    """Return Gate-C issues when undeclared state components are present."""
-    issues: list[str] = []
-    for state in iter_layer_states(past_key_values, capabilities=capabilities):
-        if state.recurrent is not None and not capabilities.has_recurrent_state:
-            issues.append(
-                f"Layer {state.layer_idx} exposes recurrent state but capabilities.has_recurrent_state=False."
-            )
-        if (
-            state.recurrent is not None
-            and capabilities.has_recurrent_state
-            and not capabilities.state_semantics_complete
-        ):
-            issues.append(
-                f"Layer {state.layer_idx} has recurrent state that is not yet included in "
-                "reported memory accounting."
-            )
-    return issues
+def attention_kv_bytes(past_key_values) -> int:
+    """Bytes for attention K/V only (same scope as ``get_cache_size_bytes``)."""
+    total = 0
+    for state in iter_layer_states(past_key_values):
+        if state.attention is None:
+            continue
+        total += _tensor_bytes(state.attention.key)
+        total += _tensor_bytes(state.attention.value)
+    return total
+
+
+def visible_state_bytes(past_key_values) -> int:
+    """Bytes for every inference-state tensor visible in ``past_key_values``."""
+    total = 0
+    for state in iter_layer_states(past_key_values):
+        if state.attention is not None:
+            total += _tensor_bytes(state.attention.key)
+            total += _tensor_bytes(state.attention.value)
+        if state.recurrent is not None:
+            total += _tensor_bytes(state.recurrent.recurrent_states)
+            total += _tensor_bytes(state.recurrent.conv_states)
+    return total
 
 
 def total_state_bytes(past_key_values, capabilities: ModelCapabilities | None = None) -> int:
-    """Count bytes across all accounted inference-state components."""
+    """Alias for ``visible_state_bytes`` — counts all visible cache components."""
+    del capabilities  # reserved for future scoped accounting policies
+    return visible_state_bytes(past_key_values)
+
+
+def count_visible_state_elements(past_key_values) -> int:
+    """Scalar count across every visible inference-state tensor."""
     total = 0
-    include_recurrent = capabilities is not None and capabilities.state_semantics_complete
-    for state in iter_layer_states(past_key_values, capabilities=capabilities):
+    for state in iter_layer_states(past_key_values):
         if state.attention is not None:
-            total += state.attention.key.numel() * state.attention.key.element_size()
-            total += state.attention.value.numel() * state.attention.value.element_size()
-        if include_recurrent and state.recurrent is not None:
-            for tensor in (state.recurrent.recurrent_states, state.recurrent.conv_states):
-                if tensor is not None:
-                    total += tensor.numel() * tensor.element_size()
+            total += state.attention.key.numel() + state.attention.value.numel()
+        if state.recurrent is not None:
+            if state.recurrent.recurrent_states is not None:
+                total += state.recurrent.recurrent_states.numel()
+            if state.recurrent.conv_states is not None:
+                total += state.recurrent.conv_states.numel()
     return total
+
+
+def state_semantics_issues(past_key_values, capabilities: ModelCapabilities) -> list[str]:
+    """Return Gate-C issues when inference-state semantics are incomplete."""
+    issues: list[str] = []
+    if capabilities.native_latent_cache:
+        issues.append(
+            "Native latent KV is not exposed in the cache; benchmarks use HF's expanded "
+            "per-head K/V reconstruction unless MLA-native interception is added."
+        )
+    for state in iter_layer_states(past_key_values, capabilities=capabilities):
+        if state.recurrent is not None and not capabilities.has_recurrent_state:
+            issues.append(
+                f"Layer {state.layer_idx} exposes recurrent state but "
+                "capabilities.has_recurrent_state=False."
+            )
+    if not capabilities.state_semantics_complete:
+        issues.append(
+            f"Capability metadata marks state semantics incomplete for "
+            f"model_type={capabilities.model_type!r}."
+        )
+    return issues
 
 
 def hybrid_layer_detected(past_key_values) -> bool:

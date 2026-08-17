@@ -40,15 +40,20 @@ def test_gemma3_capabilities():
 def test_falcon_h1_capabilities():
     caps = CAPABILITIES_BY_MODEL_TYPE["falcon_h1"]
     assert caps.has_recurrent_state is True
-    assert caps.state_semantics_complete is False
+    assert caps.state_semantics_complete is True
+    assert caps.rope_mode == "global"
+    assert caps.per_layer_attention_type is False
     assert caps.qk_norm_layout == "none"
-    assert not caps.supports_gate(CompatibilityGate.STATE_SEMANTICS)
+    assert caps.supports_gate(CompatibilityGate.STATE_SEMANTICS)
 
 
 def test_tinydeepseek_capabilities():
     caps = CAPABILITIES_BY_MODEL_TYPE["deepseek_v3"]
     assert caps.native_latent_cache is True
+    assert caps.state_semantics_complete is False
+    assert caps.rope_mode == "split_nope_rope"
     assert caps.expanded_kv_disclosure is not None
+    assert not caps.supports_gate(CompatibilityGate.STATE_SEMANTICS)
 
 
 def test_unknown_model_type_defaults_to_unsupported():

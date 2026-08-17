@@ -7,14 +7,15 @@ from dataclasses import dataclass
 import torch
 
 from compressors.base import KVCompressor
-from framework.storage_accounting import effective_bits_per_element
-from framework.kv_cache import (
-    apply_compressor,
-    compressed_size_bytes,
-    count_kv_elements,
-    get_cache_size_bytes,
-)
+from framework.kv_cache import apply_compressor, compressed_size_bytes, get_cache_size_bytes
 from framework.model import ModelLayer
+from framework.model_capabilities import resolve_model_capabilities
+from framework.state_interface import (
+    attention_kv_bytes,
+    count_visible_state_elements,
+    visible_state_bytes,
+)
+from framework.storage_accounting import effective_bits_per_element
 
 
 @dataclass
@@ -27,6 +28,8 @@ class MemoryMetrics:
     compression_ratio: float
     effective_bits_per_kv_element: float
     process_memory_mb: float
+    attention_kv_bytes: int | None = None
+    total_visible_state_bytes: int | None = None
 
 
 def process_memory_mb() -> float:
@@ -42,9 +45,20 @@ def kv_cache_bytes(
     head_dim: int,
     batch_size: int = 1,
     bytes_per_element: int = 2,
+    *,
+    value_head_dim: int | None = None,
 ) -> int:
-    """Analytical KV-cache size: B × 2 × layers × tokens × kv_heads × head_dim × bytes."""
-    elements = batch_size * 2 * num_layers * seq_len * num_kv_heads * head_dim
+    """Analytical KV-cache size.
+
+    Standard (symmetric K/V):
+        B × L × T × H_KV × (D_k + D_v) × b, with D_v = D_k when omitted.
+
+    Examples:
+        OLMo2/Qwen3/Gemma3 — pass one ``head_dim`` (D_k = D_v).
+        TinyDeepSeek — pass ``head_dim=64, value_head_dim=32``.
+    """
+    value_dim = head_dim if value_head_dim is None else value_head_dim
+    elements = batch_size * num_layers * seq_len * num_kv_heads * (head_dim + value_dim)
     return elements * bytes_per_element
 
 
@@ -61,28 +75,34 @@ def evaluate_memory(
     return evaluate_memory_from_cache(model_layer, input_ids, compressor, past_key_values)
 
 
+@torch.no_grad()
 def evaluate_memory_from_cache(
     model_layer: ModelLayer,
     input_ids: torch.Tensor,
     compressor: KVCompressor,
     past_key_values,
 ) -> MemoryMetrics:
-    uncompressed_bytes = get_cache_size_bytes(past_key_values)
-    num_kv_elements = count_kv_elements(past_key_values)
+    caps = resolve_model_capabilities(model_layer.config)
+    attn_bytes = attention_kv_bytes(past_key_values)
+    visible_bytes = visible_state_bytes(past_key_values)
+    num_elements = count_visible_state_elements(past_key_values)
+
     compressed_layers = apply_compressor(past_key_values, compressor)
     payload_bytes = compressed_size_bytes(compressed_layers, compressor)
     shared_metadata_bytes = compressor.shared_storage_bytes()
     compressed_bytes = payload_bytes + shared_metadata_bytes
-    ratio = uncompressed_bytes / compressed_bytes if compressed_bytes > 0 else 1.0
-    effective_bits = effective_bits_per_element(compressed_bytes * 8, num_kv_elements)
+    ratio = visible_bytes / compressed_bytes if compressed_bytes > 0 else 1.0
+    effective_bits = effective_bits_per_element(compressed_bytes * 8, num_elements)
 
     return MemoryMetrics(
         context_length=input_ids.size(1),
-        num_kv_elements=num_kv_elements,
-        uncompressed_bytes=uncompressed_bytes,
+        num_kv_elements=num_elements,
+        uncompressed_bytes=visible_bytes,
         compressed_bytes=compressed_bytes,
         shared_metadata_bytes=shared_metadata_bytes,
         compression_ratio=ratio,
         effective_bits_per_kv_element=effective_bits,
         process_memory_mb=process_memory_mb(),
+        attention_kv_bytes=attn_bytes,
+        total_visible_state_bytes=visible_bytes,
     )

@@ -109,14 +109,17 @@ For the five models:
 | Capability               | OLMo2 | Qwen3    | Gemma3                | TinyDeepSeek          | Falcon-H1             |
 | ------------------------ | ----- | -------- | --------------------- | --------------------- | --------------------- |
 | Standard K/V cache       | ✓     | ✓        | ✓                     | ✓*                    | ✓*                    |
-| MHA/GQA/MQA              | MHA   | GQA      | MQA                   | —                     | GQA component         |
-| Q/K norm                 | flat  | per-head | model-specific        | MLA-specific          | none                  |
-| Global RoPE              | ✓     | ✓        | ✗                     | architecture-specific | architecture-specific |
-| Per-layer attention type | ✗     | ✗        | ✓                     | ✗                     | ✓                     |
+| MHA/GQA/MQA/MLA          | MHA   | GQA      | MQA                   | MLA                   | GQA (attention half)  |
+| Q/K norm                 | flat  | per-head | per-head              | MLA-specific          | none                  |
+| Global RoPE              | ✓     | ✓        | ✗                     | split (nope + rope)   | ✓ (attention half)    |
+| Per-layer attention type | ✗     | ✗        | ✓ (sliding/full)      | ✗                     | ✗                     |
+| Dual-state layer         | ✗     | ✗        | ✗                     | ✗                     | ✓ (attn + Mamba)      |
 | Recurrent state          | ✗     | ✗        | ✗                     | ✗                     | ✓                     |
-| Latent KV                | ✗     | ✗        | ✓ native architecture | ✓ native architecture | ✗                     |
+| Latent KV                | ✗     | ✗        | ✗                     | ✓ (native; cache expanded*) | ✗             |
 
-`*` requires an important qualification for TinyDeepSeek and Falcon-H1, discussed below.
+`*` **TinyDeepSeek:** HF eager materializes expanded per-head K/V (`D_k ≠ D_v`); the visible cache is not the native `kv_lora_rank` latent. Gate C passes accounting for the expanded cache but marks scientific scope incomplete until MLA-native interception lands.
+
+`*` **Falcon-H1:** Attention K/V is visible via `.keys`/`.values`; Mamba `recurrent_states` + `conv_states` live on the same cache layer. Memory accounting counts all visible components; compression policy remains attention-K/V only (Mamba passthrough).
 
 This capability layer prevents future additions from turning the engine into:
 

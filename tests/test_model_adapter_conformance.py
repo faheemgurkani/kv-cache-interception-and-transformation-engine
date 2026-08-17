@@ -19,7 +19,7 @@ from framework.model import ModelLayer
 from framework.model_adapter import load_attention_ops, project_qkv, pre_attention_hidden
 from framework.model_capabilities import resolve_model_capabilities
 from framework.rope import build_rope_context
-from framework.state_interface import iter_layer_states, total_state_bytes
+from framework.state_interface import iter_layer_states, visible_state_bytes
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -142,5 +142,5 @@ def test_adapter_conformance(conformance_model):
     assert torch.allclose(value, value_hat, atol=1e-5)
 
     cache_bytes = get_cache_size_bytes(outputs.past_key_values)
-    state_bytes = total_state_bytes(outputs.past_key_values, capabilities=caps)
+    state_bytes = visible_state_bytes(outputs.past_key_values)
     assert cache_bytes == state_bytes

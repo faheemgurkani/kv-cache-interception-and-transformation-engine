@@ -16,7 +16,13 @@ from framework.model import ModelLayer
 from framework.model_adapter import ATTENTION_ADAPTER_REGISTRY, load_attention_ops
 from framework.model_capabilities import ModelCapabilities, resolve_model_capabilities
 from framework.rope import RoPEContext, build_rope_context
-from framework.state_interface import LayerState, iter_layer_states, total_state_bytes
+from framework.state_interface import (
+    LayerState,
+    attention_kv_bytes,
+    iter_layer_states,
+    total_state_bytes,
+    visible_state_bytes,
+)
 
 __all__ = [
     "ATTENTION_ADAPTER_REGISTRY",
@@ -29,6 +35,7 @@ __all__ = [
     "ModelLayer",
     "RoPEContext",
     "apply_compressor",
+    "attention_kv_bytes",
     "build_rope_context",
     "check_attention_gate",
     "check_loader_state_gate",

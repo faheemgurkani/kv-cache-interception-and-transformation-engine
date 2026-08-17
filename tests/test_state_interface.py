@@ -8,7 +8,7 @@ import torch
 from framework.kv_cache import get_cache_size_bytes, iter_layer_kv
 from framework.model import ModelLayer
 from framework.model_capabilities import resolve_model_capabilities
-from framework.state_interface import hybrid_layer_detected, iter_layer_states, total_state_bytes
+from framework.state_interface import hybrid_layer_detected, iter_layer_states, visible_state_bytes
 
 OLMO2 = Path(__file__).resolve().parent.parent / "models" / "olmo2_1b"
 FALCON = Path(__file__).resolve().parent.parent / "models" / "falcon_h1_0.5b"
@@ -50,6 +50,6 @@ def test_falcon_hybrid_state_is_detected():
     assert states[0].recurrent.recurrent_states is not None
 
     attention_only = get_cache_size_bytes(outputs.past_key_values)
-    total = total_state_bytes(outputs.past_key_values, capabilities=caps)
-    assert total == attention_only
-    assert caps.state_semantics_complete is False
+    total = visible_state_bytes(outputs.past_key_values)
+    assert total > attention_only
+    assert caps.state_semantics_complete is True

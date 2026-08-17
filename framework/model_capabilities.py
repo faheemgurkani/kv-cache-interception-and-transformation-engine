@@ -109,33 +109,33 @@ CAPABILITIES_BY_MODEL_TYPE: dict[str, ModelCapabilities] = {
         attention_family="mla",
         kv_layout="expanded",
         qk_norm_layout="mla",
-        rope_mode="architecture_specific",
+        rope_mode="split_nope_rope",
         has_recurrent_state=False,
         native_latent_cache=True,
         per_layer_attention_type=False,
         state_type=StateType.MLA,
         adapter_registered=False,
-        state_semantics_complete=True,
+        state_semantics_complete=False,
         expanded_kv_disclosure=(
             "HF eager DeepseekV3Attention materializes expanded per-head K/V in the "
-            "cache, not the native kv_lora_rank latent representation."
+            "cache (D_k=64, D_v=32), not the native kv_lora_rank latent representation."
         ),
     ),
     "falcon_h1": ModelCapabilities(
         model_type="falcon_h1",
         attention_family="gqa",
-        kv_layout="attention_only",
+        kv_layout="hybrid_visible",
         qk_norm_layout="none",
-        rope_mode="architecture_specific",
+        rope_mode="global",
         has_recurrent_state=True,
         native_latent_cache=False,
-        per_layer_attention_type=True,
+        per_layer_attention_type=False,
         state_type=StateType.HYBRID,
         adapter_registered=False,
-        state_semantics_complete=False,
+        state_semantics_complete=True,
         expanded_kv_disclosure=(
-            "Attention K/V is visible in the cache; Mamba recurrent/conv state is "
-            "present but not yet included in default memory accounting."
+            "Every layer is hybrid (attention GQA + Mamba2). Memory accounting counts "
+            "attention K/V and Mamba recurrent/conv state; compression targets K/V only."
         ),
     ),
 }

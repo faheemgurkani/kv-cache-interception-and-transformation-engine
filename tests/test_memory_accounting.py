@@ -8,6 +8,18 @@ from framework.storage_accounting import bits_to_bytes, sign_storage_bits
 from quantizers.turboquant_pipeline import TurboQuantStage, TurboQuantTensorPayload
 
 
+def test_kv_cache_bytes_asymmetric_key_value_dims():
+    symmetric = kv_cache_bytes(num_layers=26, seq_len=5, num_kv_heads=4, head_dim=64)
+    asymmetric = kv_cache_bytes(
+        num_layers=26,
+        seq_len=5,
+        num_kv_heads=4,
+        head_dim=64,
+        value_head_dim=32,
+    )
+    assert asymmetric == int(symmetric * (64 + 32) / (64 + 64))
+
+
 def test_kv_cache_bytes_includes_batch():
     single = kv_cache_bytes(num_layers=28, seq_len=512, num_kv_heads=8, head_dim=128)
     batched = kv_cache_bytes(

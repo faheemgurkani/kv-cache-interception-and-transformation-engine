@@ -32,7 +32,7 @@ from eval.fidelity import FidelityMetrics, evaluate_fidelity
 from eval.system import SystemMetrics, evaluate_system
 from framework.config import load_eval_config, load_model_config
 from framework.model import ModelLayer
-from framework.model_capabilities import ModelCapabilities, resolve_model_capabilities
+from framework.model_capabilities import ModelCapabilities, get_model_eval_metadata, resolve_model_capabilities
 
 
 @dataclass
@@ -61,21 +61,26 @@ class EvaluationResult:
 
     def to_dict(self) -> dict:
         caps = self.model_capabilities
+        model_meta = None
+        if caps is not None:
+            base = get_model_eval_metadata(self.model_layer_config) if hasattr(self, "model_layer_config") else None
+            if base is None:
+                base = {
+                    "model_type": caps.model_type,
+                    "attention_family": caps.attention_family,
+                    "state_type": caps.state_type.value,
+                    "rope_mode": caps.rope_mode,
+                    "adapter": caps.model_type,
+                    "adapter_registered": caps.adapter_registered,
+                    "state_semantics_complete": caps.state_semantics_complete,
+                }
+            model_meta = base
         return {
             "compressor": self.compressor,
             "bitwidth": self.bitwidth,
             "stage": self.stage,
             "context_length": self.context_length,
-            "model": None
-            if caps is None
-            else {
-                "model_type": caps.model_type,
-                "attention_family": caps.attention_family,
-                "state_type": caps.state_type.value,
-                "rope_mode": caps.rope_mode,
-                "adapter_registered": caps.adapter_registered,
-                "state_semantics_complete": caps.state_semantics_complete,
-            },
+            "model": model_meta,
             "fidelity": None if self.fidelity is None else self.fidelity.to_dict(),
             "behavior": None if self.behavior is None else self.behavior.to_dict(),
             "system": None if self.system is None else self.system.to_dict(),

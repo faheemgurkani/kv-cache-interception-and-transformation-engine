@@ -181,6 +181,8 @@ class LayerAttentionMetadata:
 
 def get_layer_attention_metadata(config, layer_idx: int) -> LayerAttentionMetadata:
     """Return attention metadata for one decoder layer."""
+    from framework.model_adapter import resolve_head_dim
+
     layer_types = getattr(config, "layer_types", None) or []
     attention_type = layer_types[layer_idx] if layer_idx < len(layer_types) else None
     rope_type = attention_type if attention_type in {"sliding_attention", "full_attention"} else None
@@ -189,9 +191,35 @@ def get_layer_attention_metadata(config, layer_idx: int) -> LayerAttentionMetada
         layer_idx=layer_idx,
         attention_type=attention_type,
         num_q_heads=int(config.num_attention_heads),
-        num_kv_heads=int(config.num_key_value_heads),
-        head_dim=int(getattr(config, "head_dim", config.hidden_size // config.num_attention_heads)),
+        num_kv_heads=int(getattr(config, "num_key_value_heads", config.num_attention_heads)),
+        head_dim=resolve_head_dim(config),
         rope_type=rope_type,
         window_size=int(window_size) if window_size is not None else None,
         is_sliding=attention_type == "sliding_attention" if attention_type else None,
     )
+
+
+def get_model_eval_metadata(config, *, local_path: str | None = None) -> dict[str, object]:
+    """Reference metadata recorded with every evaluation run (OLMo2 baseline template)."""
+    from framework.model_adapter import resolve_head_dim, resolve_model_type
+
+    caps = resolve_model_capabilities(config)
+    num_q_heads = int(config.num_attention_heads)
+    num_kv_heads = int(getattr(config, "num_key_value_heads", num_q_heads))
+    head_dim = resolve_head_dim(config)
+    return {
+        "model_type": resolve_model_type(config),
+        "local_path": local_path,
+        "attention_family": caps.attention_family,
+        "num_q_heads": num_q_heads,
+        "num_kv_heads": num_kv_heads,
+        "head_dim": head_dim,
+        "num_layers": int(config.num_hidden_layers),
+        "hidden_size": int(config.hidden_size),
+        "rope_mode": caps.rope_mode,
+        "state_type": caps.state_type.value,
+        "qk_norm_layout": caps.qk_norm_layout,
+        "adapter": resolve_model_type(config),
+        "adapter_registered": caps.adapter_registered,
+        "state_semantics_complete": caps.state_semantics_complete,
+    }

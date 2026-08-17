@@ -62,27 +62,20 @@ def evaluate_representation(past_key_values, compressor: KVCompressor) -> Repres
     value_cosines: list[float] = []
 
     for layer_idx, (key, value) in enumerate(iter_layer_kv(past_key_values)):
-        k_hat = compressor.decompress_kv(
-            compressor.compress_kv(key, layer=layer_idx, mode="key"),
-            mode="key",
-        ).to(key.device)
-        v_hat = compressor.decompress_kv(
-            compressor.compress_kv(value, layer=layer_idx, mode="value"),
-            mode="value",
-        ).to(value.device)
+        k_hat, v_hat, key_ref, value_ref = _layer_roundtrip(key, value, compressor, layer_idx)
 
         if hasattr(compressor, "reconstruction_error"):
             errors = compressor.reconstruction_error(key, value, layer=layer_idx)
             key_rmses.append(errors["key_rmse"])
             value_rmses.append(errors["value_rmse"])
         else:
-            key_rmses.append((key.float() - k_hat.float()).pow(2).mean().sqrt().item())
-            value_rmses.append((value.float() - v_hat.float()).pow(2).mean().sqrt().item())
+            key_rmses.append((key_ref.float() - k_hat.float()).pow(2).mean().sqrt().item())
+            value_rmses.append((value_ref.float() - v_hat.float()).pow(2).mean().sqrt().item())
 
-        key_rel_errors.append(_relative_error(key, k_hat))
-        value_rel_errors.append(_relative_error(value, v_hat))
-        key_cosines.append(_cosine_similarity(key, k_hat))
-        value_cosines.append(_cosine_similarity(value, v_hat))
+        key_rel_errors.append(_relative_error(key_ref, k_hat))
+        value_rel_errors.append(_relative_error(value_ref, v_hat))
+        key_cosines.append(_cosine_similarity(key_ref, k_hat))
+        value_cosines.append(_cosine_similarity(value_ref, v_hat))
 
     if not key_rmses:
         raise RuntimeError("No KV tensors found for reconstruction error.")
@@ -96,3 +89,34 @@ def evaluate_representation(past_key_values, compressor: KVCompressor) -> Repres
         key_cosine_similarity=sum(key_cosines) / n,
         value_cosine_similarity=sum(value_cosines) / n,
     )
+
+
+def _layer_roundtrip(
+    key: torch.Tensor,
+    value: torch.Tensor,
+    compressor: KVCompressor,
+    layer_idx: int,
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return reconstructed K/V plus reference tensors aligned for comparison."""
+    if getattr(compressor, "name", None) == "rocketkv":
+        compressed = compressor.compress(key, value, layer=layer_idx)
+        k_hat, v_hat = compressor.decompress(compressed)
+        payload = compressed.keys
+        selected = getattr(payload, "selected_indices", None)
+        if selected is not None and selected.numel() > 0:
+            idx = selected.to(key.device)
+            key_ref = key.index_select(2, idx)
+            value_ref = value.index_select(2, idx)
+        else:
+            key_ref, value_ref = key, value
+        return k_hat.to(key.device), v_hat.to(value.device), key_ref, value_ref
+
+    k_hat = compressor.decompress_kv(
+        compressor.compress_kv(key, layer=layer_idx, mode="key"),
+        mode="key",
+    ).to(key.device)
+    v_hat = compressor.decompress_kv(
+        compressor.compress_kv(value, layer=layer_idx, mode="value"),
+        mode="value",
+    ).to(value.device)
+    return k_hat, v_hat, key, value

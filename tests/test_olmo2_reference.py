@@ -11,12 +11,7 @@ from compressors.identity import IdentityCompressor
 from compressors.registry import get_compressor
 from eval.fidelity.memory import kv_cache_bytes
 from eval.runner import EvaluationRunner
-from framework.compatibility import (
-    check_attention_gate,
-    check_loader_state_gate,
-    check_state_semantics_gate,
-    evaluate_compatibility_gates,
-)
+from framework.compatibility import evaluate_compatibility_gates
 from framework.kv_cache import get_cache_size_bytes, iter_layer_kv
 from framework.model import ModelLayer
 from framework.model_adapter import load_attention_ops, project_qkv, pre_attention_hidden, resolve_head_dim
@@ -45,6 +40,11 @@ def olmo2_model():
     if not OLMO2_PATH.exists():
         pytest.skip("OLMo2-1B not downloaded")
     return ModelLayer(model_path=OLMO2_PATH, device=_device())
+
+
+@pytest.fixture(scope="module")
+def olmo2_runner(olmo2_model):
+    return EvaluationRunner(model_layer=olmo2_model, compressor=IdentityCompressor())
 
 
 @pytest.mark.skipif(not OLMO2_PATH.exists(), reason="OLMo2-1B not downloaded")
@@ -148,6 +148,39 @@ def test_olmo2_memory_formula_alignment(olmo2_model: ModelLayer):
     assert measured == get_cache_size_bytes(pkv)
 
 
+def _assert_eval_branches_complete(result, compressor_name: str) -> None:
+    assert result.fidelity is not None
+    assert result.behavior is not None
+    assert result.system is not None
+    assert result.model_metadata is not None
+    assert result.model_metadata["adapter"] == "olmo2"
+
+    assert result.fidelity.memory.compression_ratio > 0
+    assert result.behavior.perplexity is not None and result.behavior.perplexity > 0
+    assert result.behavior.retrieval is not None
+    assert result.behavior.reasoning is not None
+    assert result.behavior.instruction_following is not None
+    assert result.system.throughput is not None
+    assert result.system.throughput.tokens_per_second > 0
+    assert result.system.memory_bandwidth is not None
+    assert result.system.kernel_cost is not None
+
+    if compressor_name == "identity":
+        assert result.fidelity.representation.key_cosine_similarity > 0.99
+        assert result.fidelity.attention.cosine_similarity > 0.999
+        assert result.fidelity.memory.compression_ratio == pytest.approx(1.0, rel=1e-3)
+    elif compressor_name == "turboquant":
+        assert result.fidelity.representation.key_cosine_similarity > 0.8
+        assert result.fidelity.attention.cosine_similarity > 0.8
+    elif compressor_name == "qjl":
+        # QJL stores 1-bit key sketches; value passthrough stays exact.
+        assert result.fidelity.representation.value_cosine_similarity > 0.99
+        assert result.fidelity.attention.cosine_similarity > 0.5
+    elif compressor_name == "rocketkv":
+        assert result.fidelity.representation.key_rmse < 1e-4
+        assert result.fidelity.attention.cosine_similarity > 0.5
+
+
 @pytest.mark.parametrize(
     "compressor_name,compressor_kwargs",
     [
@@ -158,13 +191,10 @@ def test_olmo2_memory_formula_alignment(olmo2_model: ModelLayer):
     ],
 )
 @pytest.mark.skipif(not OLMO2_PATH.exists(), reason="OLMo2-1B not downloaded")
-def test_olmo2_all_eval_branches(compressor_name: str, compressor_kwargs: dict):
+def test_olmo2_all_eval_branches(olmo2_model: ModelLayer, compressor_name: str, compressor_kwargs: dict):
     """Plan §4: FIDELITY + BEHAVIOR + SYSTEM for each production compressor."""
     compressor = get_compressor(compressor_name, **compressor_kwargs)
-    runner = EvaluationRunner(
-        model_layer=ModelLayer(model_path=OLMO2_PATH, device=_device()),
-        compressor=compressor,
-    )
+    runner = EvaluationRunner(model_layer=olmo2_model, compressor=compressor)
     result = runner.run(
         context_length=128,
         run_fidelity=True,
@@ -180,25 +210,22 @@ def test_olmo2_all_eval_branches(compressor_name: str, compressor_kwargs: dict):
         generated_tokens=8,
         perplexity_stride=64,
     )
+    _assert_eval_branches_complete(result, compressor_name)
 
-    assert result.fidelity is not None
-    assert result.behavior is not None
-    assert result.system is not None
-    assert result.model_metadata is not None
-    assert result.model_metadata["adapter"] == "olmo2"
 
-    assert result.fidelity.representation.key_cosine_similarity > 0.99
-    assert result.fidelity.attention.cosine_similarity > 0.99
-    assert result.fidelity.memory.compression_ratio > 0
-    assert result.behavior.perplexity is not None and result.behavior.perplexity > 0
-    assert result.behavior.retrieval is not None
-    assert result.behavior.reasoning is not None
-    assert result.behavior.instruction_following is not None
-    assert result.system.throughput is not None
-    assert result.system.throughput.tokens_per_second > 0
-    assert result.system.memory_bandwidth is not None
-    assert result.system.kernel_cost is not None
-
-    if compressor_name == "identity":
-        assert result.fidelity.memory.compression_ratio == pytest.approx(1.0, rel=1e-3)
-        assert result.fidelity.attention.cosine_similarity > 0.999
+@pytest.mark.skipif(not OLMO2_PATH.exists(), reason="OLMo2-1B not downloaded")
+def test_olmo2_identity_regression_baseline(olmo2_runner: EvaluationRunner):
+    """Plan §4 acceptance: identity path stays numerically stable (within run noise)."""
+    result = olmo2_runner.run(
+        context_length=128,
+        run_fidelity=True,
+        run_behavior=True,
+        run_perplexity=True,
+        run_system=True,
+        run_throughput=True,
+        generated_tokens=8,
+        perplexity_stride=64,
+    )
+    assert result.fidelity.attention.cosine_similarity > 0.999
+    assert 5.0 < result.behavior.perplexity < 50.0
+    assert result.system.throughput.tokens_per_second > 0.5

@@ -99,3 +99,16 @@ def test_rocketkv_dynamic_selection():
     assert sparse_k.shape[2] <= 12
     assert sparse_v.shape[2] == sparse_k.shape[2]
     assert indices.numel() == sparse_k.shape[2]
+
+
+def test_rocketkv_representation_eval_uses_batch_compress():
+    from eval.fidelity.representation import evaluate_representation
+
+    compressor = RocketKVCompressor(token_budget=16, window_size=8)
+    key = torch.randn(1, 8, 32, 128)
+    value = torch.randn(1, 8, 32, 128)
+    past_key_values = ((key, value),)
+    metrics = evaluate_representation(past_key_values, compressor)
+    assert metrics.key_rmse < 1e-4
+    assert metrics.value_rmse < 1e-4
+    assert metrics.key_cosine_similarity > 0.99

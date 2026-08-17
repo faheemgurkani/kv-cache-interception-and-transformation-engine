@@ -117,7 +117,7 @@ For the five models:
 | Recurrent state          | ✗     | ✗        | ✗                     | ✗                     | ✓                     |
 | Latent KV                | ✗     | ✗        | ✗                     | ✓ (native; cache expanded*) | ✗             |
 
-`*` **TinyDeepSeek:** HF eager materializes expanded per-head K/V (`D_k ≠ D_v`); the visible cache is not the native `kv_lora_rank` latent. Gate C passes accounting for the expanded cache but marks scientific scope incomplete until MLA-native interception lands.
+`*` **TinyDeepSeek:** HF eager materializes expanded per-head K/V (`D_k ≠ D_v`); the visible cache is not the native `kv_lora_rank` latent. Gate C **fails** until MLA-native interception lands (expanded-cache accounting is still correct).
 
 `*` **Falcon-H1:** Attention K/V is visible via `.keys`/`.values`; Mamba `recurrent_states` + `conv_states` live on the same cache layer. Memory accounting counts all visible components; compression policy remains attention-K/V only (Mamba passthrough).
 

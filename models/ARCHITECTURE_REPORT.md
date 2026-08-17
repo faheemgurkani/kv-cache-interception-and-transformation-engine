@@ -72,14 +72,25 @@ Despite sharing the "OLMo" name and identical 16/16 MHA head counts, these are *
 - weight files: `model.safetensors` · other artifacts: `added_tokens.json`, `generation_config.json`, `special_tokens_map.json`, `tokenizer.json`, `tokenizer_config.json`
 - **Live probe:** loads as `Gemma3ForCausalLM`, forward pass succeeds. Cache layer0 is a `DynamicSlidingWindowLayer` (not a plain `DynamicLayer` — confirms the sliding-window/full-attention split is real at the cache level, not just a config label), keys/values shape `(1, 1, 5, 256)` — 1 cached KV head vs. 4 query heads confirms **true MQA** (max KV-sharing ratio). Already known-broken in this engine for FIDELITY/attention (`docs/CURRENT_STATE.md` — per-layer RoPE lookup crash), unaffected here since this probe only exercises the generic forward path.
 
-## Summary
+## Summary — current `models/` shortlist (post-swap)
 
 | Model | Family | Loads + forwards? | Cache shape confirms architecture claim? |
 |---|---|:---:|:---:|
-| olmo1b | MHA | ✅ | ✅ 16 KV heads == 16 Q heads |
+| olmo2_1b | MHA | ✅ | ✅ 16 KV heads == 16 Q heads |
 | qwen3_0.6b | GQA | ✅ | ✅ 8 KV heads : 16 Q heads (2:1) |
 | tinydeepseek_0.5b | MLA | ❌ import error | ⚠️ unverified — config fields look right, forward pass blocked |
 | falcon_h1_0.5b | Hybrid Attn+Mamba2 | ✅ | ✅ combined attention+Mamba layer object, GQA attention half (2 KV heads) |
 | gemma3_270m | MQA + local/global | ✅ | ✅ 1 KV head (MQA) + sliding/full layer-type split reflected in cache class |
 
 4 of 5 fully confirm their claimed architecture end-to-end (weights load, forward pass runs, cache tensor shapes match). TinyDeepSeek's config fields are consistent with MLA but the checkpoint's bundled custom code doesn't import cleanly against this venv's `transformers==5.8.1`, so its cache shape/MLA behavior is not yet verified.
+
+## `models/legacy/` — not part of the active shortlist
+
+| Model | Family | Role |
+|---|---|---|
+| qwen3_1.7b | GQA | Primary/default model, `configs/model.yaml` — all published TurboQuant/QJL/RocketKV numbers are on this model. |
+| olmo1b | MHA | 2024 OLMo-1 generation — superseded in the shortlist's MHA slot by `olmo2_1b` (2026-08-20 swap), kept here for reference; conformance details above. |
+
+## Deleted entirely (no longer on disk, not documented further here)
+
+`granite_4.0_350m`, `qwen3.5_0.8b`, `minicpm4_0.5b` — earlier candidate-probe downloads from `scripts/download_candidate_models.py`, superseded by the 5-model architecture-matrix shortlist decision. Their historical compatibility findings remain in `docs/SLM_COMPATIBILITY.md` and `docs/CURRENT_STATE.md` as research record, but none of the three are present under `models/` anymore and none are tracked by this report going forward.

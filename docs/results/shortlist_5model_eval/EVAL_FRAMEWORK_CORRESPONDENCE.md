@@ -4,6 +4,8 @@ What actually happens when the real FIDELITY/BEHAVIOR/SYSTEM evaluation pipeline
 
 Run 2026-08-21: `python scripts/run_eval.py --compressor identity --context-length 128` against each model in turn (via a per-model `configs/model_<name>.yaml`, temporarily swapped into `configs/model.yaml`). `transformers==5.8.1`, this repo's `.venv`.
 
+**Update 2026-08-18 (86th commit):** Gemma3 support landed — `gemma3_text` adapter, per-layer RoPE (`framework/rope.py`), and full eval-branch verification in `tests/test_gemma3_reference.py`. Live gate evaluation confirms **3 of 5 models pass all three compatibility gates** (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`). See [Current status (2026-08-18)](#current-status-2026-08-18) below; the 2026-08-21 sections below remain as historical record for the initial probe.
+
 ## Two real bugs found and fixed while getting these numbers
 
 Both were pre-existing engine/environment defects, unrelated to the shortlist models themselves — surfaced only because this was the first time `scripts/run_eval.py` had actually been re-run locally in this environment recently:
@@ -13,7 +15,29 @@ Both were pre-existing engine/environment defects, unrelated to the shortlist mo
 
 Both are now fixed in the working tree; anyone hitting either error should re-check `configs/model*.yaml` paths against the current `models/` layout and confirm `pip show datasets` succeeds.
 
-## Results: models that ran end to end
+## Current status (2026-08-18)
+
+Verified via live gate evaluation and `tests/test_*_reference.py`:
+
+| Model | Gate A (loader/state) | Gate B (attention) | Gate C (state semantics) | Full eval (FIDELITY+BEHAVIOR+SYSTEM) |
+|---|---|---|---|---|
+| `olmo2_1b` | PASS | PASS | PASS | ✅ all compressors |
+| `qwen3_0.6b` | PASS | PASS | PASS | ✅ all compressors |
+| `gemma3_270m` | PASS | PASS | PASS | ✅ identity, TurboQuant, QJL, RocketKV (`test_gemma3_reference.py`) |
+| `tinydeepseek_0.5b` | PASS | FAIL | FAIL | ❌ Gate B blocks FIDELITY; use `--skip-fidelity` for BEHAVIOR/SYSTEM only |
+| `falcon_h1_0.5b` | PASS | FAIL | PASS | ❌ Gate B blocks FIDELITY; hybrid state counted in memory (Gate C pass) |
+
+### `gemma3_270m` — now fully supported
+
+Changes in 86th commit:
+- `gemma3_text` registered in `ATTENTION_ADAPTER_REGISTRY`
+- `build_rope_context().get_rope(layer_idx)` selects sliding vs full RoPE per layer
+- `get_model_eval_metadata` records per-layer `layer_attention` metadata
+- All eval branches pass in `tests/test_gemma3_reference.py`
+
+The historical RoPE crash documented below (2026-08-21 probe) is **resolved**.
+
+## Results: models that ran end to end (2026-08-21 initial probe)
 
 `olmo2_1b` and `qwen3_0.6b` — both zero-adapter-work models — completed the full default run (FIDELITY always-on + BEHAVIOR/task_quality + SYSTEM/latency_throughput) successfully. Raw output: `results/shortlist_olmo2_1b_identity.{json,csv}`, `results/shortlist_qwen3_0.6b_identity.{json,csv}` (gitignored; below are the actual values from that run).
 
@@ -31,11 +55,14 @@ Both are now fixed in the working tree; anyone hitting either error should re-ch
 
 **FIDELITY, BEHAVIOR, and SYSTEM all completed** for both models — this is real, current, evidence-based confirmation that `olmo2_1b`/`qwen3_0.6b` are fully supported end to end by the current engine, not just an inference from adapter-code inspection.
 
-## Results: models that failed, and exactly where
+## Results: models that failed, and exactly where (2026-08-21 initial probe — historical)
 
-All three remaining models fail inside `eval/fidelity/__init__.py::evaluate_fidelity` → `eval/fidelity/attention.py::evaluate_attention_fidelity` → `_compute_layer_queries` → `framework/model_adapter.py::load_attention_ops`. By default **FIDELITY runs first** (`eval/runner.py::run`); use `run_fidelity=False` or `scripts/run_eval.py --skip-fidelity` to collect BEHAVIOR/SYSTEM on models where Gate A passes but Gate B does not.
+At the time of the initial probe, all three remaining models failed inside `eval/fidelity/__init__.py::evaluate_fidelity` → `eval/fidelity/attention.py::evaluate_attention_fidelity` → `_compute_layer_queries` → `framework/model_adapter.py::load_attention_ops`. **Gemma3 is no longer in this category** (fixed 2026-08-18). By default **FIDELITY runs first** (`eval/runner.py::run`); use `run_fidelity=False` or `scripts/run_eval.py --skip-fidelity` to collect BEHAVIOR/SYSTEM on models where Gate A passes but Gate B does not.
 
-### `gemma3_270m`
+### `gemma3_270m` — RESOLVED (was: RoPE crash)
+
+<details>
+<summary>Historical traceback (2026-08-21, fixed in 86th commit)</summary>
 
 ```
 File "eval/fidelity/attention.py", line 151, in evaluate_attention_fidelity
@@ -45,7 +72,9 @@ File ".../transformers/models/gemma3/modeling_gemma3.py", ... in forward
 AttributeError: 'Gemma3RotaryEmbedding' object has no attribute 'None_inv_freq'
 ```
 
-Confirms exactly the mechanism documented in `models/ARCHITECTURE_REPORT.md`: the engine calls `rotary_emb` once globally (no `layer_type`), but Gemma3's rotary module requires one of `sliding_attention`/`full_attention` to select between its two independent buffer sets.
+</details>
+
+Confirms the mechanism that motivated per-layer RoPE selection; now implemented in `framework/rope.py`.
 
 ### `falcon_h1_0.5b`
 

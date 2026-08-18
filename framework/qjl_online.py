@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 
 from compressors.qjl import QJLCompressor
-from framework.model_adapter import load_attention_ops, project_qkv
+from framework.model_adapter import load_attention_ops, project_attention_states
 from quantizers.qjl_pipeline import QJLTensorPayload
 
 
@@ -81,13 +81,14 @@ def enable_qjl_online(model, compressor: QJLCompressor) -> None:
                 **kwargs,
             ):
                 input_shape = hidden_states.shape[:-1]
-                query_states, key_states, value_states = project_qkv(
-                    attn_module, hidden_states, attn_ops
-                )
-
                 cos, sin = position_embeddings
-                query_states, key_states = attn_ops.apply_rotary_pos_emb(
-                    query_states, key_states, cos, sin
+                query_states, key_states, value_states = project_attention_states(
+                    attn_module,
+                    hidden_states,
+                    attn_ops,
+                    cos,
+                    sin,
+                    config=model.config,
                 )
 
                 if past_key_values is not None:

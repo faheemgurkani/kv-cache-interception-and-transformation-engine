@@ -114,7 +114,7 @@ CAPABILITIES_BY_MODEL_TYPE: dict[str, ModelCapabilities] = {
         native_latent_cache=True,
         per_layer_attention_type=False,
         state_type=StateType.MLA,
-        adapter_registered=False,
+        adapter_registered=True,
         state_semantics_complete=False,
         expanded_kv_disclosure=(
             "HF eager DeepseekV3Attention materializes expanded per-head K/V in the "
@@ -203,12 +203,19 @@ def get_model_eval_metadata(config, *, local_path: str | None = None) -> dict[st
     """Reference metadata recorded with every evaluation run (OLMo2 baseline template)."""
     from dataclasses import asdict
 
-    from framework.model_adapter import resolve_head_dim, resolve_model_type
+    from framework.model_adapter import (
+        resolve_head_dim,
+        resolve_key_head_dim,
+        resolve_model_type,
+        resolve_value_head_dim,
+    )
 
     caps = resolve_model_capabilities(config)
     num_q_heads = int(config.num_attention_heads)
     num_kv_heads = int(getattr(config, "num_key_value_heads", num_q_heads))
     head_dim = resolve_head_dim(config)
+    key_head_dim = resolve_key_head_dim(config)
+    value_head_dim = resolve_value_head_dim(config)
     metadata: dict[str, object] = {
         "model_type": resolve_model_type(config),
         "local_path": local_path,
@@ -216,6 +223,8 @@ def get_model_eval_metadata(config, *, local_path: str | None = None) -> dict[st
         "num_q_heads": num_q_heads,
         "num_kv_heads": num_kv_heads,
         "head_dim": head_dim,
+        "key_head_dim": key_head_dim,
+        "value_head_dim": value_head_dim,
         "num_layers": int(config.num_hidden_layers),
         "hidden_size": int(config.hidden_size),
         "rope_mode": caps.rope_mode,
@@ -232,4 +241,12 @@ def get_model_eval_metadata(config, *, local_path: str | None = None) -> dict[st
             for layer_idx in range(num_layers)
         ]
         metadata["sliding_window"] = getattr(config, "sliding_window", None)
+    if caps.attention_family == "mla":
+        metadata["cache_representation"] = "expanded_kv"
+        metadata["kv_lora_rank"] = getattr(config, "kv_lora_rank", None)
+        metadata["qk_nope_head_dim"] = getattr(config, "qk_nope_head_dim", None)
+        metadata["qk_rope_head_dim"] = getattr(config, "qk_rope_head_dim", None)
+        metadata["qk_head_dim"] = getattr(config, "qk_head_dim", None)
+        if caps.expanded_kv_disclosure:
+            metadata["expanded_kv_disclosure"] = caps.expanded_kv_disclosure
     return metadata

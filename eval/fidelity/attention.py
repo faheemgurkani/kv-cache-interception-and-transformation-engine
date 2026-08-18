@@ -100,16 +100,22 @@ def _compute_layer_queries(
     position_embeddings: tuple[torch.Tensor, torch.Tensor],
 ) -> torch.Tensor:
     """Recompute RoPE-applied query states for one decoder layer."""
-    from framework.model_adapter import load_attention_ops, pre_attention_hidden, project_qkv
+    from framework.model_adapter import (
+        load_attention_ops,
+        pre_attention_hidden,
+        project_attention_states,
+        resolve_key_head_dim,
+    )
 
     layer = model_layer.model.model.layers[layer_idx]
     attn = layer.self_attn
     ops = load_attention_ops(model_layer.config)
 
     normed = pre_attention_hidden(layer, hidden_states, ops)
-    query, key, _value = project_qkv(attn, normed, ops)
     cos, sin = position_embeddings
-    query, _ = ops.apply_rotary_pos_emb(query, key, cos, sin)
+    query, _key, _value = project_attention_states(
+        attn, normed, ops, cos, sin, config=model_layer.config
+    )
     return query
 
 
@@ -148,13 +154,13 @@ def evaluate_attention_fidelity(
 
     hidden_states = outputs.hidden_states
     position_ids = torch.arange(input_ids.shape[1], device=device).unsqueeze(0)
-    from framework.model_adapter import resolve_head_dim
+    from framework.model_adapter import resolve_key_head_dim
     from framework.rope import build_rope_context
 
     rope_context = build_rope_context(model, hidden_states[0], position_ids, config=model.config)
 
     config = model_layer.config
-    head_dim = resolve_head_dim(config)
+    score_head_dim = resolve_key_head_dim(config)
     num_q_heads = config.num_attention_heads
     num_kv_heads = config.num_key_value_heads
 
@@ -178,7 +184,7 @@ def evaluate_attention_fidelity(
         key_exp = expand_kv_heads(key, num_q_heads, num_kv_heads)
         query, key_exp = _slice_score_window(query, key_exp, score_tokens)
 
-        scores_fp = attention_scores(query, key_exp, head_dim)
+        scores_fp = attention_scores(query, key_exp, score_head_dim)
         scores_quant = None
 
         if hasattr(compressor, "attention_fidelity"):
@@ -188,14 +194,14 @@ def evaluate_attention_fidelity(
                 query,
                 key,
                 value,
-                head_dim,
+                score_head_dim,
                 num_q_heads,
                 num_kv_heads,
                 layer=layer_idx,
             )
         elif hasattr(compressor, "estimate_attention_scores"):
             key_payload = compressor.compress_kv(key, layer=layer_idx, mode="key")
-            scores_quant = compressor.estimate_attention_scores(query, key_payload, head_dim)
+            scores_quant = compressor.estimate_attention_scores(query, key_payload, score_head_dim)
             mse, rmse, cosine, layer_max = _score_distortion(scores_fp, scores_quant)
         else:
             key_payload = compressor.compress_kv(key, layer=layer_idx, mode="key")
@@ -203,7 +209,7 @@ def evaluate_attention_fidelity(
             key_hat_exp = expand_kv_heads(key_hat, num_q_heads, num_kv_heads)
             if score_tokens > 0 and key_hat_exp.shape[-2] > score_tokens:
                 key_hat_exp = key_hat_exp[..., -score_tokens:, :]
-            scores_quant = attention_scores(query, key_hat_exp, head_dim)
+            scores_quant = attention_scores(query, key_hat_exp, score_head_dim)
             mse, rmse, cosine, layer_max = _score_distortion(scores_fp, scores_quant)
 
         output_rmse: float | None = None

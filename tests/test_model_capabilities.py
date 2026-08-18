@@ -52,8 +52,10 @@ def test_tinydeepseek_capabilities():
     caps = CAPABILITIES_BY_MODEL_TYPE["deepseek_v3"]
     assert caps.native_latent_cache is True
     assert caps.state_semantics_complete is False
+    assert caps.adapter_registered is True
     assert caps.rope_mode == "split_nope_rope"
     assert caps.expanded_kv_disclosure is not None
+    assert caps.supports_gate(CompatibilityGate.ATTENTION)
     assert not caps.supports_gate(CompatibilityGate.STATE_SEMANTICS)
 
 

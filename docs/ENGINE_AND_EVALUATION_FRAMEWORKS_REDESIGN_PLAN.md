@@ -7,7 +7,7 @@ The five-model target matrix is:
 | **OLMo2-1B**          | MHA, 16Q/16KV                | ✅ Fully supported (all three gates pass)                                      | Compatibility validation only                              |
 | **Qwen3-0.6B**        | GQA, 16Q/8KV                 | ✅ Fully supported (all three gates pass)                                      | Compatibility validation only                              |
 | **Gemma3-270M**       | MQA + sliding/full attention | ✅ Fully supported (`gemma3_text` adapter + per-layer RoPE; 86th commit)       | Compatibility validation only                              |
-| **TinyDeepSeek-0.5B** | MLA                          | ⚠️ Loads, cache readable; Gates B + C fail                                     | `deepseek_v3` adapter; native-latent refinement later      |
+| **TinyDeepSeek-0.5B** | MLA                          | ⚠️ Gate B pass; Gate C fails (expanded KV, not native latent)                  | Native-latent refinement; validation only for expanded path  |
 | **Falcon-H1-0.5B**    | Attention + Mamba2 hybrid    | ⚠️ Loads, hybrid state visible + counted (Gate C pass); Gate B fails         | `falcon_h1` adapter (`qk_norm_layout="none"`)              |
 
 The key architectural principle should be:

@@ -2,13 +2,13 @@ Yes. Based on everything you have provided, the right way to approach this is **
 
 The five-model target matrix is:
 
-| Model                 | Architecture                 | Current state                                                | Required work                           |
-| --------------------- | ---------------------------- | ------------------------------------------------------------ | --------------------------------------- |
-| **OLMo2-1B**          | MHA, 16Q/16KV                | ✅ Fully supported                                            | Compatibility validation only           |
-| **Qwen3-0.6B**        | GQA, 16Q/8KV                 | ✅ Fully supported                                            | Compatibility validation only           |
-| **Gemma3-270M**       | MQA + sliding/full attention | ⚠️ Loads, cache readable, attention blocked                  | Adapter + per-layer RoPE                |
-| **TinyDeepSeek-0.5B** | MLA                          | ⚠️ Loads, cache readable, attention blocked                  | Adapter; native-latent refinement later |
-| **Falcon-H1-0.5B**    | Attention + Mamba2 hybrid    | ⚠️ Loads, attention cache visible, recurrent state invisible | Adapter + dual-state accounting         |
+| Model                 | Architecture                 | Current state                                                                 | Required work                                              |
+| --------------------- | ---------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| **OLMo2-1B**          | MHA, 16Q/16KV                | ✅ Fully supported (all three gates pass)                                      | Compatibility validation only                              |
+| **Qwen3-0.6B**        | GQA, 16Q/8KV                 | ✅ Fully supported (all three gates pass)                                      | Compatibility validation only                              |
+| **Gemma3-270M**       | MQA + sliding/full attention | ✅ Fully supported (`gemma3_text` adapter + per-layer RoPE; 86th commit)       | Compatibility validation only                              |
+| **TinyDeepSeek-0.5B** | MLA                          | ⚠️ Loads, cache readable; Gates B + C fail                                     | `deepseek_v3` adapter; native-latent refinement later      |
+| **Falcon-H1-0.5B**    | Attention + Mamba2 hybrid    | ⚠️ Loads, hybrid state visible + counted (Gate C pass); Gate B fails         | `falcon_h1` adapter (`qk_norm_layout="none"`)              |
 
 The key architectural principle should be:
 
@@ -1701,11 +1701,13 @@ Before declaring the five-model benchmark ready, I would require this exact prog
 | ------------ | ---: | ------: | ----------: | --------: | -------: | ---------: | --: | -------: | -------------: |
 | OLMo2        |    ✅ |       ✅ |           ✅ |         ✅ |        ✅ |          ✅ |   ✅ |        ✅ |              ✅ |
 | Qwen3-0.6B   |    ✅ |       ✅ |           ✅ |         ✅ |        ✅ |          ✅ |   ✅ |        ✅ |              ✅ |
-| TinyDeepSeek |    ✅ |       ✅ |           ✅ |         ✅ |        ✅ |          ✅ |   ✅ |        ✅ |             ✅* |
 | Gemma3       |    ✅ |       ✅ |           ✅ |         ✅ |        ✅ |          ✅ |   ✅ |        ✅ |              ✅ |
-| Falcon-H1    |    ✅ |       ✅ |           ✅ |         ✅ |        ✅ |          ✅ |   ✅ |        ✅ |              ✅ |
+| TinyDeepSeek |    ✅ |       ✅ |          ✅* |         ❌ |        ❌ |          ❌ |   ❌ |        ❌ |             ✅* |
+| Falcon-H1    |    ✅ |       ✅ |           ✅ |         ❌ |        ❌ |          ❌ |   ❌ |        ❌ |              ✅ |
 
-`*` For TinyDeepSeek, "correct memory" initially means **correct accounting of the exposed/expanded cache**, not necessarily the native MLA latent state. That native-state distinction should be explicitly recorded.
+`*` **TinyDeepSeek — cache/state and memory:** Gate A passes (`iter_layer_kv` succeeds). Gate C fails because the visible cache is HF's expanded per-head K/V, not the native `kv_lora_rank` latent. "Correct memory" means **correct accounting of the exposed/expanded cache** until MLA-native interception lands.
+
+`*` **TinyDeepSeek — eval branches blocked at Gate B:** FIDELITY/attention, identity, TurboQuant, QJL, and RocketKV all require `load_attention_ops` for `deepseek_v3`, which is not yet registered.
 
 For Falcon-H1, "correct memory" means:
 

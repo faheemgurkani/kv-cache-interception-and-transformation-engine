@@ -20,13 +20,13 @@ Which models this engine has been pointed at, what their KV-cache architecture a
 
 | # | Model | Family | Status |
 |---|---|---|:---:|
-| 1 | `olmo2_1b` | MHA (16Q/16KV) | ✅ fully supported (existing `olmo2` adapter branch) |
-| 2 | `qwen3_0.6b` | GQA (16Q/8KV) | ✅ fully supported (existing `qwen3` adapter branch) |
-| 3 | `gemma3_270m` | MQA (4Q/1KV) + alternating local/global attention | ❌ blocked — adapter gate + per-layer RoPE needed |
-| 4 | `falcon_h1_0.5b` | Hybrid: attention (8Q/2KV GQA) + Mamba2, combined per layer | ❌ blocked — adapter gate + hybrid-cache abstraction needed for correctness |
-| 5 | `tinydeepseek_0.5b` | MLA (native `deepseek_v3`, `kv_lora_rank=256`) | ❌ blocked — adapter gate only (loads fine; see correction in `models/ARCHITECTURE_REPORT.md`) |
+| 1 | `olmo2_1b` | MHA (16Q/16KV) | ✅ fully supported (all three gates pass) |
+| 2 | `qwen3_0.6b` | GQA (16Q/8KV) | ✅ fully supported (all three gates pass) |
+| 3 | `gemma3_270m` | MQA (4Q/1KV) + alternating local/global attention | ✅ fully supported (`gemma3_text` adapter + per-layer RoPE; 86th commit) |
+| 4 | `falcon_h1_0.5b` | Hybrid: attention (8Q/2KV GQA) + Mamba2, combined per layer | ⚠️ Gate B fails — hybrid state accounted (Gate C pass); adapter needed |
+| 5 | `tinydeepseek_0.5b` | MLA (native `deepseek_v3`, `kv_lora_rank=256`) | ⚠️ Gates B + C fail — loads fine; adapter + MLA-native state still open |
 
-Both `olmo2_1b` and `qwen3_0.6b` were confirmed end to end via a real `scripts/run_eval.py --compressor identity --context-length 128` run (FIDELITY + BEHAVIOR/task_quality + SYSTEM/latency_throughput all completed) — see the eval-framework correspondence doc linked above for the actual numbers.
+All three supported models (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`) were confirmed end to end via reference tests and live gate evaluation (2026-08-18). The initial 2026-08-21 `run_eval.py` smoke runs for OLMo2/Qwen3 remain valid; see the eval-framework correspondence doc for numbers.
 
 ## Why OLMo2 (and OLMo-1) work with zero adapter changes — implementation history
 
@@ -69,10 +69,10 @@ Also touched: `configs/modal.yaml` (volumes `kv-engine-olmo2`/`kv-engine-results
 
 Full technical detail per item: `ENGINE_INTERNALS.md §8` (code-level proposals) and `models/ARCHITECTURE_REPORT.md` (live evidence per model). Summary, ranked by how much of the shortlist each change unblocks:
 
-1. **`load_attention_ops` branches for `gemma3_text`, `falcon_h1`, `deepseek_v3`.** Confirmed live as the actual point of failure for all 3 blocked models — each fails inside `eval/fidelity/attention.py::evaluate_attention_fidelity` with the same `NotImplementedError`. Falcon-H1 additionally needs a new `qk_norm_layout="none"` (no Q/K-norm exists on `FalconH1Attention`). Because FIDELITY always runs first and aborts the whole evaluation on failure, this single change is also what's blocking BEHAVIOR/SYSTEM from ever being reached for any of the three — even though `iter_layer_kv` already succeeds standalone for all of them.
-2. **Per-layer RoPE selection**, needed in addition to (1) for Gemma3 specifically — `Gemma3RotaryEmbedding` genuinely holds two independent buffer sets (`sliding_attention_*`/`full_attention_*`), confirmed live; the engine's single global `rotary_emb(...)` call needs to become a per-`layer_type` selection.
-3. **A real hybrid-cache abstraction in `framework/kv_cache.py`**, needed in addition to (1) for Falcon-H1 to be *correct*, not just non-crashing — its cache layer silently exposes only the attention half of a dual attention+Mamba state today, so naive compression would quietly under-count memory rather than fail loudly.
-4. **A latent-KV (MLA) state type**, same abstraction direction as (3), needed for TinyDeepSeek to benchmark its actual compressed-latent representation rather than the already-expanded per-head K/V that HF's native `DeepseekV3Attention` currently materializes into the cache.
-5. **A `--skip-fidelity`-style flag on `scripts/run_eval.py`** — smaller, independent, newly motivated by actually running the CLI: it would let BEHAVIOR/SYSTEM numbers be collected for the 3 blocked models *before* item 1 lands, useful for triage.
+1. **`load_attention_ops` branches for `falcon_h1`, `deepseek_v3`.** ✅ **Done for `gemma3_text`** (86th commit). Falcon-H1 needs registering the existing `qk_norm_layout="none"` scaffold in `project_qkv`. TinyDeepSeek and Falcon-H1 still fail Gate B.
+2. **Per-layer RoPE selection** — ✅ **done for Gemma3** (`framework/rope.py::build_rope_context().get_rope(layer_idx)` in FIDELITY/attention).
+3. **Hybrid state interface** — ✅ **done (WP1):** `iter_layer_states()` + `visible_state_bytes()`. Falcon Gate C passes; Mamba compression remains passthrough by policy.
+4. **Latent-KV (MLA) state type** — still open for TinyDeepSeek (Gate C fails until native `kv_lora_rank` interception).
+5. **`--skip-fidelity` flag** — ✅ **implemented (WP1).**
 
 None of items 1–4 are "just add another `if model_type == ...:` branch" in the long run — they match the `ModelAdapterRegistry` / `StateAdapter` / typed-per-layer-state direction already sketched in `ENGINE_INTERNALS.md §8` as the durable shape for this engine as more architecture families are added.

@@ -2,6 +2,7 @@
 
 Which models this engine has been pointed at, what their KV-cache architecture actually is, and what it took (or would take) to get each one working under FIDELITY/BEHAVIOR/SYSTEM. This is the index/summary doc — the deep, live-probed evidence lives in the two documents this page ties together:
 
+- **[`../ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md` § audit](../ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#implementation-verification-audit-2026-08-18)** — code-grounded verification of §1–2 infrastructure (three pillars, live gates, verified commits 79–86).
 - **[`models/ARCHITECTURE_REPORT.md`](../../models/ARCHITECTURE_REPORT.md)** — per-model deep probe: measured params/dtypes, real attention-module/RoPE-module internals, live cache-layer class and tensor shapes, and whether `framework/model_adapter.py`/`framework/kv_cache.py` actually accept each model.
 - **[`../results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md`](../results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md)** — the live companion: what actually happens when `scripts/run_eval.py` is run against each shortlisted model, with real numbers for the ones that work and exact tracebacks for the ones that don't.
 - **[`ENGINE_INTERNALS.md §8`](ENGINE_INTERNALS.md#8-diversifying-to-other-architecture-families)** — the general tier-based engineering framework (Tier 0–3) for adding a new architecture family, with the current shortlist as the worked examples.

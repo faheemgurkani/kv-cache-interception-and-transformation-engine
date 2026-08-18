@@ -14,7 +14,107 @@ The key architectural principle should be:
 
 > **Existing model paths remain unchanged. New architectures are added through adapters, capability metadata, and specialized state handling only where required.**
 
-This is particularly important because the current evaluation framework has **three distinct compatibility gates**: generic model/cache compatibility, attention-adapter compatibility, and model-specific attention quirks. 
+This is particularly important because the current evaluation framework has **three distinct compatibility gates**: generic model/cache compatibility, attention-adapter compatibility, and model-specific attention quirks.
+
+---
+
+## Implementation verification audit (2026-08-18)
+
+**Executive verdict:** The **§1–2 infrastructure narrative is implemented, active, and tested**. The codebase is prepared for the revision described in the opening text. Companion docs updated to match: [`models/ARCHITECTURE_REPORT.md`](../../models/ARCHITECTURE_REPORT.md), [`docs/results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md`](results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md), [`docs/architecture/MODEL_ARCHITECTURE_MATRIX.md`](architecture/MODEL_ARCHITECTURE_MATRIX.md).
+
+**Evidence base:** live gate evaluation against all five checkpoints; `tests/test_{model_capabilities,compatibility_gates,model_adapter_registry,rope,memory_accounting}.py` (22 infra tests); `tests/test_{olmo2,qwen3,gemma3}_reference.py`; commits **79–86** on `main` (`1397f46` = 86th commit).
+
+### Pillar 1 — system supports the revision (§1–2)
+
+**Architectural principle (lines 13–15) — confirmed.** Legacy KV path not replaced:
+
+| Plan requirement | Code evidence |
+| ---------------- | ------------- |
+| OLMo2/Qwen3 path unchanged | No model-specific branches in `framework/kv_engine.py` |
+| `iter_layer_kv()` remains default | Universal cache reader in `framework/kv_cache.py`; used by compressors and FIDELITY |
+| Extensions via adapters + capabilities | `ATTENTION_ADAPTER_REGISTRY`, `ModelCapabilities`, `iter_layer_states()` |
+
+Extended stack live:
+
+```text
+Model → ATTENTION_ADAPTER_REGISTRY → iter_layer_kv / iter_layer_states → Evaluation
+```
+
+Exported from `framework/__init__.py`: `ModelCapabilities`, `CompatibilityGate`, `evaluate_compatibility_gates`, `iter_layer_states`, `visible_state_bytes`, `build_rope_context`.
+
+**Three compatibility gates — confirmed** in `framework/compatibility.py`:
+
+| Plan gate | Code enum | What it checks |
+| --------- | --------- | -------------- |
+| Generic model/cache compatibility | `LOADER_STATE` | Load, forward, `iter_layer_states()` discovers layers |
+| Attention-adapter compatibility | `ATTENTION` | `adapter_registered` + `load_attention_ops()` succeeds |
+| Model-specific state semantics | `STATE_SEMANTICS` | All visible state accounted for; native-latent flagged |
+
+Eval runner integrates capabilities on every run (`eval/runner.py` → `model_capabilities`, `model_metadata`).
+
+**§2 capability contract — confirmed.** `ModelCapabilities` in `framework/model_capabilities.py` matches the plan's conceptual fields plus gate flags. All five shortlist families registered; tested in `tests/test_model_capabilities.py`.
+
+**Config / setup — ready.** Per-model YAML: `configs/model_{olmo2_1b,qwen3_0.6b,gemma3_270m,tinydeepseek_0.5b,falcon_h1_0.5b}.yaml`. All five checkpoints under `models/`.
+
+### Pillar 2 — grounded in reality (doc ↔ code)
+
+**Live gate results** (real checkpoints, 2026-08-18):
+
+| Model | Gate A (loader/state) | Gate B (attention) | Gate C (state semantics) |
+| ----- | --------------------- | ------------------ | ------------------------ |
+| OLMo2-1B | PASS | PASS | PASS |
+| Qwen3-0.6B | PASS | PASS | PASS |
+| Gemma3-270M | PASS | PASS | PASS |
+| TinyDeepSeek-0.5B | PASS | FAIL | FAIL |
+| Falcon-H1-0.5B | PASS | FAIL | PASS |
+
+Falcon empirical proof: `visible_bytes=14,708,736` vs `attn_bytes=36,864` — Mamba state visible and counted; `hybrid=True`.
+
+**§2 capability table (lines 109–118) vs code — aligned:**
+
+| Capability row | Code match |
+| -------------- | ---------- |
+| MHA / GQA / MQA / MLA families | `attention_family` values correct |
+| Q/K norm layouts | Matches `qk_norm_layout` (flat / per-head / mla / none) |
+| Global vs per-layer RoPE | `rope_mode`: global / per_layer_type / split_nope_rope |
+| Per-layer attention type (Gemma3) | `per_layer_attention_type=True` + `get_layer_attention_metadata()` |
+| Dual-state / recurrent (Falcon) | `StateType.HYBRID`, `has_recurrent_state=True` |
+| Latent KV (TinyDeepSeek) | `native_latent_cache=True`, disclosure string, Gate C fails by design |
+
+**Memory math — grounded.** `eval/fidelity/memory.py` implements the plan formula, including asymmetric K/V (`value_head_dim`) for MLA. Reference tests: Qwen3 GQA ratio 8/16 (`test_qwen3_gqa_memory_head_ratio_is_half_of_mha`); Gemma3 MQA ratio 1/16 vs OLMo2 (`test_gemma3_mqa_memory_head_ratio_is_quarter_of_mha`).
+
+### Pillar 3 — anomalies fixed and flagged
+
+**Fixed in code (active):**
+
+1. Explicit three-gate framework — no implicit failures deep in eval.
+2. `ModelCapabilities` registry — avoids scattered `if qwen3/elif olmo2/...` (plan lines 124–132).
+3. Typed state interface — `framework/state_interface.py` (`AttentionKVState`, `RecurrentState`, `LayerState`).
+4. Falcon memory undercount — fixed via `visible_state_bytes()`; Gate C passes.
+5. Gemma3 adapter + per-layer RoPE — `gemma3_text` in registry; `build_rope_context().get_rope(layer_idx)` in FIDELITY/attention.
+6. TinyDeepSeek native-latent disclosure — flagged in capabilities + Gate C message.
+7. `--skip-fidelity` — documented in `eval/runner.py` for models blocked at Gate B.
+
+**Flagged, intentionally open (matches plan intent):**
+
+- **TinyDeepSeek:** Gate B (no `deepseek_v3` adapter) + Gate C (expanded cache ≠ native latent).
+- **Falcon-H1:** Gate B only (no `falcon_h1` adapter; `qk_norm_layout="none"` scaffold in `project_qkv`, builder not registered).
+
+### Verified work in place (nothing lost)
+
+| Work item | Status | Evidence |
+| --------- | ------ | -------- |
+| WP1 infrastructure | Done | Commits 79–82; 22 unit tests pass |
+| OLMo2 reference + conformance | Done | `tests/test_olmo2_reference.py`; Gates A/B/C PASS |
+| Qwen3 parameterized conformance | Done | `tests/test_qwen3_reference.py` (85th commit); Gates PASS |
+| Gemma3 adapter + RoPE + eval metadata | Done | 86th commit; `tests/test_gemma3_reference.py`; Gates PASS; all compressors |
+| All work committed | Done | Working tree clean; `1397f46` |
+
+### Bottom line (three criteria)
+
+1. **System ready for §1–2 narrative?** **Yes.** Registry, capabilities, gates, state interface, RoPE abstraction, eval metadata, configs in place.
+2. **Grounded in reality?** **Yes** (code and docs synced 2026-08-18). Live gates match opening table above.
+3. **Anomalies fixed/flagged?** **Yes in implementation.** Remaining work is §14+ (TinyDeepSeek/Falcon adapters), not missing §1–137 infrastructure.
 
 ---
 

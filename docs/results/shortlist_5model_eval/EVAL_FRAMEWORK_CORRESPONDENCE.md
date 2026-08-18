@@ -4,7 +4,7 @@ What actually happens when the real FIDELITY/BEHAVIOR/SYSTEM evaluation pipeline
 
 Run 2026-08-21: `python scripts/run_eval.py --compressor identity --context-length 128` against each model in turn (via a per-model `configs/model_<name>.yaml`, temporarily swapped into `configs/model.yaml`). `transformers==5.8.1`, this repo's `.venv`.
 
-**Update 2026-08-18 (86th commit):** Gemma3 support landed — `gemma3_text` adapter, per-layer RoPE (`framework/rope.py`), and full eval-branch verification in `tests/test_gemma3_reference.py`. Live gate evaluation confirms **3 of 5 models pass all three compatibility gates** (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`). See [Current status (2026-08-18)](#current-status-2026-08-18) below; the 2026-08-21 sections below remain as historical record for the initial probe.
+**Update 2026-08-18 (86th commit):** Gemma3 support landed — `gemma3_text` adapter, per-layer RoPE (`framework/rope.py`), and full eval-branch verification in `tests/test_gemma3_reference.py`. Live gate evaluation confirms **3 of 5 models pass all three compatibility gates** (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`). Full audit: [`ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md § audit`](../../ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#implementation-verification-audit-2026-08-18). See [Current status (2026-08-18)](#current-status-2026-08-18) below; the 2026-08-21 sections below remain as historical record for the initial probe.
 
 ## Two real bugs found and fixed while getting these numbers
 

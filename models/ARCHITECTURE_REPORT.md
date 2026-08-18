@@ -2,6 +2,8 @@
 
 Deep-probed 2026-08-21 by loading each checkpoint with `AutoModelForCausalLM.from_pretrained(..., attn_implementation="eager")`, running a real forward pass (`"The quick brown fox jumps"`, `use_cache=True`), and inspecting: measured parameter count + dtype breakdown, the actual decoder-layer/attention-module class and attributes (not just `config.json` field names), the `rotary_emb` module's real buffers, the live `past_key_values` cache-layer class and tensor shapes, **and** whether the repo's own `framework/model_adapter.py::load_attention_ops` / `framework/kv_cache.py::iter_layer_kv` actually accept the model. `transformers==5.8.1` (this repo's `.venv`).
 
+**Code-grounded status (2026-08-18):** 3 of 5 models pass all compatibility gates (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`). Full audit: [`docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md` § audit](../docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#implementation-verification-audit-2026-08-18).
+
 ## Directory layout
 
 - `models/legacy/` — `qwen3_1.7b` (primary/default, `configs/model.yaml`) and `olmo1b` (`allenai/OLMo-1B-hf`, 2024 OLMo-1 generation) — the models the existing published FIDELITY/BEHAVIOR/SYSTEM results were run against, kept for reproducibility. Not covered in the tables below (unchanged since the OLMo slot swap; conformance detail was recorded in the previous version of this report and in `docs/methodology/CURRENT_STATE.md`/`docs/architecture/SLM_COMPATIBILITY.md`).

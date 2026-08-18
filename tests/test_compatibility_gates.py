@@ -36,3 +36,9 @@ def test_tinydeepseek_state_semantics_gate_fails_for_native_latent_scope():
     result = check_state_semantics_gate(config, past_key_values)
     assert result.passed is False
     assert "latent" in result.detail.lower()
+
+
+def test_gemma3_attention_gate_passes():
+    config = SimpleNamespace(model_type="gemma3_text", layer_types=["sliding_attention"] * 5 + ["full_attention"] * 1)
+    result = check_attention_gate(config)
+    assert result.passed is True

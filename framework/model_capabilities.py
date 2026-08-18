@@ -101,7 +101,7 @@ CAPABILITIES_BY_MODEL_TYPE: dict[str, ModelCapabilities] = {
         native_latent_cache=False,
         per_layer_attention_type=True,
         state_type=StateType.CONVENTIONAL_KV,
-        adapter_registered=False,
+        adapter_registered=True,
         state_semantics_complete=True,
     ),
     "deepseek_v3": ModelCapabilities(
@@ -201,13 +201,15 @@ def get_layer_attention_metadata(config, layer_idx: int) -> LayerAttentionMetada
 
 def get_model_eval_metadata(config, *, local_path: str | None = None) -> dict[str, object]:
     """Reference metadata recorded with every evaluation run (OLMo2 baseline template)."""
+    from dataclasses import asdict
+
     from framework.model_adapter import resolve_head_dim, resolve_model_type
 
     caps = resolve_model_capabilities(config)
     num_q_heads = int(config.num_attention_heads)
     num_kv_heads = int(getattr(config, "num_key_value_heads", num_q_heads))
     head_dim = resolve_head_dim(config)
-    return {
+    metadata: dict[str, object] = {
         "model_type": resolve_model_type(config),
         "local_path": local_path,
         "attention_family": caps.attention_family,
@@ -223,3 +225,11 @@ def get_model_eval_metadata(config, *, local_path: str | None = None) -> dict[st
         "adapter_registered": caps.adapter_registered,
         "state_semantics_complete": caps.state_semantics_complete,
     }
+    if caps.per_layer_attention_type:
+        num_layers = int(config.num_hidden_layers)
+        metadata["layer_attention"] = [
+            asdict(get_layer_attention_metadata(config, layer_idx))
+            for layer_idx in range(num_layers)
+        ]
+        metadata["sliding_window"] = getattr(config, "sliding_window", None)
+    return metadata

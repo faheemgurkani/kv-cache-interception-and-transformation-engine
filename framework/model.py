@@ -9,6 +9,33 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from framework.config import PROJECT_ROOT, load_model_config
 from framework.device import get_device, get_eval_device
+from framework.model_adapter import resolve_model_type
+
+
+def _resolve_load_dtype(
+    model_path: Path,
+    device: torch.device,
+    torch_dtype: torch.dtype | str,
+) -> torch.dtype:
+    """Pick a numerically stable load dtype; honour checkpoint dtype over float16 default."""
+    if torch_dtype != torch.float16:
+        if isinstance(torch_dtype, str):
+            return getattr(torch, torch_dtype)
+        return torch_dtype
+
+    from transformers import AutoConfig
+
+    config = AutoConfig.from_pretrained(model_path)
+    cfg_dtype = getattr(config, "torch_dtype", None)
+    if cfg_dtype is None:
+        return torch.float16
+    if isinstance(cfg_dtype, str):
+        cfg_dtype = getattr(torch, cfg_dtype, torch.float16)
+    if cfg_dtype == torch.bfloat16 and device.type == "cpu":
+        return torch.float32
+    if resolve_model_type(config) == "gemma3_text" and cfg_dtype == torch.float16:
+        return torch.bfloat16
+    return cfg_dtype
 
 
 class ModelLayer:
@@ -24,13 +51,13 @@ class ModelLayer:
         config = load_model_config()
         self.model_path = Path(model_path or PROJECT_ROOT / config["local_path"])
         self.device = device or get_eval_device()
-        self.torch_dtype = torch_dtype
         self.attn_implementation = attn_implementation
+        self.torch_dtype = _resolve_load_dtype(self.model_path, self.device, torch_dtype)
 
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
-            dtype=torch_dtype,
+            dtype=self.torch_dtype,
             attn_implementation=attn_implementation,
         ).to(self.device)
         self.model.config.use_cache = True

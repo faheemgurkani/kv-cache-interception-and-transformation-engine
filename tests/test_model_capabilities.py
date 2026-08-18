@@ -34,7 +34,8 @@ def test_gemma3_capabilities():
     caps = CAPABILITIES_BY_MODEL_TYPE["gemma3_text"]
     assert caps.per_layer_attention_type is True
     assert caps.rope_mode == "per_layer_type"
-    assert caps.adapter_registered is False
+    assert caps.adapter_registered is True
+    assert caps.attention_family == "mqa"
 
 
 def test_falcon_h1_capabilities():

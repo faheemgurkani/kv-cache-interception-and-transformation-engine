@@ -127,9 +127,15 @@ class KVCacheEngine:
         elif getattr(self.compressor, "name", "") == "qjl" and hasattr(self.compressor, "reset_state"):
             self.compressor.reset_state()  # type: ignore[attr-defined]
 
+        forward_mask = attention_mask
+        if getattr(self.model.config, "layer_types", None) and getattr(self.compressor, "name", "") == "rocketkv":
+            # Gemma3 builds per-layer sliding/full masks internally; a flat mask
+            # desynchronizes once RocketKV sparsifies keys during decode.
+            forward_mask = None
+
         outputs = self.model(
             input_ids,
-            attention_mask=attention_mask,
+            attention_mask=forward_mask,
             past_key_values=past_kv,
             position_ids=position_ids,
             use_cache=True,

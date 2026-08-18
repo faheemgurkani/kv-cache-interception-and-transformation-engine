@@ -59,6 +59,14 @@ CONFORMANCE_MODELS = [
         num_kv_heads=8,
         head_dim=128,
     ),
+    ConformanceSpec(
+        name="gemma3_270m",
+        model_path=PROJECT_ROOT / "models" / "gemma3_270m",
+        num_layers=18,
+        num_q_heads=4,
+        num_kv_heads=1,
+        head_dim=256,
+    ),
 ]
 
 

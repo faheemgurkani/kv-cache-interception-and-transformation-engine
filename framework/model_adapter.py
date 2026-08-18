@@ -82,10 +82,29 @@ def _build_olmo2_ops(_model_type: str) -> AttentionOps:
     )
 
 
+def _build_gemma3_ops(model_type: str) -> AttentionOps:
+    from transformers.models.gemma3.modeling_gemma3 import (
+        ALL_ATTENTION_FUNCTIONS,
+        apply_rotary_pos_emb,
+        eager_attention_forward,
+    )
+
+    return AttentionOps(
+        model_type=model_type,
+        apply_rotary_pos_emb=apply_rotary_pos_emb,
+        eager_attention_forward=eager_attention_forward,
+        all_attention_functions=ALL_ATTENTION_FUNCTIONS,
+        qk_norm_layout="per_head",
+        has_input_layernorm=True,
+        passes_sliding_window=True,
+    )
+
+
 ATTENTION_ADAPTER_REGISTRY: dict[str, AttentionAdapterBuilder] = {
     "qwen3": _build_qwen_ops,
     "qwen2": _build_qwen_ops,
     "olmo2": _build_olmo2_ops,
+    "gemma3_text": _build_gemma3_ops,
 }
 
 

@@ -52,26 +52,44 @@ def align_attention_mask(
     attention_mask: torch.Tensor | None,
     kept_indices: torch.Tensor,
     key_seq_len: int,
+    query_seq_len: int | None = None,
 ) -> torch.Tensor | None:
     """Slice the additive/causal mask to match sparse key/value length."""
     if attention_mask is None:
         return None
-    if attention_mask.shape[-1] == key_seq_len:
-        return attention_mask
-    if kept_indices.numel() == 0:
-        return attention_mask[..., :key_seq_len]
 
-    idx = kept_indices.to(attention_mask.device)
-    if idx.max().item() >= attention_mask.shape[-1]:
-        idx = idx[idx < attention_mask.shape[-1]]
+    q_len = query_seq_len or 1
 
     if attention_mask.dim() == 4:
-        aligned = attention_mask.index_select(-1, idx)
-    elif attention_mask.dim() == 2:
-        aligned = attention_mask.index_select(1, idx)
-    else:
-        aligned = attention_mask[..., :key_seq_len]
+        if attention_mask.shape[-1] == key_seq_len and attention_mask.shape[-2] == q_len:
+            return attention_mask
+        base = attention_mask[..., -q_len:, :]
+        if (
+            kept_indices.numel() > 0
+            and kept_indices.numel() == key_seq_len
+            and int(kept_indices.max().item()) < base.shape[-1]
+        ):
+            aligned = base.index_select(-1, kept_indices.to(base.device))
+            if aligned.shape[-1] == key_seq_len:
+                return aligned
+        return attention_mask[..., -q_len:, -key_seq_len:]
 
+    if attention_mask.shape[-1] == key_seq_len:
+        if query_seq_len is None or attention_mask.shape[-2] == query_seq_len:
+            return attention_mask
+    if kept_indices.numel() == 0:
+        aligned = attention_mask[..., :key_seq_len]
+    else:
+        idx = kept_indices.to(attention_mask.device)
+        if idx.max().item() >= attention_mask.shape[-1]:
+            idx = idx[idx < attention_mask.shape[-1]]
+        if attention_mask.dim() == 2:
+            aligned = attention_mask.index_select(1, idx)
+        else:
+            aligned = attention_mask[..., :key_seq_len]
+
+    if query_seq_len is not None and aligned.dim() >= 2 and aligned.shape[-2] > query_seq_len:
+        aligned = aligned[..., -query_seq_len:, :]
     if aligned.shape[-1] != key_seq_len:
         aligned = aligned[..., :key_seq_len]
     return aligned
@@ -147,7 +165,16 @@ def enable_rocketkv_online(model, compressor: RocketKVCompressor) -> None:
                     attention_mask,
                     kept_indices,
                     key_states.shape[2],
+                    query_seq_len=query_states.shape[2],
                 )
+                if attention_mask is not None and attention_mask.dim() == 4:
+                    q_len = query_states.shape[2]
+                    k_len = key_states.shape[2]
+                    if attention_mask.shape[-2] != q_len or attention_mask.shape[-1] != k_len:
+                        attention_mask = attention_mask[..., -q_len:, :k_len]
+                    if attention_mask.shape[-1] < k_len:
+                        key_states = key_states[..., : attention_mask.shape[-1], :]
+                        value_states = value_states[..., : attention_mask.shape[-1], :]
 
                 attention_interface = resolve_attention_interface(
                     attn_module, model.config, attn_ops

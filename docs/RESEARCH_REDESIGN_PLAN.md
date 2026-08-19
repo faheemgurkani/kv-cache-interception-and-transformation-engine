@@ -20,12 +20,12 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **8** Unified budget curves | ⏸ Not planned | ⏸ Flagged | — | Existing per-method sweeps sufficient |
 | **9** Pareto analysis | ✅ Done | ✅ Done | 📝 Pending | `eval/pareto/`, `scripts/analyze_pareto.py` |
 | **10** Hardware-aware eval (single GPU) | ✅ Done | ✅ Done | 📝 Pending | `eval/hardware/`, Modal A10G path |
-| **14** Reproducibility harness | ✅ Done | ✅ Done | 📝 Pending | `controlled_conditions` + `cost` + YAML configs + `REPRODUCIBILITY.md` |
+| **14** Reproducibility harness | ✅ Done | ✅ Done | 📝 Pending | `eval/reproducibility/manifest.py`, `tests/test_reproducibility_harness.py` |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 | **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
 
-**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_hardware_profile.py`, `tests/test_modal_merge_hardware.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
+**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_reproducibility_harness.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_hardware_profile.py`, `tests/test_modal_merge_hardware.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
 
 **Paper rewrite hub:** [`conference_101719.tex`](research_paper_writeup/conference_101719.tex) — full section-by-section spec in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below.
 
@@ -1145,7 +1145,7 @@ The Phase 14 YAML checklist is **not a separate file format**; it is assembled f
 
 **Manual step (not auto-exported):** record `git rev-parse HEAD` when publishing numbers (`REPRODUCIBILITY.md` §2).
 
-**Code:** `eval/controlled_conditions.py` (`build_controlled_conditions`, `extract_compression_budget`, `format_model_precision`) · `eval/runner.py` · `docs/reproducibility/REPRODUCIBILITY.md` · **Tests:** `tests/test_controlled_conditions.py`
+**Code:** `eval/reproducibility/manifest.py` (`extract_phase14_manifest`, `validate_phase14_manifest`) · `eval/controlled_conditions.py` · `eval/runner.py` · `docs/reproducibility/REPRODUCIBILITY.md` · **Tests:** `tests/test_reproducibility_harness.py`, `tests/test_controlled_conditions.py`
 
 This is particularly important because one of the central problems in the literature is that different papers use different:
 

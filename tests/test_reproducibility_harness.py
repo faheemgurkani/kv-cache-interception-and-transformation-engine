@@ -154,8 +154,10 @@ def test_cost_block_aligns_with_fidelity_memory_math():
         process_memory_mb=50.0,
     )
 
+    mem = memory
+
     class _FakeFidelity:
-        memory = memory
+        memory = mem
 
     cost = evaluate_cost(TurboQuantCompressor(bitwidth=4), context_length=128, fidelity=_FakeFidelity())
     assert cost.compression.actual_compression_ratio == 4.0
@@ -231,9 +233,11 @@ def test_yaml_config_source_of_truth_matches_eval_export():
     sweeps_path = PROJECT_ROOT / "configs" / "modal_sweeps.yaml"
     if sweeps_path.exists():
         sweeps = yaml.safe_load(sweeps_path.read_text())
-        qjl_entries = [e for e in sweeps.get("presets", {}).get("qjl", []) if e.get("compressor") == "qjl"]
+        qjl_entries = sweeps.get("presets", {}).get("qjl", [])
         if qjl_entries:
-            assert qjl_entries[0].get("compressor_kwargs", {}).get("seed", 42) == 42
+            entry = qjl_entries[0]
+            seed = entry.get("seed") or entry.get("compressor_kwargs", {}).get("seed")
+            assert seed == 42
 
 
 @pytest.mark.skipif(not MODEL_DIR.exists(), reason="Model not downloaded")

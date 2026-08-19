@@ -69,6 +69,9 @@ class SnapKVCompressor(KVCompressor):
         seq_len = key.shape[2]
         if query_states is None:
             query_states = key
+        if query_states.shape[1] != key.shape[1]:
+            # GQA: SnapKV voting is defined per KV head; use key-as-query proxy.
+            query_states = key
         if seq_len >= self.max_capacity_prompt:
             key, value = snap_kv(
                 query_states,

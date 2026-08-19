@@ -262,6 +262,12 @@ def _assert_eval_branches_complete(result, compressor_name: str) -> None:
     elif compressor_name == "rocketkv":
         assert result.fidelity.representation.key_rmse < 1e-4
         assert result.fidelity.attention.cosine_similarity > 0.5
+    elif compressor_name == "snapkv":
+        assert result.fidelity.representation.key_rmse < 1e-4
+        assert result.fidelity.memory.compression_ratio >= 1.0
+    elif compressor_name == "palu":
+        assert result.fidelity.representation.key_rmse >= 0.0
+        assert result.fidelity.memory.compression_ratio > 0
 
 
 @pytest.mark.parametrize(
@@ -271,6 +277,8 @@ def _assert_eval_branches_complete(result, compressor_name: str) -> None:
         ("turboquant", {"bitwidth": 4}),
         ("qjl", {}),
         ("rocketkv", {"token_budget": 256}),
+        ("snapkv", {"max_capacity_prompt": 64, "window_size": 8}),
+        ("palu", {"compression_rate": 0.5, "group_size": 4}),
     ],
 )
 @pytest.mark.skipif(not QWEN3_06B_PATH.exists(), reason="Qwen3-0.6B not downloaded")

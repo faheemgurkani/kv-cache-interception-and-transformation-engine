@@ -71,6 +71,11 @@ class EvaluationResult:
     def throughput(self):
         return self.system.throughput if self.system else None
 
+    @property
+    def taxonomy(self) -> dict | None:
+        meta = get_method_taxonomy(self.compressor)
+        return None if meta is None else meta.to_dict()
+
     def to_dict(self) -> dict:
         return {
             "compressor": self.compressor,

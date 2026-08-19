@@ -14,8 +14,9 @@ split:
 
 FIDELITY runs by default (single offline forward pass). Pass ``run_fidelity=False`` or
 ``scripts/run_eval.py --skip-fidelity`` to collect BEHAVIOR/SYSTEM on models whose
-attention adapter is not yet registered. BEHAVIOR and SYSTEM sub-metrics are opt-in
-flags on ``run()`` since each adds its own generate() pass through KVCacheEngine.
+attention adapter is not yet registered. BEHAVIOR defaults to perplexity + retrieval +
+instruction following; reasoning and extra SYSTEM metrics remain opt-in since each adds
+its own generate() pass through KVCacheEngine.
 """
 
 from __future__ import annotations

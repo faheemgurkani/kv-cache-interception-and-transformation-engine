@@ -67,6 +67,8 @@ def _identity_smoke(model_path: Path, config_name: str) -> None:
     assert result.fidelity.representation.key_cosine_similarity > 0.99
     assert result.fidelity.recurrent.applicable is False
     assert result.fidelity.memory.compression_ratio == pytest.approx(1.0, rel=1e-3)
+    assert result.behavior.retrieval is not None
+    assert result.behavior.instruction_following is not None
     assert result.behavior.perplexity is not None and result.behavior.perplexity > 0
     assert result.system.throughput.tokens_per_second > 0
     assert result.compatibility_probe.manifest is not None

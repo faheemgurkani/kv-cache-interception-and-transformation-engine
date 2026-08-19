@@ -32,6 +32,8 @@ def test_evaluation_runner_identity_smoke():
 
     assert result.compressor == "identity"
     assert result.perplexity is not None and result.perplexity > 0
+    assert result.behavior.retrieval is not None
+    assert result.behavior.instruction_following is not None
     assert result.memory.compression_ratio == 1.0
     assert result.fidelity.attention.rmse < 1e-3
     assert result.fidelity.recurrent.applicable is False

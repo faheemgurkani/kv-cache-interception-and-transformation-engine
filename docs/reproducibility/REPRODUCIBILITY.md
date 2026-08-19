@@ -119,7 +119,7 @@ Autoregressive loop through `KVCacheEngine`:
 1. Baseline PPL runs **first** (before RocketKV / QJL attention patches)
 2. Compressed KV updated incrementally each decode step
 3. Sliding-window perplexity (`perplexity_stride: 512`) — on by default
-4. Retrieval (needle-in-haystack), instruction-following (format compliance), reasoning (synthetic arithmetic) — opt-in, each an additional `engine.generate()` pass
+4. Retrieval (needle-in-haystack) and instruction-following (format compliance) — **on by default**; reasoning (synthetic arithmetic) — opt-in (`--reasoning`)
 
 Modal jobs set `include_baselines=True` so each JSON carries `perplexity_baseline` for that context length. Phase 5 tables use the **shared identity baseline** from preset `baseline` (run once); per-job baselines should match within noise.
 
@@ -152,7 +152,8 @@ python scripts/run_eval.py --compressor qjl --context-length 512
 python scripts/run_eval.py --compressor rocketkv --context-length 512
 
 # Opt-in BEHAVIOR/SYSTEM sub-metrics (each adds its own generate() pass)
-python scripts/run_eval.py --compressor turboquant --retrieval --instruction-following --reasoning
+python scripts/run_eval.py --compressor turboquant --reasoning
+python scripts/run_eval.py --compressor turboquant --skip-retrieval --skip-instruction-following
 python scripts/run_eval.py --compressor turboquant --peak-memory --memory-bandwidth --kernel-cost --gpu-utilization
 ```
 

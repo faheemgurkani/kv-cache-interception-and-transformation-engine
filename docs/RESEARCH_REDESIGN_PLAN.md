@@ -149,7 +149,7 @@ The **4× compression vs 3× with lower overhead** tradeoff is exactly why SYSTE
 
 ---
 
-# Phase 3: Add Explicit Cost Accounting
+# Phase 3: Add Explicit Cost Accounting ✅ **Done**
 
 For **every compression plugin**, report:
 
@@ -175,7 +175,9 @@ METHOD
     └── end-to-end decode cost
 ```
 
-This is one of the **highest-value additions**.
+**Code:** `eval/cost/accounting.py` · **Hooks:** `compressors/base.py` (`offline_cost_metadata`, `theoretical_compression_ratio`) · **Runner:** `EvaluationResult.cost` · **CLI:** on by default; `--skip-cost` to disable · **Online detail:** `--kernel-cost` for compress/decompress/attention breakdown.
+
+**Tests:** `tests/test_cost_accounting.py`; cost block asserted in `tests/test_eval_runner.py`.
 
 Recent work such as Oaken explicitly separates offline preparation from online inference cost, while calibration-free methods show that calibration requirements themselves are an important methodological variable.  
 

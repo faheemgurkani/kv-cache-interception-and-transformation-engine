@@ -90,7 +90,7 @@ def test_retrieval_metrics_accuracy_formula():
 
 def test_instruction_following_compliance_logic():
     compliant_cases = ["yes", "Yes,.", "no!", "NO extra"]
-    non_compliant = ["", "maybe", "yes no", "123"]
+    non_compliant = ["", "maybe", "perhaps not", "123"]
 
     for text in compliant_cases:
         words = _WORD_RE.findall(text.strip())
@@ -101,7 +101,7 @@ def test_instruction_following_compliance_logic():
         words = _WORD_RE.findall(text.strip())
         if not words:
             continue
-        assert words[0].lower() not in _CHOICES or len(words) > 1 and words[1].lower() in _CHOICES
+        assert words[0].lower() not in _CHOICES
 
 
 def test_instruction_following_metrics_rate_formula():

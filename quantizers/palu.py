@@ -32,11 +32,17 @@ class PaluLatentPayload:
     original_seq_len: int
     rank: int
     group_size: int
+    b_key: torch.Tensor | None = None
+    b_value: torch.Tensor | None = None
 
     def storage_bits(self) -> int:
         bits = PALU_METADATA_BYTES * 8
         bits += float32_storage_bits(self.h_key.numel())
         bits += float32_storage_bits(self.h_value.numel())
+        if self.b_key is not None:
+            bits += float32_storage_bits(self.b_key.numel())
+        if self.b_value is not None:
+            bits += float32_storage_bits(self.b_value.numel())
         return bits
 
     def storage_bytes(self) -> int:
@@ -194,33 +200,41 @@ def compress_kv_lowrank(
 ) -> PaluLatentPayload:
     """Post-hoc truncated SVD on cached K/V (offline FIDELITY path)."""
     batch, num_heads, seq_len, head_dim = key.shape
-    flat_k = key.transpose(1, 2).reshape(batch, seq_len, num_heads * head_dim)
-    flat_v = value.transpose(1, 2).reshape(batch, seq_len, num_heads * head_dim)
-    u_k, s_k, _ = torch.linalg.svd(flat_k.float(), full_matrices=False)
-    u_v, s_v, _ = torch.linalg.svd(flat_v.float(), full_matrices=False)
+    flat_k = key.transpose(1, 2).reshape(batch, seq_len, num_heads * head_dim).float()
+    flat_v = value.transpose(1, 2).reshape(batch, seq_len, num_heads * head_dim).float()
+    u_k, s_k, vh_k = torch.linalg.svd(flat_k, full_matrices=False)
+    u_v, s_v, vh_v = torch.linalg.svd(flat_v, full_matrices=False)
     r = max(1, min(rank, s_k.numel(), s_v.numel()))
-    h_key = (u_k[:, :, :r] * torch.sqrt(s_k[:r])).to(key.dtype)
-    h_value = (u_v[:, :, :r] * torch.sqrt(s_v[:r])).to(value.dtype)
+    sqrt_sk = torch.sqrt(s_k[:r])
+    sqrt_sv = torch.sqrt(s_v[:r])
+    h_key = (u_k[:, :, :r] * sqrt_sk).to(key.dtype)
+    h_value = (u_v[:, :, :r] * sqrt_sv).to(value.dtype)
+    b_key = (sqrt_sk.unsqueeze(1) * vh_k[:r, :]).to(key.dtype)
+    b_value = (sqrt_sv.unsqueeze(1) * vh_v[:r, :]).to(value.dtype)
     return PaluLatentPayload(
         h_key=h_key.detach().cpu(),
         h_value=h_value.detach().cpu(),
         original_seq_len=seq_len,
         rank=r,
         group_size=num_heads,
+        b_key=b_key.detach().cpu(),
+        b_value=b_value.detach().cpu(),
     )
 
 
-def decompress_kv_lowrank(payload: PaluLatentPayload, key: torch.Tensor, value: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-    """Reconstruct approximate K/V from latent payload (offline path)."""
-    batch, num_heads, _seq_len, head_dim = key.shape
-    out_dim = num_heads * head_dim
-    k_proj = payload.h_key.to(key.device) @ payload.h_key.to(key.device).transpose(-2, -1)
-    v_proj = payload.h_value.to(value.device) @ payload.h_value.to(value.device).transpose(-2, -1)
-    flat_k = k_proj
-    flat_v = v_proj
-    if flat_k.shape[-1] != out_dim:
-        flat_k = flat_k[..., :out_dim]
-        flat_v = flat_v[..., :out_dim]
-    k2 = flat_k.view(batch, -1, num_heads, head_dim).transpose(1, 2)
-    v2 = flat_v.view(batch, -1, num_heads, head_dim).transpose(1, 2)
-    return k2.to(key.dtype), v2.to(value.dtype)
+def decompress_kv_lowrank(payload: PaluLatentPayload) -> tuple[torch.Tensor, torch.Tensor]:
+    """Reconstruct approximate K/V from latent payload."""
+    h_key = payload.h_key
+    h_value = payload.h_value
+    if payload.b_key is None or payload.b_value is None:
+        raise ValueError("PaluLatentPayload missing reconstruction factors.")
+    flat_k = torch.matmul(h_key, payload.b_key)
+    flat_v = torch.matmul(h_value, payload.b_value)
+    batch = flat_k.shape[0]
+    seq_len = flat_k.shape[1]
+    out_dim = payload.b_key.shape[1]
+    num_heads = payload.group_size
+    head_dim = out_dim // max(num_heads, 1)
+    key = flat_k.view(batch, seq_len, num_heads, head_dim).transpose(1, 2)
+    value = flat_v.view(batch, seq_len, num_heads, head_dim).transpose(1, 2)
+    return key, value

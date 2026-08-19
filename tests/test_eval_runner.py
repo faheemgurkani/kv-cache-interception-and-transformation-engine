@@ -61,3 +61,6 @@ def test_evaluation_runner_identity_smoke():
     assert payload["controlled_conditions"]["fixed"]["context_length"] == 128
     assert payload["controlled_conditions"]["fixed"]["decoding_configuration"]["strategy"] == "greedy"
     assert payload["controlled_conditions"]["fixed"]["hardware"]["device_type"] in {"cpu", "mps", "cuda"}
+    assert payload["hardware"] is not None
+    assert payload["hardware"]["single_gpu_policy"] is True
+    assert payload["hardware"]["multi_gpu_matrix"] is False

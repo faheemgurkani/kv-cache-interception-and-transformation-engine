@@ -1,10 +1,10 @@
 # KVBench: Complete Research Improvement Roadmap
 
-## Completeness record — Phases 1–7 (verified 2026-08-19)
+## Completeness record — Phases 1–10 (verified 2026-08-19)
 
-Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5** and **8** are flagged **not planned** — design reference only.
+Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, and **12** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, and **9** are **complete in the engine and documentation**. The paper still reflects the **pre-redesign** framing. **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below — apply when revised experimental results are ready. Phases **5** and **8** are **not planned**.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, and **10** are **complete in the engine and documentation**. The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, and **12** require **no paper or engine work** for the current case-study scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -17,17 +17,21 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **5** Adaptive plugin API | ⏸ Not planned | ⏸ Flagged | — | Do not implement or follow up |
 | **6** Interception as contribution | ✅ Done | ✅ Done | 📝 Pending | `eval/controlled_conditions.py` (Phase 6 principle) |
 | **7** Controlled experimental axes | ✅ Done | ✅ Done | 📝 Pending | `controlled_conditions` Phase 7 export (`phase: "7"`) |
-| **9** Pareto analysis | ✅ Done | ✅ Done | 📝 Pending | `eval/pareto/`, `scripts/analyze_pareto.py` |
 | **8** Unified budget curves | ⏸ Not planned | ⏸ Flagged | — | Existing per-method sweeps sufficient |
+| **9** Pareto analysis | ✅ Done | ✅ Done | 📝 Pending | `eval/pareto/`, `scripts/analyze_pareto.py` |
+| **10** Hardware-aware eval (single GPU) | ✅ Done | ✅ Done | 📝 Pending | `eval/hardware/`, Modal A10G path |
+| **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
+| **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 
-**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
+**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_hardware_profile.py`, `tests/test_modal_merge_hardware.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
 
 **Paper rewrite hub:** [`conference_101719.tex`](research_paper_writeup/conference_101719.tex) — full section-by-section spec in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below.
 
 **Intentional engine gaps (documented, not paper blockers):**
 
-- BEHAVIOR retrieval/instruction/reasoning use **synthetic in-repo generators**, not LongBench/RULER (`CURRENT_STATE.md`).
-- SYSTEM peak VRAM / GPU util require CUDA (`--peak-memory`, `--gpu-utilization`).
+- BEHAVIOR retrieval/instruction/reasoning use **synthetic in-repo generators**, not LongBench/RULER (`CURRENT_STATE.md`) — **Phase 11 deferred**; do not expand workloads for the current paper.
+- Context lengths capped at **128 / 256 / 512**, batch **1**, **64** generated tokens — **Phase 12 deferred**; sufficient for controlled SLM case study.
+- SYSTEM peak VRAM / GPU util collected on Modal CUDA reference path (Phase 10); optional locally via `--hardware-metrics`.
 - Reasoning is opt-in (`--reasoning`); skip flags: `--skip-retrieval`, `--skip-instruction-following`.
 - Hybrid FIDELITY/`recurrent` extension: `eval/fidelity/recurrent.py` (Falcon-H1).
 
@@ -44,7 +48,18 @@ Authoritative metric definitions: [`docs/methodology/METHODOLOGY.md`](methodolog
 **Paper file:** [`docs/research_paper_writeup/conference_101719.tex`](research_paper_writeup/conference_101719.tex)  
 **Code truth sources:** `eval/runner.py`, `eval/controlled_conditions.py`, `eval/{fidelity,behavior,system,cost}/`, `compressors/taxonomy.py`, `docs/methodology/METHODOLOGY.md`
 
-Phases **5** and **8:** no paper changes (flagged not planned).
+Phases **5**, **8**, **11**, and **12:** no paper changes (flagged not planned / future extension).
+
+### Phases 9–12 — feasibility vs paper (2026-08-19)
+
+| Phase | Paper today | Code today | Phase goal | Already doing it? |
+| ----- | ----------- | ---------- | ---------- | ----------------- |
+| **9** Pareto | ✅ Figure + discussion (`Fig.~\ref{fig:pareto}`, L475–481, L617) | ✅ Auto frontier export (`eval/pareto/`) | Reproducible pipeline analysis | **~90%** — paper has figure; engine now automates regeneration |
+| **10** CUDA hardware | ✅ A10G Modal sweeps (L222–229) | ✅ Single-GPU path + peak VRAM/GPU util | Deep HW metrics on CUDA | **~80%** — A10G done; VRAM/GPU util not yet in paper tables |
+| **11** Workloads | WikiText + PPL/tok/s only | + synthetic BEHAVIOR tasks (default in engine) | Diverse external workloads | **⏸ Deferred** — current scope OK; no LongBench/RULER |
+| **12** Scaling | ctx 128–512, batch 1, 64 tok | Same caps in `configs/` | 2K–32K, batch/gen grids | **⏸ Deferred** — explicit future work in `METHODOLOGY.md` / `ROADMAP.md` |
+
+**Bottom line:** Phase **9 is largely done in the paper** (figure exists); Phase **10** needs optional table/caption updates at re-sweep. Phases **11–12** are **future extensions only** — the current WikiText case-study grid and ctx 128–512 setup are sufficient for paper framing; the engine is ahead on BEHAVIOR workload *types*, but the paper correctly reports only PPL/tok/s for now.
 
 ### Global terminology map
 
@@ -199,9 +214,9 @@ Phases **5** and **8:** no paper changes (flagged not planned).
 | Paper has | Codebase also has | Action |
 | --------- | ----------------- | ------ |
 | Sliding-window PPL | Same | Keep Algorithm 2 (`\label{alg:ppl}`) |
-| — | Needle-in-haystack retrieval | Add short protocol paragraph (synthetic; `eval/behavior/retrieval.py`) |
-| — | Instruction-following compliance | Add short protocol paragraph |
-| — | Reasoning (opt-in) | Mention as optional / future |
+| — | Needle-in-haystack retrieval | **Optional (Phase 11 deferred):** one-sentence protocol in methodology only if space; **no result table required** for current submission |
+| — | Instruction-following compliance | Same — optional methodology mention; WikiText PPL remains primary BEHAVIOR metric in results |
+| — | Reasoning (opt-in) | Future work only |
 
 **→ SYSTEM** (split from old Section B throughput, L284):
 
@@ -241,10 +256,25 @@ Phases **5** and **8:** no paper changes (flagged not planned).
 
 | | |
 | --- | --- |
-| **Current** | Axis labels “Section A” vs “Section B”; filename `plot_offline_vs_online.pdf` |
-| **Change** | Regenerate with FIDELITY vs BEHAVIOR labels (e.g. attention RMSE vs log PPL ratio). Pareto figure: keep memory vs quality vs tok/s — aligns with SYSTEM. |
-| **Needs new results?** | **Yes** — replot from new JSON |
-| **Phase** | 1, 2 |
+| **Current** | Axis labels “Section A” vs “Section B”; `plot_offline_vs_online.pdf`. **Pareto:** `plot_pareto.pdf` at T=512 — memory ratio vs log PPL ratio, marker area ∝ tok/s, empirical front (L475–481); cited in Discussion L617. |
+| **Codebase** | `scripts/analyze_pareto.py`, `eval/pareto/analysis.py`, `ResultReporter.save_pareto()` — regenerates 2D/3D front from job bundles + writes `pareto_ctx512.json`. |
+| **Change** | **Offline-vs-online figure:** regenerate with FIDELITY vs BEHAVIOR labels. **Pareto figure:** *concept unchanged* — re-export via CLI from post-rewrite bundles (do not hand-draw). Update caption footnote: “Pareto front computed by `scripts/analyze_pareto.py` from job JSON.” Optionally cite optimal set from `pareto_ctx512.json` in text. |
+| **When** | During paper rewrite pass **after** re-sweep bundles land (same timing as result tables). Pareto can be regenerated **without** new GPU jobs if existing Phase-5 JSON is reused. |
+| **Why** | Paper already demonstrates the trade-off analysis (Phase 9 goal met visually); engine gap was reproducibility — now closed. Rewrite pass should align figure provenance with automated export, not change the scientific claim. |
+| **Needs new results?** | **Only if** sweep grid/methods change; otherwise replot from existing JSON |
+| **Phase** | 1, 2, 9 |
+
+#### §Experiments setup — hardware block (L216–229, extends Phase 7 table)
+
+| | |
+| --- | --- |
+| **Current** | “NVIDIA A10G GPUs (Modal)”; throughput/tok/s in SYSTEM tables; **no** peak VRAM or GPU utilization columns. |
+| **Codebase** | Modal worker collects `hardware` block + peak VRAM + GPU util (`eval/hardware/`, Phase 10). Merge CSV columns: `peak_vram_*`, `gpu_util_*`, `reference_gpu`. |
+| **Change** | In setup paragraph (L222–229): add one sentence — single-GPU Modal A10G reference path; peak device memory and NVML GPU utilization collected per job (not multi-GPU tier matrix). In **SYSTEM tables** or appendix: add optional columns `peak_vram_allocated_mb`, `gpu_util_mean_pct` for T=512 representative configs. **Do not** claim A100/H100/4090 comparisons. |
+| **When** | At **re-sweep** when new Modal jobs include hardware metrics (already enabled in worker). Can defer columns to appendix if page-limited. |
+| **Why** | Satisfies inference-engineering credibility (“actual GPU behavior”) without expanding scope to multi-GPU tiers. Existing A10G sweeps already satisfy “one CUDA experiment.” |
+| **Needs new results?** | **Yes** for numeric VRAM/GPU util cells; **no** for setup prose |
+| **Phase** | 7, 10 |
 
 #### §Discussion (L595–623, `\label{sec:discussion}`)
 
@@ -260,9 +290,9 @@ Phases **5** and **8:** no paper changes (flagged not planned).
 | | |
 | --- | --- |
 | **Current** | “benchmarking framework”; “dual Section A/Section B metrics” |
-| **Change** | List: (i) interception engine, (ii) plug-in API, (iii) FIDELITY/BEHAVIOR/SYSTEM/Cost, (iv) controlled conditions export, (v) case-study findings. Future work: SnapKV/Palu sweeps, LongBench/RULER, longer contexts. |
+| **Change** | List: (i) interception engine, (ii) plug-in API, (iii) FIDELITY/BEHAVIOR/SYSTEM/Cost, (iv) controlled conditions export, (v) case-study findings. **Future work (Phases 11–12):** external benchmarks (LongBench/RULER), long-context scaling (2K–32K), batch/concurrency grids — explicitly **out of scope** for current paper. |
 | **Needs new results?** | Findings bullet yes; structure no |
-| **Phase** | 1–7 |
+| **Phase** | 1–10 (future work cites 11–12 only) |
 
 ### What to pull from codebase when writing
 
@@ -274,14 +304,16 @@ Phases **5** and **8:** no paper changes (flagged not planned).
 | SYSTEM metrics | §6.3 |
 | Cost tree | §6.5 + `eval/cost/accounting.py` |
 | Taxonomy table | `compressors/taxonomy.py` `METHOD_TAXONOMY` |
+| Pareto optimal set | `python scripts/analyze_pareto.py … --context-length 512` → `pareto_ctx512.json` |
+| Hardware + VRAM/GPU util | `result.to_dict()["hardware"]`, `system.peak_memory`, `system.gpu_utilization`; Modal merge CSV |
 | Result numbers | `results/phase5_modal_*`, `results/olmo2_phase5_*` (or post-rewrite bundles) |
 
 ### Minimal vs full paper update (choose at rewrite time)
 
 | Tier | When | Scope |
 | ---- | ---- | ----- |
-| **Minimal** | Re-sweep done; tight page limit | Terminology pass (Section A/B → three branches) + controlled conditions table + caption renames; keep 3 methods |
-| **Full** | Re-sweep + appendix space | Above + BEHAVIOR task protocols + SYSTEM TTFT/ITL + Cost subsection + taxonomy table + regenerated figures |
+| **Minimal** | Re-sweep done; tight page limit | Terminology pass (Section A/B → three branches) + controlled conditions table + caption renames; keep 3 methods; **regenerate Pareto from CLI** (Phase 9) |
+| **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) |
 
 ---
 
@@ -726,6 +758,15 @@ This allows you to compare **compression-quality curves**, rather than isolated 
 
 > **Status (2026-08-19):** **Implementation complete** — `eval/pareto/analysis.py` computes 2D (paper-style) and 3D (quality/memory/speed) Pareto frontiers from `EvaluationResult`, `to_dict()`, or legacy Phase-5 bundle JSON. CLI: `scripts/analyze_pareto.py`. Reporting: `ResultReporter.save_pareto()` / `reporting/pareto_report.py`. Tests: `tests/test_pareto_analysis.py`. Paper figure can be regenerated from bundles; `.tex` update deferred.
 
+### Feasibility snapshot (paper vs code)
+
+| | Paper | Code (now) | Gap |
+| --- | ----- | ---------- | --- |
+| **Proposed** | Plot quality vs memory vs speed; mark Pareto-optimal methods | First-class reproducible analysis in pipeline | — |
+| **Already in place** | ✅ `Fig.~\ref{fig:pareto}` (`plot_pareto.pdf`, L475–481): memory ratio vs log PPL ratio, marker size ∝ tok/s, empirical front; Discussion L617 | ✅ `eval/pareto/`, CLI, reporter | Paper **ahead on visualization**; code was manual → **now automated** |
+| **Remaining gap** | Caption does not cite reproducible export path | — | One caption/footnote sentence at rewrite |
+| **Feasibility** | **High** — mostly provenance + regeneration; scientific content already in PDF |
+
 This is another strong improvement.
 
 Instead of only producing tables:
@@ -760,17 +801,30 @@ This makes your results much more analytical.
 
 **Code:** `eval/pareto/analysis.py` · `eval/pareto/plot.py` · **CLI:** `python scripts/analyze_pareto.py results/phase5_modal_*/*.json --context-length 512` · **Reporter:** `ResultReporter.save_pareto()` · **Tests:** `tests/test_pareto_analysis.py`
 
+### Paper change log — when, why, what
+
+| When | Why | What to change in `conference_101719.tex` |
+| ---- | --- | ----------------------------------------- |
+| **At paper rewrite** (can precede re-sweep if reusing Phase-5 JSON) | Engine now exports frontiers reproducibly; paper figure was built manually | Regenerate `plot_pareto.pdf` via `scripts/analyze_pareto.py` — **keep axes and semantics** (memory ratio, log₁₀ PPL ratio, marker area ∝ tok/s) |
+| **Same pass** | Reviewers expect reproducible analysis artifacts | Add caption footnote or `\S`Methods sentence: optimal set from `pareto_ctx512.json`; cite CLI command in reproducibility appendix |
+| **Discussion L617** | Align narrative with automated frontier | Optional: replace hand-enumerated “no single winner” examples with IDs from `pareto_ctx512.json` optimal set — **only if** numbers change after re-sweep |
+| **Do not** | Phase 9 scientific claim already satisfied | Do **not** add new experiments solely for Pareto; do **not** change figure semantics to 3D unless appendix space allows |
+
+**No codebase changes required** for Phase 9 beyond what is already merged.
+
 ### Completeness record
 
 | Track | Status | Detail |
 | ----- | ------ | ------ |
 | **Engine** | ✅ Done | 2D front (max compression ratio, min log₁₀ PPL ratio) + 3D front (+ tok/s). Loads new `to_dict()` and legacy bundle JSON. |
-| **Documentation** | ✅ Done | This section + `METHODOLOGY.md` §6.6. |
-| **Paper** | 📝 Documented | Regenerate `plot_pareto.pdf` via CLI from sweep bundles; cite `pareto_ctx512.json` for optimal set. [Figures: offline-vs-online, Pareto](#figures-offline-vs-online-pareto-l475-l608615). |
+| **Documentation** | ✅ Done | This section + `METHODOLOGY.md` §6.7. |
+| **Paper** | 📝 ~90% done | Figure + discussion exist. **Pending:** regenerate from CLI + reproducibility citation. See [Figures: Pareto](#figures-offline-vs-online-pareto-l475-l608615). |
 
 ---
 
-# Phase 10: Add Hardware-Aware Evaluation
+# Phase 10: Add Hardware-Aware Evaluation ✅ **Done**
+
+> **Status (2026-08-19):** **Implementation complete** — single-GPU Modal A10G reference path with `eval/hardware/profile.py`, automatic peak VRAM + GPU util on Modal, hardware block in every job JSON, merge/reporter CSV columns. Multi-GPU tier matrix **not planned**. Paper table columns deferred to re-sweep.
 
 Your current Apple MPS development environment is fine for building the engine.
 
@@ -825,17 +879,46 @@ The important thing is to measure actual:
 | `KV_COLLECT_HARDWARE_METRICS=1` | Opt-in peak VRAM + GPU util locally |
 | `MODAL_GPU_REQUEST` | Primary Modal `gpu=` request from config |
 
+### Feasibility snapshot (paper vs code)
+
+| | Paper | Code (now) | Gap |
+| --- | ----- | ---------- | --- |
+| **Proposed** | ≥1 NVIDIA CUDA run; ideally A100/H100/4090 | Single-GPU Modal `a10g` + SYSTEM + hardware export | Multi-GPU matrix **out of scope** |
+| **Already in place** | ✅ A10G Modal sweeps (L222–229); tok/s, latency | ✅ `KV_EVAL_DEVICE=cuda`, worker, peak VRAM/GPU util auto-on Modal | Peak VRAM/GPU util **not in paper tables** |
+| **Feasibility** | **High** for A10G (done); tier matrix **not planned** | — | Optional appendix columns at re-sweep |
+
+### Paper change log — when, why, what
+
+| When | Why | What to change in `conference_101719.tex` |
+| ---- | --- | ----------------------------------------- |
+| **At re-sweep** (Modal jobs with Phase 10 worker) | Code now collects peak VRAM + GPU util; paper tables omit them | Add `peak_vram_allocated_mb` and/or `gpu_util_mean_pct` to SYSTEM table or appendix for representative T=512 configs |
+| **Setup §Experiments L222–229** | Document controlled hardware axis | One sentence: single NVIDIA A10G GPU per job (Modal); no multi-GPU tier comparison. Cross-ref Phase 7 controlled-conditions table. |
+| **Do not** | Scope decision 2026-08-19 | Do **not** add A100/H100/4090 matrix claims or new GPU-tier experiments for this paper |
+| **Optional (no new GPU jobs)** | Provenance only | Mention `hardware` block in reproducibility paragraph (`result.to_dict()["hardware"]`) |
+
+**No further codebase changes required** for Phase 10 unless Modal GPU type is changed manually in `configs/modal.yaml`.
+
 ### Completeness record
 
 | Track | Status | Detail |
 | ----- | ------ | ------ |
 | **Engine** | ✅ Done | Single-GPU Modal A10G path; hardware block + peak VRAM + GPU util collected/reported/merged. Multi-GPU matrix explicitly **not planned**. |
 | **Documentation** | ✅ Done | This section + `METHODOLOGY.md` §6.8 + `configs/modal.yaml` comments. |
-| **Paper** | 📝 Documented | Existing A10G CUDA sweeps satisfy “one CUDA experiment”; add peak VRAM / GPU util columns to tables when re-sweeping. |
+| **Paper** | 📝 ~80% done | A10G CUDA sweeps satisfy “one CUDA experiment.” **Pending:** VRAM/GPU util columns + setup sentence. See [§Experiments setup — hardware](#experiments-setup--hardware-block-l216229-extends-phase-7-table). |
 
 ---
 
-# Phase 11: Add a Realistic Workload Dimension
+# Phase 11: Add a Realistic Workload Dimension ⏸ **Future extension — not planned**
+
+> **Status (2026-08-19):** **Out of scope for current paper and engine roadmap.** This section is **design reference only** — do **not** implement LongBench/RULER/C4 integration, expand sweep grids with new workload types, or add BEHAVIOR task results to the paper for this submission. The **current setup is sufficient:** WikiText-2 PPL + throughput in the paper; synthetic retrieval/instruction/reasoning in the engine (default/off) for legible failure modes without external benchmark dependency.
+
+### Feasibility snapshot (why deferred)
+
+| | Paper | Code | Decision |
+| --- | ----- | ---- | -------- |
+| **Proposed** | Beyond WikiText — short/long ctx, long output, retrieval, reasoning, IF | BEHAVIOR has PPL + **synthetic** retrieval, IF, reasoning (`eval/behavior/`) | **Engine ahead; paper intentionally narrower** |
+| **Gap** | No retrieval/reasoning/IF numbers in paper | No LongBench/RULER | Acceptable — case study focuses on controlled PPL/tok/s under WikiText |
+| **Feasibility if pursued later** | Medium — wire existing BEHAVIOR into sweeps + text | LongBench/RULER = more work | **Not scheduled** |
 
 Don't rely entirely on WikiText-2.
 
@@ -865,11 +948,34 @@ Tests whether compression behaves differently during long generation.
 
 Tests behavioral degradation.
 
-Recent research strongly suggests workload characteristics matter. 
+Recent research strongly suggests workload characteristics matter.
+
+### What stays as-is (no action)
+
+- **Paper:** WikiText-2 PPL + SYSTEM throughput/latency only — correct scope for current case study.
+- **Engine:** Default synthetic BEHAVIOR tasks remain available (`--skip-retrieval`, `--skip-instruction-following`, `--reasoning`) but **not required** in Modal sweeps or paper tables.
+- **Paper rewrite (Phases 1–7):** BEHAVIOR protocol paragraphs in [§Evaluation Protocol](#evaluation-protocol-l255285-labelsubseceval_protocol) may **describe** synthetic tasks in methodology without reporting numbers — optional, not blocking.
+
+### Paper change log
+
+| When | Why | What |
+| ---- | --- | ---- |
+| **Current submission** | Phase 11 deferred | **No paper changes** for workload expansion |
+| **Future extension only** | If external benchmarks added later | New §Workload types + result tables; cite LongBench/RULER — requires new experiments |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ⏸ Sufficient | Synthetic BEHAVIOR modules exist; no LongBench/RULER wiring planned. |
+| **Documentation** | ⏸ Flagged | This section + `METHODOLOGY.md` §6.2 + `CURRENT_STATE.md` limits. |
+| **Paper** | — | WikiText-only results **intentional**; mention diverse workloads only in Conclusion **future work** (see [§Conclusion](#conclusion-l625629-labelsecconclusion)). |
 
 ---
 
-# Phase 12: Add Workload Scaling
+# Phase 12: Add Workload Scaling ⏸ **Future extension — not planned**
+
+> **Status (2026-08-19):** **Out of scope.** Do **not** implement 2K–32K context sweeps, batch/concurrency grids, or generation-length matrices for this paper. Context **128 / 256 / 512**, batch **1**, **64** generated tokens (`configs/model.yaml`, `configs/eval.yaml`) are the controlled case-study grid — explicitly noted as future work in `METHODOLOGY.md` §9 and `ROADMAP.md`.
 
 Ideally evaluate across:
 
@@ -889,6 +995,35 @@ You don't need every combination.
 Even a small matrix would demonstrate:
 
 > **The best KV method depends on the workload.**
+
+### Feasibility snapshot (why deferred)
+
+| | Paper | Code | Decision |
+| --- | ----- | ---- | -------- |
+| **Proposed** | ctx 2K→32K, batch 1→8, short→long generation | Runner accepts `context_length` / `generated_tokens`; configs cap at 512 ctx | **Scaling study = future work** |
+| **Already in place** | ctx 128–512, batch 1, 64 tok gen | Same limits | Sufficient for SLM controlled eval |
+| **Feasibility if pursued later** | Medium–hard — VRAM/runtime/cost grow fast | Engine can run longer ctx in principle | **Not scheduled** |
+
+### What stays as-is (no action)
+
+- **No codebase changes** — `configs/model.yaml` context list and `generated_tokens: 64` remain the paper-aligned grid.
+- **No paper changes** — do not claim long-context or batch scaling results.
+
+### Paper change log
+
+| When | Why | What |
+| ---- | --- | ---- |
+| **Current submission** | Phase 12 deferred | **No paper changes** |
+| **Conclusion future work only** | Acknowledge limitation | One sentence: ctx ≤512, batch 1; long-context scaling tracked in `ROADMAP.md` |
+| **Future extension** | If 4K+ sweeps run | New context-length rows + VRAM/latency scaling figures — requires new Modal budget |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ⏸ Sufficient | Parameterized runner; no 2K+ sweep automation planned. |
+| **Documentation** | ⏸ Flagged | `METHODOLOGY.md` §8–9; `ROADMAP.md` long-context item. |
+| **Paper** | — | Current 128–512 grid **intentional**; no scaling claims beyond reported ctx. |
 
 ---
 

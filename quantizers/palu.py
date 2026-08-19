@@ -155,18 +155,21 @@ def build_layer_factors_from_projections(
 
 
 def project_hidden_to_latent(hidden: torch.Tensor, factors: PaluLayerFactors) -> tuple[torch.Tensor, torch.Tensor]:
-    """x @ A for each group → latent H^k, H^v with shape (B, H, T, r_g) per group."""
-    batch, seq_len, hidden_dim = hidden.shape
+    """h = x @ B^T for each group → latent tensors (B, H, T, r)."""
+    batch, seq_len, _hidden_dim = hidden.shape
     h_key_parts: list[torch.Tensor] = []
     h_value_parts: list[torch.Tensor] = []
+    head_offset = 0
     for group in factors.groups:
-        hk = torch.matmul(hidden, group.a_key.t())
-        hv = torch.matmul(hidden, group.a_value.t())
-        h_key_parts.append(hk.view(batch, seq_len, group.group_size, -1).transpose(1, 2))
-        h_value_parts.append(hv.view(batch, seq_len, group.group_size, -1).transpose(1, 2))
-    h_key = torch.cat(h_key_parts, dim=1)
-    h_value = torch.cat(h_value_parts, dim=1)
-    return h_key, h_value
+        hk = torch.matmul(hidden, group.b_key.t())
+        hv = torch.matmul(hidden, group.b_value.t())
+        gh = group.group_size
+        hk = hk.view(batch, seq_len, gh, -1).transpose(1, 2)
+        hv = hv.view(batch, seq_len, gh, -1).transpose(1, 2)
+        h_key_parts.append(hk)
+        h_value_parts.append(hv)
+        head_offset += gh
+    return torch.cat(h_key_parts, dim=1), torch.cat(h_value_parts, dim=1)
 
 
 def reconstruct_kv_from_latent(
@@ -174,8 +177,8 @@ def reconstruct_kv_from_latent(
     h_value: torch.Tensor,
     factors: PaluLayerFactors,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """H @ B → full K/V tensors (pre-RoPE layout)."""
-    batch, num_heads, seq_len, _ = h_key.shape
+    """K = h @ A^T, V = h @ A_v^T (pre-RoPE layout)."""
+    batch, num_heads, seq_len, _rank = h_key.shape
     key_parts: list[torch.Tensor] = []
     value_parts: list[torch.Tensor] = []
     head_offset = 0
@@ -185,11 +188,15 @@ def reconstruct_kv_from_latent(
         hv = h_value[:, head_offset : head_offset + gh, :, :]
         hk_flat = hk.transpose(1, 2).reshape(batch, seq_len, -1)
         hv_flat = hv.transpose(1, 2).reshape(batch, seq_len, -1)
-        key_parts.append(torch.matmul(hk_flat, group.b_key))
-        value_parts.append(torch.matmul(hv_flat, group.b_value))
+        key_parts.append(torch.matmul(hk_flat, group.a_key.t()))
+        value_parts.append(torch.matmul(hv_flat, group.a_value.t()))
         head_offset += gh
+    out_dim = num_heads * factors.head_dim
     key = torch.cat(key_parts, dim=-1).view(batch, seq_len, num_heads, factors.head_dim).transpose(1, 2)
     value = torch.cat(value_parts, dim=-1).view(batch, seq_len, num_heads, factors.head_dim).transpose(1, 2)
+    if key.shape[1] != num_heads:
+        key = key[:, :num_heads]
+        value = value[:, :num_heads]
     return key, value
 
 

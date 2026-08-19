@@ -132,10 +132,16 @@ class PaluCompressor(KVCompressor):
     def decompress(self, compressed: CompressedKV) -> tuple[torch.Tensor, torch.Tensor]:
         payload = compressed.keys
         if isinstance(payload, PaluLatentPayload):
+            if payload.b_key is not None:
+                return decompress_kv_lowrank(payload)
+            factors = self._layer_factors.get(compressed.layer)
+            if factors is not None:
+                return reconstruct_kv_from_latent(
+                    payload.h_key.to(torch.float32),
+                    payload.h_value.to(torch.float32),
+                    factors,
+                )
             return decompress_kv_lowrank(payload)
-        if isinstance(payload, PaluLatentPayload):
-            key, value = reconstruct_kv_from_latent(payload.h_key, payload.h_value, self._layer_factors[compressed.layer])
-            return key, value
         return self.decompress_kv(compressed.keys, mode="key"), self.decompress_kv(compressed.values, mode="value")
 
     def wrap_latent_layer(

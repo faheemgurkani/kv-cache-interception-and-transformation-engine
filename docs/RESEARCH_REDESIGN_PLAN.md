@@ -150,9 +150,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | Bullet “Dual evaluation. Section A … Section B …” |
 | **Codebase** | Three branches; plug-in isolation matches |
-| **Change** | Replace dual bullet with: **Three-branch evaluation.** FIDELITY, BEHAVIOR, and SYSTEM are always reported together (with BEHAVIOR/SYSTEM sub-metrics configurable). Add bullet or sentence: **Controlled comparison.** Same model, input, decode loop, hardware; only compressor varies (`controlled_conditions` in export JSON). |
+| **Change** | Add **Problem** bullet (Phase 16). **Three-branch evaluation** + **Controlled comparison** (Phases 1, 6, 7). |
 | **Needs new results?** | No |
-| **Phase** | 1, 6, 7 |
+| **Phase** | 1, 6, 7, 16 |
 
 #### Fig. pipeline caption (L98–102, `\label{fig:pipeline}`)
 

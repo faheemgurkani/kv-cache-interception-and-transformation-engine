@@ -27,7 +27,7 @@ Verified via live gate evaluation and `tests/test_*_reference.py`:
 | `qwen3_0.6b` | PASS | PASS | PASS | ✅ all compressors |
 | `gemma3_270m` | PASS | PASS | PASS | ✅ identity, TurboQuant, QJL, RocketKV (`test_gemma3_reference.py`) |
 | `tinydeepseek_0.5b` | PASS | PASS | FAIL | ✅ identity, TurboQuant, QJL, RocketKV (`test_tinydeepseek_reference.py`; expanded KV disclosure) |
-| `falcon_h1_0.5b` | PASS | FAIL | PASS | ❌ Gate B blocks FIDELITY; hybrid state counted in memory (Gate C pass) |
+| `falcon_h1_0.5b` | PASS | PASS | PASS | ✅ identity, TurboQuant, QJL, RocketKV (`test_falcon_h1_reference.py`) |
 
 ### `tinydeepseek_0.5b` — now supported on expanded-cache path
 
@@ -138,7 +138,7 @@ NotImplementedError: Online attention adapters are not implemented for model_typ
 | qwen3_0.6b | ✅ | ✅ | ✅ | ✅ |
 | gemma3_270m | ✅ | ✅ | ✅ | ✅ |
 | tinydeepseek_0.5b | ✅ | ✅ (expanded KV) | ✅ | ✅ |
-| falcon_h1_0.5b | ✅ (visible state incl. Mamba) | ❌ (Gate B) | ⚠️ `--skip-fidelity` | ❌ (Gate B) |
+| falcon_h1_0.5b | ✅ | ✅ (hybrid) | ✅ | ✅ |
 
 Falcon-H1 memory accounting counts all visible state: `eval/fidelity/memory.py` uses `visible_state_bytes()` (attention K/V + Mamba recurrent/conv). Gate C passes; compression still targets attention K/V only.
 
@@ -161,7 +161,7 @@ Falcon-H1 memory accounting counts all visible state: `eval/fidelity/memory.py` 
 
 Full technical detail lives in [`ENGINE_INTERNALS.md §8`](../../architecture/ENGINE_INTERNALS.md#8-diversifying-to-other-architecture-families) and [`ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md`](../../ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md). Ranked summary, current as of 2026-08-18:
 
-1. **Add `load_attention_ops` branches for `falcon_h1`.** ✅ **Done for `gemma3_text`** (86th commit) **and `deepseek_v3`** (94th commit). Falcon-H1 additionally needs registering the existing `qk_norm_layout="none"` scaffold.
+1. **Add `load_attention_ops` branches.** ✅ **Done for all five families** (`gemma3_text`, `deepseek_v3`, `falcon_h1`).
 2. **Per-layer RoPE selection** — ✅ **done for Gemma3** (`build_rope_context().get_rope(layer_idx)` in FIDELITY/attention).
 3. **Hybrid state interface** — ✅ **done (WP1):** `iter_layer_states()` + `visible_state_bytes()`. Falcon memory accounting fixed; Mamba compression remains passthrough by policy.
 4. **MLA-native latent state** — still open: TinyDeepSeek Gate C fails until native `kv_lora_rank` interception lands (expanded cache benchmarked today with disclosure).

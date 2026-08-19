@@ -92,11 +92,11 @@ Full live-run evidence (exact commands, output) is in [`docs/results/shortlist_5
 
 **Live cache:** 36 layers, but **every layer's cache object is `LinearAttentionAndFullAttentionLayer`**, not a plain `DynamicLayer` — a combined type that (per its name) can carry both a linear/recurrent state and standard attention K/V. In this checkpoint's forward pass it exposed `.keys`/`.values` of shape `(1, 2, 6, 64)` (2 == `num_key_value_heads`, confirming the attention half runs a 4:2 GQA-style ratio — `num_attention_heads=8`, `num_key_value_heads=2`), so `iter_layer_kv`'s generic `layer.keys, layer.values` fallback works for the attention half. **Mamba/SSM state lives on the same cache layer** (`.recurrent_states`/`.conv_states`) and is **invisible to `iter_layer_kv`**, but is now visible to `iter_layer_states()` and counted by `visible_state_bytes()` (WP1, 79th commit).
 
-**Engine correspondence — hybrid state accounted; adapter gate still blocks FIDELITY/attention:**
-- `load_attention_ops` → **fails**: `NotImplementedError("... model_type='falcon_h1' ...")`. `project_qkv` already supports `qk_norm_layout="none"`; the builder branch is not yet registered.
-- `iter_layer_states` / `visible_state_bytes()` → **counts attention K/V and Mamba state** (WP1). `get_cache_size_bytes()` / `iter_layer_kv()` remain attention-K/V-only for backward compatibility.
-- Gate A (loader/state) → **passes**. Gate C (state semantics) → **passes**. Gate B (attention adapter) → **fails**.
-- Compression policy remains attention-K/V-only (Mamba passthrough).
+**Engine correspondence — ✅ FULLY SUPPORTED (hybrid adapter + dual-state memory):**
+- `load_attention_ops` → **succeeds** (`model_type="falcon_h1"`, `qk_norm_layout="none"`).
+- `iter_layer_states` / `visible_state_bytes()` → **counts attention K/V and Mamba state**. Compression targets K/V only; Mamba passthrough via `merge_decompressed_kv_into_cache` in online decode.
+- All three compatibility gates pass. Full FIDELITY/BEHAVIOR/SYSTEM verified via `tests/test_falcon_h1_reference.py` (identity, TurboQuant, QJL, RocketKV).
+- Memory reports both `kv_compression_ratio` and total-state `compression_ratio` (Mamba bytes preserved in denominator).
 
 ---
 
@@ -130,14 +130,14 @@ Full live-run evidence (exact commands, output) is in [`docs/results/shortlist_5
 | olmo2_1b | MHA | ✅ | ✅ (`olmo2`) | ✅ | ✅ | ✅ | ✅ |
 | qwen3_0.6b | GQA | ✅ | ✅ (`qwen3`) | ✅ | ✅ | ✅ | ✅ |
 | gemma3_270m | MQA + local/global | ✅ | ✅ (`gemma3_text`, 86th commit) | ✅ | ✅ (per-layer RoPE) | ✅ | ✅ |
-| falcon_h1_0.5b | Hybrid Attn+Mamba2 | ✅ | ❌ no `falcon_h1` branch | ✅ (attn K/V only) | ❌ (Gate B) | ⚠️ `--skip-fidelity` runs; memory uses full visible bytes | ❌ (Gate B) |
+| falcon_h1_0.5b | Hybrid Attn+Mamba2 | ✅ | ✅ (`falcon_h1`) | ✅ (attn K/V only) | ✅ (hybrid memory) | ✅ | ✅ |
 | tinydeepseek_0.5b | MLA | ✅ (native `deepseek_v3`) | ✅ (`deepseek_v3`, 94th commit) | ✅ | ✅ (expanded KV; Gate C fails) | ✅ | ✅ |
 
-**4 of 5 fully work today** (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`, `tinydeepseek_0.5b` — confirmed via reference tests and live gate evaluation, 2026-08-19). **`falcon_h1_0.5b`** remains blocked at Gate B only. Falcon-H1 dual-state **accounting** is fixed (Gate C passes). TinyDeepSeek fails Gate C by design until MLA-native latent interception lands (`cache_representation="expanded_kv"` disclosure in reports).
+**5 of 5 fully work today** — confirmed via reference tests and live gate evaluation (2026-08-19). TinyDeepSeek fails Gate C by design until MLA-native latent interception lands.
 
 ## What would actually need to change in the engine (ranked by how much of the shortlist it unblocks)
 
-1. **`framework/model_adapter.py::load_attention_ops`** — add `model_type == "falcon_h1"` branch. **Done for Gemma3** (`gemma3_text`, 86th commit) **and TinyDeepSeek** (`deepseek_v3`, 94th commit). Falcon-H1 additionally needs registering the existing `qk_norm_layout="none"` path in `project_qkv`.
+1. **`framework/model_adapter.py::load_attention_ops`** — **Done for all five shortlist families** (`gemma3_text`, `deepseek_v3`, `falcon_h1`).
 2. **Per-layer RoPE selection** — **done for Gemma3** (`framework/rope.py::build_rope_context().get_rope(layer_idx)` in FIDELITY/attention; QJL/RocketKV receive per-layer embeddings from the native forward pass).
 3. **Hybrid state interface** — **done (WP1):** `iter_layer_states()` + `visible_state_bytes()` count Falcon Mamba state; Gate C passes. Compression remains attention-K/V-only by policy.
 4. **A latent-KV (MLA) state type** — still open for TinyDeepSeek: Gate C fails until native `kv_lora_rank` interception lands. Today's cache is HF's expanded per-head K/V reconstruction.
@@ -145,4 +145,4 @@ Full live-run evidence (exact commands, output) is in [`docs/results/shortlist_5
 
 Live-run evidence (real tracebacks, successful-run numbers for `olmo2_1b`/`qwen3_0.6b`/`gemma3_270m`) behind every claim above: [`docs/results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md`](../docs/results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md).
 
-The remaining structural gaps (Falcon-H1 adapter; optional MLA-native latent state for TinyDeepSeek Gate C) match the `ModelAdapterRegistry` / typed-state direction in `docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md`.
+The remaining optional gap is MLA-native latent state for TinyDeepSeek Gate C.

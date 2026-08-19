@@ -39,6 +39,7 @@ REQUIRED_FIXED_AXES: tuple[str, ...] = (
     "context_length",
     "generation_length",
     "batch_size",
+    "precision",
     "decode_loop",
     "decoding_configuration",
     "hardware",
@@ -278,6 +279,16 @@ def validate_controlled_contract(contract: ControlledInterceptionContract) -> No
         raise ValueError("controlled contract missing variable.compressor")
     if "compression_budget" not in contract.variable:
         raise ValueError("controlled contract missing variable.compression_budget")
+
+
+def format_model_precision(dtype: torch.dtype | str | None) -> str | None:
+    """Human-readable precision label for reproducibility export."""
+    if dtype is None:
+        return None
+    if isinstance(dtype, torch.dtype):
+        return str(dtype).replace("torch.", "")
+    text = str(dtype)
+    return text.replace("torch.", "") if text.startswith("torch.") else text
 
 
 def build_controlled_conditions(

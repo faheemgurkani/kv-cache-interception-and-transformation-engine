@@ -96,9 +96,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | “benchmarking framework”; “dual metrics: Section A … Section B”; offline does not predict online |
 | **Codebase** | FIDELITY/BEHAVIOR/SYSTEM; controlled interception; cost + taxonomy exist in code |
-| **Change** | Replace “dual Section A/B” with three-branch names. Lead with “controlled interception engine.” Keep empirical claims (TQ/QJL/RocketKV, Qwen3/OLMo2) until re-sweep replaces numbers. Add one clause: “only the compressor plug-in varies under matched conditions.” |
+| **Change** | Replace “dual Section A/B” with three-branch names. Lead with “controlled interception engine.” **Phase 15:** frame KVBench as evaluation **instrument**; case studies demonstrate branch divergence — close with “methodology for evaluating KV transformations,” not “yardstick for comparing methods.” Keep empirical claims until re-sweep replaces numbers. |
 | **Needs new results?** | Numbers: yes when re-sweeping; framing: no |
-| **Phase** | 1, 6, 7 |
+| **Phase** | 1, 6, 7, 15 |
 
 #### Keywords (L48–50)
 
@@ -308,7 +308,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | **Current** | “benchmarking framework”; “dual Section A/Section B metrics” |
 | **Change** | Restate Phase 15 research question in first sentence. List: (i) interception engine, (ii) plug-in API, (iii) FIDELITY/BEHAVIOR/SYSTEM/Cost, (iv) controlled conditions + reproducibility export, (v) case-study **demonstrations** (not “findings = best method”). **Future work (Phases 11–12):** external benchmarks, long-context scaling — out of scope. **Last sentence:** “methodology for evaluating KV transformations,” not “yardstick for comparing methods.” |
 | **Needs new results?** | Findings bullet yes; structure no |
-| **Phase** | 1–10 (future work cites 11–12 only) |
+| **Phase** | 1–10, 15 (future work cites 11–12 only) |
 
 ### What to pull from codebase when writing
 

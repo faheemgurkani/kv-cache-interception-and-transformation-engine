@@ -208,9 +208,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | “dual Section A/B”; lists model, WikiText, batch 1, A10G; “Each run records Section A and Section B metrics” |
 | **Codebase** | Phase 7 exports full axis checklist in JSON |
-| **Change** | Add **Table: Controlled experimental conditions** (model, tokenizer, dataset/split, ctx lengths, batch, gen length 64, PPL stride 512, greedy decode, A10G, metrics enabled). Replace “Section A and Section B” with three branches + cost. Add: “Per-job JSON includes `controlled_conditions` (fixed vs. variable axes).” |
+| **Change** | Add **Table: Controlled experimental conditions** (model, tokenizer, dataset/split, ctx lengths, batch, gen length 64, PPL stride 512, greedy decode, A10G, metrics enabled). Replace “Section A and Section B” with three branches + cost. Add: “Per-job JSON includes `controlled_conditions` (fixed vs. variable axes).” **Phase 23:** opening sentence frames section as answering **Findings 1–7**, not reporting a leaderboard. |
 | **Needs new results?** | Table structure: no; row values yes if setup changes |
-| **Phase** | 7 |
+| **Phase** | 7, 23 |
 
 #### §Evaluation Protocol (L255–285, `\label{subsec:eval_protocol}`)
 

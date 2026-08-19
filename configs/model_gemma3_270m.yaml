@@ -16,3 +16,23 @@ turboquant:
   default_stage: full
   attn_implementation: eager
   torch_dtype: float16
+
+compatibility:
+  architecture:
+    family: mqa
+    q_heads: 4
+    kv_heads: 1
+  attention:
+    adapter: gemma3_text
+    qk_norm: per_head
+    rope: per_layer_type
+  cache:
+    type: standard
+    sliding_layers: true
+  evaluation:
+    fidelity_attention: supported
+    behavior_identity: supported
+    behavior_turboquant: supported
+    behavior_qjl: supported
+    behavior_rocketkv: supported
+    system: supported

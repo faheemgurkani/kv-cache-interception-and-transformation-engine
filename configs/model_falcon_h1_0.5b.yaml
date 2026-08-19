@@ -16,3 +16,24 @@ turboquant:
   default_stage: full
   attn_implementation: eager
   torch_dtype: float16
+
+compatibility:
+  architecture:
+    family: hybrid
+    q_heads: 8
+    kv_heads: 2
+  attention:
+    adapter: falcon_h1
+    qk_norm: none
+    rope: global
+  state:
+    attention: compressible
+    recurrent: passthrough
+  evaluation:
+    fidelity_attention: supported
+    behavior_identity: supported
+    behavior_turboquant: supported
+    behavior_qjl: supported
+    behavior_rocketkv: supported
+    system: supported
+    total_state_accounting: required

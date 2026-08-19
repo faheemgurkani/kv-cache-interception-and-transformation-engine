@@ -254,3 +254,99 @@ def get_model_eval_metadata(config, *, local_path: str | None = None) -> dict[st
         if caps.expanded_kv_disclosure:
             metadata["hybrid_state_disclosure"] = caps.expanded_kv_disclosure
     return metadata
+
+
+def build_compatibility_manifest(config, *, yaml_section: dict | None = None) -> dict[str, object]:
+    """Declarative compatibility manifest (§30), derived from capabilities + config."""
+    caps = resolve_model_capabilities(config)
+    num_q_heads = int(config.num_attention_heads)
+    num_kv_heads = int(getattr(config, "num_key_value_heads", num_q_heads))
+    manifest: dict[str, object] = {
+        "model_type": resolve_model_type(config),
+        "architecture": {
+            "family": (
+                caps.state_type.value
+                if caps.state_type in {StateType.HYBRID, StateType.MLA}
+                else caps.attention_family
+            ),
+            "state_type": caps.state_type.value,
+            "q_heads": num_q_heads,
+            "kv_heads": num_kv_heads,
+        },
+        "attention": {
+            "adapter": resolve_model_type(config),
+            "qk_norm": caps.qk_norm_layout,
+            "rope": caps.rope_mode,
+            "adapter_registered": caps.adapter_registered,
+        },
+        "cache": {
+            "type": "hybrid_visible" if caps.state_type == StateType.HYBRID else caps.kv_layout,
+            "native_latent": caps.native_latent_cache,
+        },
+        "evaluation": {
+            "fidelity_representation": True,
+            "fidelity_attention": caps.adapter_registered,
+            "fidelity_memory": True,
+            "behavior_identity": caps.supports_gate(CompatibilityGate.LOADER_STATE),
+            "behavior_turboquant": caps.supports_gate(CompatibilityGate.LOADER_STATE),
+            "behavior_qjl": caps.adapter_registered,
+            "behavior_rocketkv": caps.adapter_registered,
+            "system": caps.supports_gate(CompatibilityGate.LOADER_STATE),
+            "total_state_accounting": caps.has_recurrent_state or caps.native_latent_cache,
+        },
+    }
+    if caps.state_type == StateType.HYBRID:
+        manifest["state"] = {"attention": "compressible", "recurrent": "passthrough"}
+    if caps.per_layer_attention_type:
+        manifest["cache"] = {
+            **manifest["cache"],  # type: ignore[dict-item]
+            "sliding_layers": True,
+        }
+    if yaml_section:
+        _merge_manifest_section(manifest, yaml_section)
+    return manifest
+
+
+def load_compatibility_manifest(
+    config,
+    *,
+    yaml_config: dict | None = None,
+) -> dict[str, object]:
+    """Load manifest from YAML ``compatibility:`` block when present, else derive."""
+    yaml_section = (yaml_config or {}).get("compatibility")
+    return build_compatibility_manifest(config, yaml_section=yaml_section)
+
+
+def validate_manifest(manifest: dict[str, object], caps: ModelCapabilities, config) -> None:
+    """Ensure declarative manifest matches live capability metadata (§30)."""
+    architecture = manifest.get("architecture", {})
+    attention = manifest.get("attention", {})
+    if not isinstance(architecture, dict) or not isinstance(attention, dict):
+        raise ValueError("Compatibility manifest requires architecture and attention sections.")
+
+    expected_family = (
+        caps.state_type.value
+        if caps.state_type in {StateType.HYBRID, StateType.MLA}
+        else caps.attention_family
+    )
+    if architecture.get("family") != expected_family:
+        raise ValueError(
+            f"Manifest family {architecture.get('family')!r} != {expected_family!r}."
+        )
+    if attention.get("adapter") != resolve_model_type(config):
+        raise ValueError(
+            f"Manifest adapter {attention.get('adapter')!r} != {resolve_model_type(config)!r}."
+        )
+    if int(architecture.get("q_heads", -1)) != int(config.num_attention_heads):
+        raise ValueError("Manifest q_heads does not match model config.")
+    num_kv = int(getattr(config, "num_key_value_heads", config.num_attention_heads))
+    if int(architecture.get("kv_heads", -1)) != num_kv:
+        raise ValueError("Manifest kv_heads does not match model config.")
+
+
+def _merge_manifest_section(base: dict[str, object], override: dict[str, object]) -> None:
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            _merge_manifest_section(base[key], value)  # type: ignore[arg-type]
+        else:
+            base[key] = value

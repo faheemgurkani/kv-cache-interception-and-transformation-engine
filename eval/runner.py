@@ -32,7 +32,13 @@ from eval.fidelity import FidelityMetrics, evaluate_fidelity
 from eval.system import SystemMetrics, evaluate_system
 from framework.config import load_eval_config, load_model_config
 from framework.model import ModelLayer
-from framework.model_capabilities import ModelCapabilities, get_model_eval_metadata, resolve_model_capabilities
+from framework.compatibility_probe import CompatibilityProbe, run_compatibility_probe
+from framework.model_capabilities import (
+    ModelCapabilities,
+    get_model_eval_metadata,
+    load_compatibility_manifest,
+    resolve_model_capabilities,
+)
 
 
 @dataclass
@@ -46,6 +52,7 @@ class EvaluationResult:
     stage: str | None = None
     model_capabilities: ModelCapabilities | None = field(default=None, repr=False)
     model_metadata: dict[str, object] | None = field(default=None, repr=False)
+    compatibility_probe: CompatibilityProbe | None = field(default=None, repr=False)
 
     # --- back-compat accessors (previous Section A/B field names) ---
     @property
@@ -67,6 +74,12 @@ class EvaluationResult:
             "stage": self.stage,
             "context_length": self.context_length,
             "model": self.model_metadata,
+            "compatibility_gates": (
+                None if self.compatibility_probe is None else self.compatibility_probe.gates_to_dict()
+            ),
+            "compatibility_manifest": (
+                None if self.compatibility_probe is None else self.compatibility_probe.manifest
+            ),
             "fidelity": None if self.fidelity is None else self.fidelity.to_dict(),
             "behavior": None if self.behavior is None else self.behavior.to_dict(),
             "system": None if self.system is None else self.system.to_dict(),
@@ -128,6 +141,20 @@ class EvaluationRunner:
         stride = perplexity_stride or self.eval_config.get("perplexity_stride", 512)
         num_new_tokens = generated_tokens or self.eval_config.get("generated_tokens", 64)
 
+        probe = run_compatibility_probe(
+            self.model_layer,
+            manifest=load_compatibility_manifest(
+                self.model_layer.config,
+                yaml_config=self.model_config,
+            ),
+        )
+
+        if run_fidelity and not probe.gate_passed("attention"):
+            raise RuntimeError(
+                "FIDELITY/attention requires Gate B (attention adapter). "
+                "Pass run_fidelity=False or use --skip-fidelity."
+            )
+
         if not run_fidelity:
             fidelity = None
         else:
@@ -174,11 +201,9 @@ class EvaluationRunner:
             behavior=behavior,
             system=system,
             stage=_compressor_stage(self.compressor),
-            model_capabilities=resolve_model_capabilities(self.model_layer.config),
-            model_metadata=get_model_eval_metadata(
-                self.model_layer.config,
-                local_path=str(self.model_layer.model_path),
-            ),
+            model_capabilities=probe.capabilities,
+            model_metadata=probe.metadata,
+            compatibility_probe=probe,
         )
 
     def run_all_context_lengths(

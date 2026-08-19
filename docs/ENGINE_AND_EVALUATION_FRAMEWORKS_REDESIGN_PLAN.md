@@ -111,6 +111,19 @@ Falcon empirical proof: `visible_bytes=14,708,736` vs `attn_bytes=36,864` — Ma
 | Gemma3 adapter + RoPE + eval metadata | Done | 86th commit; `tests/test_gemma3_reference.py`; Gates PASS; all compressors |
 | TinyDeepSeek MLA adapter + eval | Done | 94th commit; `tests/test_tinydeepseek_reference.py`; Gate B PASS; Gate C FAIL (expanded KV); identity/TurboQuant/QJL/RocketKV verified |
 | Falcon-H1 hybrid adapter + eval | Done | `tests/test_falcon_h1_reference.py`; Gates A/B/C PASS; identity/TurboQuant/QJL/RocketKV verified |
+| §28–36 closure (probe, manifest, WP5) | Done | `compress_state`, `run_compatibility_probe`, YAML manifests, `tests/test_{state_compression,compatibility_probe,compatibility_manifest,regression_validation}.py` |
+
+### §29–36 implementation (2026-08-19)
+
+| Section | Deliverable | Evidence |
+| ------- | ----------- | -------- |
+| §28 State-aware compression | `framework/state_compression.py` — `compress_state()` / recurrent passthrough | `tests/test_state_compression.py` |
+| §29 Compatibility probe | `framework/compatibility_probe.py` — single probe consumed by eval runner | `eval/runner.py`; `tests/test_compatibility_probe.py` |
+| §30 YAML manifests | `compatibility:` blocks in all five `configs/model_*.yaml` | `tests/test_compatibility_manifest.py` |
+| §31 Three gates | Formal Gate A/B/C in probe + eval output JSON | `compatibility_gates` in `EvaluationResult.to_dict()` |
+| §33 Backward compat | `iter_layer_kv`, `apply_compressor`, `compress_kv` unchanged | `tests/test_regression_validation.py` |
+| §35 Acceptance matrix | All five models ✅ (TinyDeepSeek Gate C caveat) | Reference tests per model |
+| §36 WP5 regression | OLMo2, Qwen3-0.6B, Qwen3-1.7B identity smoke | `tests/test_regression_validation.py` |
 
 ---
 

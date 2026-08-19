@@ -16,3 +16,22 @@ turboquant:
   default_stage: full
   attn_implementation: eager
   torch_dtype: float16
+
+compatibility:
+  architecture:
+    family: gqa
+    q_heads: 16
+    kv_heads: 8
+  attention:
+    adapter: qwen3
+    qk_norm: per_head
+    rope: global
+  cache:
+    type: standard
+  evaluation:
+    fidelity_attention: supported
+    behavior_identity: supported
+    behavior_turboquant: supported
+    behavior_qjl: supported
+    behavior_rocketkv: supported
+    system: supported

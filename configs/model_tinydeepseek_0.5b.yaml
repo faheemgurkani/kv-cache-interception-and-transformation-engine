@@ -16,3 +16,24 @@ turboquant:
   default_stage: full
   attn_implementation: eager
   torch_dtype: float16
+
+compatibility:
+  architecture:
+    family: mla
+    q_heads: 4
+    kv_heads: 4
+  attention:
+    adapter: deepseek_v3
+    qk_norm: mla
+    rope: split_nope_rope
+  cache:
+    type: expanded
+    native_latent: true
+  evaluation:
+    fidelity_attention: supported
+    behavior_identity: supported
+    behavior_turboquant: supported
+    behavior_qjl: supported
+    behavior_rocketkv: supported
+    system: supported
+    total_state_accounting: required

@@ -308,6 +308,18 @@ Every evaluation run produces a unified **cost** block (Phase 3) aggregating com
 
 **Online detail:** Compress/decompress/attention breakdown requires `--kernel-cost`; end-to-end decode cost comes from default throughput metrics.
 
+### 6.6 Taxonomy (`compressors/taxonomy.py`, Phase 4)
+
+Every `EvaluationResult` includes a `taxonomy` block classifying the compressor by mechanism:
+
+| Category | Code | Examples in repo |
+|---|---|---|
+| Eviction | A | SnapKV |
+| Quantization | B | TurboQuant, QJL, identity |
+| Projection | C | Palu |
+| Hybrid | D | RocketKV |
+| Modified attention | E (secondary) | QJL, RocketKV, Palu (RoPE path) |
+
 ---
 
 ## 7. Phase 5 sweep design

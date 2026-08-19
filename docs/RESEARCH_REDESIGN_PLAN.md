@@ -1,8 +1,8 @@
 # KVBench: Complete Research Improvement Roadmap
 
-## Implementation status — Phases 1–3 (§1–182, verified 2026-08-19)
+## Implementation status — Phases 1–4 (§1–230, verified 2026-08-19)
 
-**Executive verdict:** **Phases 1–3 are complete** in code, core documentation, and tests. Phases 1–2 replaced the offline/online split with **FIDELITY / BEHAVIOR / SYSTEM**; Phase 3 adds unified **COST** accounting per compression plug-in.
+**Executive verdict:** **Phases 1–4 are complete** in code, core documentation, and tests. Phase 4 adds compression **taxonomy** (A–E) plus **SnapKV** (eviction) and **Palu** (projection) plug-ins.
 
 | Phase / section | Status | Primary evidence |
 | --------------- | ------ | ---------------- |
@@ -11,6 +11,7 @@
 | §3 Behavioral evaluation | ✅ Done | PPL + retrieval + instruction following default; reasoning opt-in |
 | §4 System evaluation | ✅ Done | TTFT/ITL/tok-s default; VRAM/bandwidth/kernel/GPU opt-in |
 | §Phase 3 Cost accounting | ✅ Done | `eval/cost/accounting.py`, `EvaluationResult.cost`, compressor hooks |
+| §Phase 4 Taxonomy + SnapKV/Palu | ✅ Done | `compressors/taxonomy.py`, `snapkv`, `palu` plug-ins |
 
 **Tests:** `tests/test_eval_runner.py` (default-branch smoke + probe/manifest); `tests/test_regression_validation.py` (WP5 identity + Phase-5 baseline drift); `tests/test_online_inference.py` (throughput + PPL); `tests/test_behavior_modules.py` and `tests/test_system_modules.py` (unit + module-isolation for every BEHAVIOR/SYSTEM sub-metric); per-model `tests/test_*_reference.py` (full integration).
 
@@ -184,13 +185,13 @@ Recent work such as Oaken explicitly separates offline preparation from online i
 
 ---
 
-# Phase 4: Add a Compression Taxonomy
+# Phase 4: Add a Compression Taxonomy ✅ **Done**
 
 Don't treat every method as simply:
 
 > "KV compression."
 
-Your engine should classify methods according to **what they actually do**.
+The engine classifies methods by mechanism via `compressors/taxonomy.py` (`CompressionCategory` A–E, `METHOD_TAXONOMY`, exposed as `EvaluationResult.taxonomy`).
 
 For example:
 
@@ -198,7 +199,7 @@ For example:
 
 * H2O
 * Scissorhands
-* SnapKV
+* **SnapKV** ✅ (`compressors/snapkv.py`)
 * etc.
 
 ### B. Quantization
@@ -210,7 +211,7 @@ For example:
 
 ### C. Projection / dimensionality reduction
 
-* Palu
+* **Palu** ✅ (`compressors/palu.py`)
 * MiniCache
 
 ### D. Hybrid compression
@@ -223,9 +224,9 @@ For example:
 
 Some methods don't merely compress the cache. They also change how attention operates.
 
-This distinction is particularly important for methods such as RocketKV. 
+This distinction is particularly important for methods such as RocketKV and Palu (RoPE path).
 
-This gives your benchmark a more principled structure.
+**Code:** `compressors/taxonomy.py` · **New plug-ins:** `snapkv`, `palu` · **Tests:** `tests/test_taxonomy.py`, `tests/test_snapkv.py`, `tests/test_palu.py`
 
 ---
 

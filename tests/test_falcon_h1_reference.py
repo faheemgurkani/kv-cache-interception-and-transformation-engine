@@ -125,8 +125,13 @@ def test_falcon_h1_adapter_conformance(falcon_model: ModelLayer):
     assert query.shape[1] == spec["num_q_heads"]
     assert query.shape[3] == spec["head_dim"]
 
-    gates = evaluate_compatibility_gates(model_layer.config, outputs.past_key_values)
-    assert all(g.passed for g in gates)
+    gates = evaluate_compatibility_gates(
+        config=config,
+        model_loaded=True,
+        forward_ok=True,
+        past_key_values=outputs.past_key_values,
+    )
+    assert all(g.passed for g in gates.values())
 
 
 @pytest.mark.skipif(not FALCON_PATH.exists(), reason="Falcon-H1-0.5B not downloaded")
@@ -226,10 +231,12 @@ def test_falcon_vs_qwen3_attention_kv_ratio(falcon_model: ModelLayer):
         t_out = falcon_model.forward_with_cache(t_ids, use_cache=True)
         q_out = qwen3.forward_with_cache(q_ids, use_cache=True)
 
+    t_seq = t_out.past_key_values.layers[0].keys.shape[2]
+    q_seq = q_out.past_key_values.layers[0].keys.shape[2]
     ratio = attention_kv_bytes(t_out.past_key_values) / get_cache_size_bytes(q_out.past_key_values)
-    expected = (FALCON_SPEC["num_layers"] * FALCON_SPEC["num_kv_heads"] * FALCON_SPEC["head_dim"]) / (
-        28 * 8 * 128
-    )
+    expected = (
+        FALCON_SPEC["num_layers"] * FALCON_SPEC["num_kv_heads"] * FALCON_SPEC["head_dim"] * t_seq
+    ) / (28 * 8 * 128 * q_seq)
     assert ratio == pytest.approx(expected, rel=1e-2)
 
 

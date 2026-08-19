@@ -374,7 +374,7 @@ Whatever tier a new family lands in, the practical bar for calling it "supported
 |---|---|---|---|
 | 0 | Nothing (already works) | `olmo2_1b`, `qwen3_0.6b` fully | none |
 | 1 | ✅ TinyDeepSeek (adapter; expanded-cache eval) | `deepseek_v3` + `project_mla_qkv()` (94th commit) | **done** |
-| 1 | Falcon-H1 (adapter only, not the cache gap) | One `qk_norm_layout="none"` value + one `load_attention_ops` branch | small, contained |
+| 1 | ✅ Falcon-H1 (adapter + hybrid online passthrough) | `falcon_h1` + `merge_decompressed_kv_into_cache` | **done** |
 | 2a | ✅ Gemma3 | Per-layer RoPE table (86th commit) | **done** |
 | 3 | Falcon-H1 (full correctness — the silent Mamba-state undercount) | Layer-type-aware cache interception in the core engine (`iter_layer_kv` and everything built on it) | substantial, but bounded if scoped to "pass non-attention layers through uncompressed" rather than "compress everything" |
 | 3 | TinyDeepSeek (benchmarking the *native* latent representation, not a reconstruction) | Same typed-state direction as Falcon-H1, applied to a compressed-latent state instead of recurrent state | substantial, open scientific question on top of the engineering work |

@@ -200,6 +200,24 @@ When `token_budget ≥ seq_len`, no eviction occurs (compression ratio ≈ 1.0).
 
 ---
 
+## 5a. SnapKV methodology
+
+**Reference:** `quantizers/snapkv.py` → `compressors/snapkv.py` · Online: `framework/snapkv_online.py` · Taxonomy: **A (eviction)**
+
+Prefill-only token eviction. Observation-window queries vote over prefix keys; 1D max-pool clusters neighbors; per-head top-k selects prefix tokens; trailing window always retained. Standard FP16 attention on compacted cache. No calibration.
+
+Default hyperparameters: `max_capacity_prompt=1024`, `window_size=16`, `kernel_size=5`.
+
+---
+
+## 5b. Palu methodology
+
+**Reference:** `quantizers/palu.py` → `compressors/palu.py` · Online: `framework/palu_online.py` · Taxonomy: **C (projection) + E (RoPE reconstruct path)**
+
+G-LRD group-head truncated SVD on k/v projection weights (`group_size=4`, `compression_rate=0.5` default). FIDELITY uses post-hoc low-rank compression of cached K/V; online binds weight factors at engine init. Fisher rank search documented as offline calibration cost (Wikitext-2, 2048×1024 tokens).
+
+---
+
 ## 6. Evaluation methodology
 
 Orchestrator: `eval/runner.py` (`EvaluationRunner.run()`) · Modal worker: `modal_app/worker.py` (same code path). Every run produces three independent branches instead of an offline/online split — FIDELITY always runs (single forward pass, cheap); BEHAVIOR and SYSTEM sub-metrics are opt-in flags since each adds its own `KVCacheEngine.generate()` pass.

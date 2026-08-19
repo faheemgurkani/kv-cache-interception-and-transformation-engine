@@ -9,7 +9,7 @@ This is a **generic evaluation framework**, not a TurboQuant-only implementation
 ```text
 Tokenizer → Model Forward → KV Cache → KVCacheEngine → KVCompressor → Attention → Next tokens
                                                                     │
-                                              TurboQuant | QJL | RocketKV | identity
+                                              TurboQuant | QJL | RocketKV | SnapKV | Palu | identity
 ```
 
 | Layer | Directory | Swappable? |
@@ -17,6 +17,7 @@ Tokenizer → Model Forward → KV Cache → KVCacheEngine → KVCompressor → 
 | Model | `framework/model.py` | No |
 | KV interception | `framework/kv_engine.py`, `framework/kv_cache.py` | No |
 | Compression | `compressors/`, `quantizers/` | **Yes** |
+| Taxonomy | `compressors/taxonomy.py` | Metadata only |
 | Evaluation | `eval/`, `reporting/` | No |
 
 ## Model
@@ -76,6 +77,18 @@ FIDELITY: `attention_fidelity()` / `estimate_attention_scores()`. BEHAVIOR: onli
 Stage 1: permanent token filter (SnapKV-style). Stage 2: HSA dynamic top-k.
 
 Online: `framework/rocketkv_online.py` patches Qwen3 eager attention. Baseline metrics run **before** engine construction.
+
+### SnapKV
+
+`quantizers/snapkv.py` → `compressors/snapkv.py` · Taxonomy: **A (eviction)**
+
+Prefill-only observation-window voting + 1D max-pool + per-head top-k. Standard attention on retained FP16 K/V. Online: `framework/snapkv_online.py` (compress once when `q_len == kv_len ≥ max_capacity_prompt`).
+
+### Palu
+
+`quantizers/palu.py` → `compressors/palu.py` · Taxonomy: **C (projection) + E (modified attention under RoPE)**
+
+G-LRD truncated-SVD on k/v projection weights; latent H cached via low-rank compression. Offline FIDELITY uses post-hoc SVD on K/V tensors; online binds weight factors via `framework/palu_online.py`.
 
 ### KIVI
 

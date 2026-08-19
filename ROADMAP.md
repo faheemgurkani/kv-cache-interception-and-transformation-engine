@@ -7,7 +7,9 @@ Research manuscript (**KVBench**) in preparation. This roadmap lists planned ext
 - [ ] Additional SLMs (e.g. Granite dense ~350M, MiniCPM4-0.5B, Gemma 3 270M where licenses allow)
 - [ ] Per-architecture attention adapters for non–QK-norm models
 - [ ] KIVI plug-in (replace current stub)
-- [ ] SnapKV plug-in
+- [x] SnapKV plug-in
+- [x] Compression taxonomy (Phase 4, `compressors/taxonomy.py`)
+- [x] Palu plug-in (G-LRD latent cache)
 - [ ] AdaKV plug-in
 - [ ] Public summary leaderboard tables regenerated from `results/` bundles
 - [ ] CI smoke tests (identity @ ctx=128 on CPU/MPS where feasible)

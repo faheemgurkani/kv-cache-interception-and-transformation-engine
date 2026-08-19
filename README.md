@@ -54,6 +54,8 @@ Published KV-compression methods are hard to compare: protocols differ, and offl
 | `turboquant` | ready | Vector quantization (WHT + Lloyd-Max ± residual) |
 | `qjl` | ready | Sketch / 1-bit key signs |
 | `rocketkv` | ready | Token eviction + sparse HSA |
+| `snapkv` | ready | Prefill-only observation-window voting eviction |
+| `palu` | ready | G-LRD low-rank latent KV cache |
 | `kivi` | stub | Planned — see [ROADMAP.md](ROADMAP.md) |
 
 ## Prerequisites
@@ -90,6 +92,8 @@ python scripts/run_eval.py --compressor identity --context-length 512
 python scripts/run_eval.py --compressor turboquant --stage full --context-length 512
 python scripts/run_eval.py --compressor qjl --context-length 512
 python scripts/run_eval.py --compressor rocketkv --context-length 512
+python scripts/run_eval.py --compressor snapkv --max-capacity-prompt 1024 --window-size 16
+python scripts/run_eval.py --compressor palu --compression-rate 0.5 --group-size 4
 
 # Opt-in BEHAVIOR / SYSTEM sub-metrics (each adds its own generate() pass)
 python scripts/run_eval.py --compressor turboquant --reasoning

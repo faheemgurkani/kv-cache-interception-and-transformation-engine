@@ -167,6 +167,8 @@ class SnapKVCompressor(KVCompressor):
         try:
             compressed = self.compress(key, value, layer=layer, query_states=query)
             kept_key, kept_value = self.decompress(compressed)
+            kept_key = kept_key.to(key.device)
+            kept_value = kept_value.to(value.device)
             key_exp = expand_kv_heads(key, num_q_heads, num_kv_heads)
             kept_exp = expand_kv_heads(kept_key, num_q_heads, num_kv_heads)
             scores_fp = attention_scores(query, key_exp, head_dim)

@@ -97,7 +97,7 @@ def snap_kv(
     attn_weights = _compute_attn_weights(
         query_aligned[..., -window_size:, :],
         key_states,
-        attention_mask=attention_mask,
+        attention_mask=None,
     )
     vote = attn_weights[..., :, :prefix_len].sum(dim=-2)
 

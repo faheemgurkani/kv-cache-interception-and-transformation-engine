@@ -183,18 +183,14 @@ class KVCacheEngine:
 
         if getattr(self.compressor, "name", "") == "snapkv":
             new_layers: list[CompressedKV] = []
+            logical_seq = prev_seq + input_ids.shape[1]
             for layer_idx, (key, value) in enumerate(iter_layer_kv(outputs.past_key_values)):
-                orig_len = key.shape[2]
-                if prior_layers is not None:
-                    prior = prior_layers[layer_idx].keys
-                    if isinstance(prior, SnapKVLayerPayload):
-                        orig_len = max(orig_len, prior.original_seq_len)
                 new_layers.append(
                     self.compressor.wrap_layer_from_kv(  # type: ignore[attr-defined]
                         key,
                         value,
                         layer_idx,
-                        original_seq_len=orig_len,
+                        original_seq_len=logical_seq,
                     )
                 )
             new_cache = CompressedCache(layers=new_layers)

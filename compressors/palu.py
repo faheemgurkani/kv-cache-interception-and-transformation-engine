@@ -179,6 +179,8 @@ class PaluCompressor(KVCompressor):
     ) -> dict[str, float]:
         compressed = self.compress(key, value, layer=layer)
         k2, v2 = self.decompress(compressed)
+        k2 = k2.to(key.device)
+        v2 = v2.to(value.device)
         key_rmse = (k2.float() - key.float()).pow(2).mean().sqrt().item()
         value_rmse = (v2.float() - value.float()).pow(2).mean().sqrt().item()
         return {"key_rmse": key_rmse, "value_rmse": value_rmse}

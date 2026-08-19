@@ -18,112 +18,102 @@ This is particularly important because the current evaluation framework has **th
 
 ---
 
-## Implementation verification audit (2026-08-18)
+## Implementation verification audit (2026-08-19)
 
-**Executive verdict:** The **§1–2 infrastructure narrative is implemented, active, and tested**. The codebase is prepared for the revision described in the opening text. Companion docs updated to match: [`models/ARCHITECTURE_REPORT.md`](../../models/ARCHITECTURE_REPORT.md), [`docs/results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md`](results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md), [`docs/architecture/MODEL_ARCHITECTURE_MATRIX.md`](architecture/MODEL_ARCHITECTURE_MATRIX.md).
+**Executive verdict:** The **full §1–36 redesign is implemented in code and covered by reference/regression tests**. All five shortlist models run end-to-end eval (identity, TurboQuant, QJL, RocketKV) except TinyDeepSeek Gate C (expanded KV, by design). **Documentation is mostly aligned in the plan doc and companion eval reports, but `CLAUDE.md` and parts of the historical probe narrative remain stale.**
 
-**Evidence base:** live gate evaluation against all five checkpoints; `tests/test_{model_capabilities,compatibility_gates,model_adapter_registry,rope,memory_accounting}.py` (22 infra tests); `tests/test_{olmo2,qwen3,gemma3,tinydeepseek}_reference.py`; commits **79–94** on `main` (`1964d3f` = 94th commit).
+**Evidence base (live, 2026-08-19):** gate probe on all five checkpoints; `tests/test_{olmo2,qwen3,gemma3,tinydeepseek,falcon_h1}_reference.py`; `tests/test_{state_compression,compatibility_probe,compatibility_manifest,regression_validation}.py` (24 §28–36 tests); infra suite (`test_compatibility_gates`, `test_model_capabilities`, `test_model_adapter_registry`, `test_memory_accounting`, `test_state_interface`, `test_rope`).
 
-### Pillar 1 — system supports the revision (§1–2)
+### Live gate results (real checkpoints, probe text len=5)
 
-**Architectural principle (lines 13–15) — confirmed.** Legacy KV path not replaced:
+| Model | Gate A | Gate B | Gate C | attn bytes | visible bytes | hybrid |
+| ----- | ------ | ------ | ------ | ---------- | ------------- | ------ |
+| OLMo2-1B | PASS | PASS | PASS | 1,310,720 | 1,310,720 | no |
+| Qwen3-0.6B | PASS | PASS | PASS | 573,440 | 573,440 | no |
+| Gemma3-270M | PASS | PASS | PASS | 110,592 | 110,592 | no |
+| TinyDeepSeek-0.5B | PASS | PASS | **FAIL** | 99,840 | 99,840 | no |
+| Falcon-H1-0.5B | PASS | PASS | PASS | 92,160 | 14,764,032 | **yes** |
 
-| Plan requirement | Code evidence |
-| ---------------- | ------------- |
-| OLMo2/Qwen3 path unchanged | No model-specific branches in `framework/kv_engine.py` |
-| `iter_layer_kv()` remains default | Universal cache reader in `framework/kv_cache.py`; used by compressors and FIDELITY |
-| Extensions via adapters + capabilities | `ATTENTION_ADAPTER_REGISTRY`, `ModelCapabilities`, `iter_layer_states()` |
+Falcon confirms §23: `M_visible / M_attn ≈ 160×` — Mamba dominates total state; `kv_compression_ratio` vs total `compression_ratio` both reported in `MemoryMetrics`.
 
-Extended stack live:
+### Pillar 1 — system supports the full plan (§1–36)
 
-```text
-Model → ATTENTION_ADAPTER_REGISTRY → iter_layer_kv / iter_layer_states → Evaluation
-```
-
-Exported from `framework/__init__.py`: `ModelCapabilities`, `CompatibilityGate`, `evaluate_compatibility_gates`, `iter_layer_states`, `visible_state_bytes`, `build_rope_context`.
-
-**Three compatibility gates — confirmed** in `framework/compatibility.py`:
-
-| Plan gate | Code enum | What it checks |
-| --------- | --------- | -------------- |
-| Generic model/cache compatibility | `LOADER_STATE` | Load, forward, `iter_layer_states()` discovers layers |
-| Attention-adapter compatibility | `ATTENTION` | `adapter_registered` + `load_attention_ops()` succeeds |
-| Model-specific state semantics | `STATE_SEMANTICS` | All visible state accounted for; native-latent flagged |
-
-Eval runner integrates capabilities on every run (`eval/runner.py` → `model_capabilities`, `model_metadata`).
-
-**§2 capability contract — confirmed.** `ModelCapabilities` in `framework/model_capabilities.py` matches the plan's conceptual fields plus gate flags. All five shortlist families registered; tested in `tests/test_model_capabilities.py`.
-
-**Config / setup — ready.** Per-model YAML: `configs/model_{olmo2_1b,qwen3_0.6b,gemma3_270m,tinydeepseek_0.5b,falcon_h1_0.5b}.yaml`. All five checkpoints under `models/`.
+| Plan block | Status | Code evidence |
+| ---------- | ------ | ------------- |
+| §1–2 Infrastructure | ✅ | Registry, gates, `iter_layer_states`, RoPE, configs |
+| §3–13 OLMo2/Qwen3 | ✅ | Unchanged path; `test_olmo2_reference.py`, `test_qwen3_reference.py` |
+| §14–18 TinyDeepSeek | ✅ | `deepseek_v3` adapter, MLA projection, expanded-KV disclosure |
+| §19–28 Falcon-H1 | ✅ | `falcon_h1` adapter, hybrid memory, Mamba passthrough in online decode |
+| §28 `compress_state` | ⚠️ partial | `framework/state_compression.py` exists; **FIDELITY/memory still calls `apply_compressor` (KV-only)** — Falcon math corrected separately via `recurrent_state_bytes` |
+| §29 Compatibility probe | ✅ | `run_compatibility_probe()`; consumed by `eval/runner.py` once per run |
+| §30 YAML manifests | ✅ | `compatibility:` in all five shortlist YAMLs; `test_compatibility_manifest.py` |
+| §31 Three gates | ✅ | Explicit in probe output + `EvaluationResult.to_dict()` |
+| §33 Backward compat | ✅ | `iter_layer_kv`, `compress_kv` unchanged; `test_regression_validation.py` |
+| §35 Acceptance matrix | ✅ | Reference tests per model; TinyDeepSeek Gate C caveat only |
+| §36 WP5 regression | ⚠️ partial | Identity smoke for OLMo2, Qwen3-0.6B, Qwen3-1.7B — **no numeric diff vs published Phase-5 baselines** |
 
 ### Pillar 2 — grounded in reality (doc ↔ code)
 
-**Live gate results** (real checkpoints, 2026-08-18):
+**Opening table (lines 5–11):** ✅ Matches live gates.
 
-| Model | Gate A (loader/state) | Gate B (attention) | Gate C (state semantics) |
-| ----- | --------------------- | ------------------ | ------------------------ |
-| OLMo2-1B | PASS | PASS | PASS |
-| Qwen3-0.6B | PASS | PASS | PASS |
-| Gemma3-270M | PASS | PASS | PASS |
-| TinyDeepSeek-0.5B | PASS | PASS | FAIL |
-| Falcon-H1-0.5B | PASS | PASS | PASS |
+**§35 acceptance matrix (lines 1803–1809):** ✅ Matches reference test coverage.
 
-Falcon empirical proof: `visible_bytes=14,708,736` vs `attn_bytes=36,864` — Mamba state visible and counted; `hybrid=True`.
+**Stale documentation (breaks alignment):**
 
-**§2 capability table (lines 109–118) vs code — aligned:**
+| Document | Stale claim | Actual state (2026-08-19) |
+| -------- | ----------- | ------------------------- |
+| `CLAUDE.md` §models | "2 of 5 work; 3 blocked at adapter gate" | **5/5** run full eval; only TinyDeepSeek Gate C fails |
+| `CLAUDE.md` ranked plan | Items 1–3 still "needed" | Adapters, RoPE, hybrid accounting **done** |
+| Plan §31 line ~1644 | "Gemma3 currently fails" | Fixed (historical note) |
+| `configs/model_qwen3.yaml` | No `compatibility:` block | Legacy path OK (manifest derived from config); **manifest not declarative** |
+| Audit date / evidence | Still cites 2026-08-18, commits 79–94 only | Superseded by this section |
 
-| Capability row | Code match |
-| -------------- | ---------- |
-| MHA / GQA / MQA / MLA families | `attention_family` values correct |
-| Q/K norm layouts | Matches `qk_norm_layout` (flat / per-head / mla / none) |
-| Global vs per-layer RoPE | `rope_mode`: global / per_layer_type / split_nope_rope |
-| Per-layer attention type (Gemma3) | `per_layer_attention_type=True` + `get_layer_attention_metadata()` |
-| Dual-state / recurrent (Falcon) | `StateType.HYBRID`, `has_recurrent_state=True` |
-| Latent KV (TinyDeepSeek) | `native_latent_cache=True`, disclosure string, Gate C fails by design |
+**Internally consistent:** Plan audit §29–36 table ↔ code ↔ §35 matrix.
 
-**Memory math — grounded.** `eval/fidelity/memory.py` implements the plan formula, including asymmetric K/V (`value_head_dim`) for MLA. Reference tests: Qwen3 GQA ratio 8/16 (`test_qwen3_gqa_memory_head_ratio_is_half_of_mha`); Gemma3 MQA ratio 1/16 vs OLMo2 (`test_gemma3_mqa_memory_head_ratio_is_quarter_of_mha`).
+### Pillar 3 — anomalies, gaps, and further testing
 
-### Pillar 3 — anomalies fixed and flagged
+**Intentionally open (by design):**
 
-**Fixed in code (active):**
+- TinyDeepSeek Gate C — native `kv_lora_rank` latent not exposed; expanded-cache eval fully supported with disclosure.
+- MLA-native / latent-KV state type (§34 Tier 3) — not implemented; not required for §35 acceptance.
 
-1. Explicit three-gate framework — no implicit failures deep in eval.
-2. `ModelCapabilities` registry — avoids scattered `if qwen3/elif olmo2/...` (plan lines 124–132).
-3. Typed state interface — `framework/state_interface.py` (`AttentionKVState`, `RecurrentState`, `LayerState`).
-4. Falcon memory undercount — fixed via `visible_state_bytes()`; Gate C passes.
-5. Gemma3 adapter + per-layer RoPE — `gemma3_text` in registry; `build_rope_context().get_rope(layer_idx)` in FIDELITY/attention.
-6. TinyDeepSeek MLA adapter — `deepseek_v3` in registry; `project_attention_states()` / `project_mla_qkv()` for split nope/RoPE; asymmetric K/V memory; full eval branches verified (`tests/test_tinydeepseek_reference.py`, commits 92–94).
-7. TinyDeepSeek native-latent disclosure — flagged in capabilities + Gate C message (`cache_representation="expanded_kv"`).
-8. Falcon-H1 hybrid adapter — `falcon_h1` in registry (`qk_norm_layout="none"`); dual-state memory (`kv_compression_ratio` + total); Mamba passthrough in online decode (`merge_decompressed_kv_into_cache`).
-9. `--skip-fidelity` — documented in `eval/runner.py` for models blocked at Gate B.
+**Implementation gaps (non-blocking but real):**
 
-**Flagged, intentionally open (matches plan intent):**
+1. **`compress_state()` not on hot path** — `eval/fidelity/memory.py` uses `apply_compressor`; Falcon relies on additive `recurrent_state_bytes`. Mathematically consistent (§23 formula) but **dual code paths** vs §28 single dispatch.
+2. **§25 Mamba FIDELITY metric not in eval output** — `R'_t = R_t` tested in `test_falcon_h1_reference.py` only; not a reported FIDELITY sub-metric in JSON/CSV.
+3. **`test_model_adapter_conformance.py`** — covers OLMo2, Qwen3, Gemma3, Qwen3-1.7B; **excludes TinyDeepSeek (Gate C) and Falcon-H1**.
+4. **`test_eval_runner.py`** — smoke test does not assert `compatibility_probe` / manifest presence (added in §29).
+5. **No unified five-model CI sweep** — reference tests are per-model (~2–50 min each); no single orchestrated gate+eval job.
+6. **WP5 regression scope** — identity smoke only; plan §36 also asks perplexity/attention/memory/throughput **unchanged vs pre-refactor baselines** (not numerically verified).
 
-- **TinyDeepSeek:** Gate C only (expanded cache ≠ native latent; expanded-path eval fully supported).
+**Mathematical / logical checks — pass:**
 
-### Verified work in place (nothing lost)
+| Formula | Where verified |
+| ------- | -------------- |
+| GQA memory ratio 8/16 | `test_qwen3_gqa_memory_head_ratio_is_half_of_mha` |
+| MQA ratio 1/16 vs MHA | `test_gemma3_mqa_memory_head_ratio_is_quarter_of_mha` |
+| MLA asymmetric K/V | `test_mla_asymmetric_memory_formula`, TinyDeepSeek memory test |
+| Falcon `M_total = M_KV + M_Mamba` | `test_falcon_h1_total_memory_includes_mamba` |
+| Falcon `CR_total` vs `CR_KV` | `test_falcon_h1_all_eval_branches` (TurboQuant: `kv_ratio > total_ratio`) |
+| Hybrid online Mamba evolution | `test_falcon_h1_online_engine_preserves_recurrent_evolution` |
+| `compress_state` ≡ `apply_compressor` on conventional KV | `test_wp5_compress_state_matches_apply_compressor` |
 
-| Work item | Status | Evidence |
-| --------- | ------ | -------- |
-| WP1 infrastructure | Done | Commits 79–82; 22 unit tests pass |
-| OLMo2 reference + conformance | Done | `tests/test_olmo2_reference.py`; Gates A/B/C PASS |
-| Qwen3 parameterized conformance | Done | `tests/test_qwen3_reference.py` (85th commit); Gates PASS |
-| Gemma3 adapter + RoPE + eval metadata | Done | 86th commit; `tests/test_gemma3_reference.py`; Gates PASS; all compressors |
-| TinyDeepSeek MLA adapter + eval | Done | 94th commit; `tests/test_tinydeepseek_reference.py`; Gate B PASS; Gate C FAIL (expanded KV); identity/TurboQuant/QJL/RocketKV verified |
-| Falcon-H1 hybrid adapter + eval | Done | `tests/test_falcon_h1_reference.py`; Gates A/B/C PASS; identity/TurboQuant/QJL/RocketKV verified |
-| §28–36 closure (probe, manifest, WP5) | Done | `compress_state`, `run_compatibility_probe`, YAML manifests, `tests/test_{state_compression,compatibility_probe,compatibility_manifest,regression_validation}.py` |
+### Bottom line (three criteria)
 
-### §29–36 implementation (2026-08-19)
+1. **System ready for §1–36?** **Yes.** All work packages landed; five-model benchmark is defensible with TinyDeepSeek disclosure caveat.
+2. **Grounded in reality?** **Yes in code and core plan doc; no in `CLAUDE.md` and legacy probe headers.**
+3. **Anomalies fixed/flagged?** **Yes.** Remaining items are **optional hardening** (hot-path `compress_state`, FIDELITY Mamba metric, WP5 baseline diff, conformance coverage), not missing adapters.
 
-| Section | Deliverable | Evidence |
-| ------- | ----------- | -------- |
-| §28 State-aware compression | `framework/state_compression.py` — `compress_state()` / recurrent passthrough | `tests/test_state_compression.py` |
-| §29 Compatibility probe | `framework/compatibility_probe.py` — single probe consumed by eval runner | `eval/runner.py`; `tests/test_compatibility_probe.py` |
-| §30 YAML manifests | `compatibility:` blocks in all five `configs/model_*.yaml` | `tests/test_compatibility_manifest.py` |
-| §31 Three gates | Formal Gate A/B/C in probe + eval output JSON | `compatibility_gates` in `EvaluationResult.to_dict()` |
-| §33 Backward compat | `iter_layer_kv`, `apply_compressor`, `compress_kv` unchanged | `tests/test_regression_validation.py` |
-| §35 Acceptance matrix | All five models ✅ (TinyDeepSeek Gate C caveat) | Reference tests per model |
-| §36 WP5 regression | OLMo2, Qwen3-0.6B, Qwen3-1.7B identity smoke | `tests/test_regression_validation.py` |
+---
+
+## Implementation verification audit (2026-08-18) — superseded
+
+<details>
+<summary>Prior audit (commits 79–94, pre-§28–36 closure)</summary>
+
+See git history for the 2026-08-18 three-pillar audit. Superseded by the 2026-08-19 section above.
+
+</details>
 
 ---
 

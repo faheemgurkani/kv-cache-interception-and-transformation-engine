@@ -52,6 +52,23 @@ def _compute_attn_weights(
     return F.softmax(scores.float(), dim=-1).to(query_states.dtype)
 
 
+def _align_query_to_kv_heads(
+    query_states: torch.Tensor,
+    key_states: torch.Tensor,
+) -> torch.Tensor:
+    """Reduce GQA query heads to KV heads by mean-pooling query groups."""
+    num_q = query_states.shape[1]
+    num_kv = key_states.shape[1]
+    if num_q == num_kv:
+        return query_states
+    if num_q % num_kv != 0:
+        return query_states[:, :num_kv]
+    n_rep = num_q // num_kv
+    bsz, _, q_len, dim = query_states.shape
+    grouped = query_states.view(bsz, num_kv, n_rep, q_len, dim)
+    return grouped.mean(dim=2)
+
+
 def snap_kv(
     query_states: torch.Tensor,
     key_states: torch.Tensor,
@@ -76,8 +93,9 @@ def snap_kv(
     if prefix_budget <= 0:
         return key_states[..., -max_capacity_prompt:, :], value_states[..., -max_capacity_prompt:, :]
 
+    query_aligned = _align_query_to_kv_heads(query_states, key_states)
     attn_weights = _compute_attn_weights(
-        query_states[..., -window_size:, :],
+        query_aligned[..., -window_size:, :],
         key_states,
         attention_mask=attention_mask,
     )

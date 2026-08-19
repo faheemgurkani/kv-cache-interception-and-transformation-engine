@@ -33,7 +33,7 @@ MODEL_PATH = _first_model_path()
 pytestmark_model = pytest.mark.skipif(MODEL_PATH is None, reason="No SLM model downloaded")
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def model_layer() -> ModelLayer:
     return ModelLayer(model_path=MODEL_PATH)
 
@@ -57,12 +57,16 @@ def test_snapkv_engine_step_produces_finite_logits(model_layer: ModelLayer):
 def test_snapkv_online_prefill_reduces_cache_when_over_budget(model_layer: ModelLayer):
     compressor = get_compressor("snapkv", max_capacity_prompt=64, window_size=8, kernel_size=5)
     engine = KVCacheEngine(model_layer.model, compressor)
-    ids = model_layer.tokenize("A" * 200)[:, :128]
+    ids = model_layer.tokenize("word " * 300)[:, :128]
+    seq_len = ids.shape[1]
 
     _, cache = engine.step(ids, compressed_cache=None)
     payload = cache.layers[0].keys
-    assert payload.original_seq_len == 128
-    assert payload.keys.shape[2] <= 64
+    assert payload.original_seq_len == seq_len
+    if seq_len >= compressor.max_capacity_prompt:
+        assert payload.keys.shape[2] == compressor.max_capacity_prompt
+    else:
+        assert payload.keys.shape[2] == seq_len
 
 
 @pytestmark_model

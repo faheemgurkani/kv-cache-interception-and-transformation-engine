@@ -154,6 +154,17 @@ def test_snap_kv_pooling_kernel_affects_selection():
     assert k_no_pool.shape[2] == 48
 
 
+def test_snap_kv_gqa_query_head_reduction():
+    """GQA: 16 query heads, 4 KV heads — voting runs per KV head."""
+    bsz, num_kv, num_q, seq_len, dim = 1, 4, 16, 96, 32
+    key = torch.randn(bsz, num_kv, seq_len, dim)
+    value = torch.randn(bsz, num_kv, seq_len, dim)
+    query = torch.randn(bsz, num_q, seq_len, dim)
+    k2, v2 = snap_kv(query, key, value, window_size=8, max_capacity_prompt=48, kernel_size=5)
+    assert k2.shape[2] == 48
+    assert v2.shape[2] == 48
+
+
 # --- Compressor round-trip & storage -------------------------------------------
 
 

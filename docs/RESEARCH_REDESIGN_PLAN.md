@@ -2,7 +2,7 @@
 
 ## Implementation status — Phases 1–4 (§1–230, verified 2026-08-19)
 
-**Executive verdict:** **Phases 1–4 are complete** in code, core documentation, and tests. Phase 4 adds compression **taxonomy** (A–E) plus **SnapKV** (eviction) and **Palu** (projection) plug-ins.
+**Executive verdict:** **Phases 1–4 are complete** in code, core documentation, and tests. Phase 4 adds compression **taxonomy** (A–E) plus **SnapKV** (eviction) and **Palu** (projection) plug-ins. **Phase 5 (heterogeneous/adaptive plugin API) is not planned for implementation** — retained below as design reference only.
 
 | Phase / section | Status | Primary evidence |
 | --------------- | ------ | ---------------- |
@@ -12,6 +12,7 @@
 | §4 System evaluation | ✅ Done | TTFT/ITL/tok-s default; VRAM/bandwidth/kernel/GPU opt-in |
 | §Phase 3 Cost accounting | ✅ Done | `eval/cost/accounting.py`, `EvaluationResult.cost`, compressor hooks |
 | §Phase 4 Taxonomy + SnapKV/Palu | ✅ Done | `compressors/taxonomy.py`, `snapkv`, `palu` plug-ins |
+| §Phase 5 Plugin architecture upgrade | ⏸ Not planned | Aspirational only — do not implement or follow up |
 
 **Tests:** `tests/test_eval_runner.py` (default-branch smoke + probe/manifest); `tests/test_regression_validation.py` (WP5 identity + Phase-5 baseline drift); `tests/test_online_inference.py` (throughput + PPL); `tests/test_behavior_modules.py` and `tests/test_system_modules.py` (unit + module-isolation for every BEHAVIOR/SYSTEM sub-metric); per-model `tests/test_*_reference.py` (full integration).
 
@@ -230,7 +231,9 @@ This distinction is particularly important for methods such as RocketKV and Palu
 
 ---
 
-# Phase 5: Upgrade the Plugin Architecture
+# Phase 5: Upgrade the Plugin Architecture ⏸ **Not planned**
+
+> **Status (2026-08-19):** Out of scope. This section is **design reference only** — do **not** implement, schedule, or follow up on Phase 5. The current one-plug-in / one-global-config model is sufficient for the paper and near-term roadmap. Proceed from Phase 4 directly to Phase 6+.
 
 Your current engine should not assume:
 
@@ -274,7 +277,9 @@ t3 → update policy
 ...
 ```
 
-This is important because recent methods increasingly use heterogeneous and adaptive policies. 
+This is important because recent methods increasingly use heterogeneous and adaptive policies.
+
+**Partial overlap today (no Phase 5 work required):** token-level eviction (RocketKV, SnapKV), per-head voting (SnapKV), stateful online paths (RocketKV, QJL), and layer-wise storage in the engine are handled **inside individual plug-ins**, not via a general policy API.
 
 ---
 

@@ -66,15 +66,16 @@ def evaluate_behavior(
     compressor: KVCompressor,
     *,
     run_task_quality: bool = True,
-    run_retrieval: bool = False,
+    run_retrieval: bool = True,
     run_reasoning: bool = False,
-    run_instruction_following: bool = False,
+    run_instruction_following: bool = True,
     include_baseline: bool = False,
     perplexity_stride: int = 512,
     context_length: int | None = None,
 ) -> BehaviorMetrics:
-    """Run the requested BEHAVIOR sub-metrics. Retrieval/reasoning/instruction-following
-    are opt-in since they add extra generate() calls on top of task_quality."""
+    """Run the requested BEHAVIOR sub-metrics. Retrieval and instruction-following run
+    by default (plan recommendation: PPL + retrieval + instruction following); reasoning
+    is opt-in since it adds another generate() pass on top of task_quality."""
     perplexity_baseline = (
         evaluate_perplexity_baseline(model_layer, input_ids, stride=perplexity_stride)
         if include_baseline and run_task_quality

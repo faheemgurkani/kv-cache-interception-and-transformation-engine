@@ -15,7 +15,7 @@ Related: [SYSTEM_DESIGN.md](../architecture/SYSTEM_DESIGN.md) · [Qwen3-1.7B PHA
 | Eval code: `eval/runner.py`, FIDELITY + BEHAVIOR + SYSTEM | Bitwidth, stage, token budget, seed |
 | Context lengths: 128, 256, 512 | |
 | PPL stride: 512; FIDELITY attention window: 512 tokens | |
-| Throughput: 64 generated tokens per run | Opt-in BEHAVIOR/SYSTEM sub-metrics (`--retrieval`, `--kernel-cost`, etc.) |
+| Throughput: 64 generated tokens per run | Opt-in BEHAVIOR/SYSTEM sub-metrics (`--reasoning`, `--kernel-cost`, etc.); retrieval + instruction-following on by default |
 
 Every method job runs **the same** `EvaluationRunner` path. Only the compressor and its kwargs change.
 
@@ -100,7 +100,7 @@ Modal uses **scipy WHT** (no `fast-hadamard-transform` in the image). Local CUDA
 
 ## 5. Evaluation protocol
 
-Three branches instead of an offline/online split — FIDELITY always runs; BEHAVIOR/SYSTEM sub-metrics beyond perplexity + throughput are opt-in flags (`--retrieval`, `--instruction-following`, `--reasoning`, `--peak-memory`, `--memory-bandwidth`, `--kernel-cost`, `--gpu-utilization` on `scripts/run_eval.py`).
+Three branches instead of an offline/online split — FIDELITY always runs; BEHAVIOR defaults to perplexity + retrieval + instruction following; SYSTEM defaults to latency/throughput. Reasoning and extra SYSTEM metrics are opt-in (`--reasoning`, `--peak-memory`, `--memory-bandwidth`, `--kernel-cost`, `--gpu-utilization`). Disable default BEHAVIOR tasks with `--skip-retrieval` / `--skip-instruction-following`.
 
 ### FIDELITY — did the transformation preserve the KV representation and attention behavior?
 

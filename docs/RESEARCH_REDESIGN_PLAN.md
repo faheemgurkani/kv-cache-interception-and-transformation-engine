@@ -8,14 +8,14 @@
 | --------------- | ------ | ---------------- |
 | §1 Three-branch redesign | ✅ Done | `eval/{fidelity,behavior,system}/`, `EvaluationRunner.run()` |
 | §2 Fidelity evaluation | ✅ Done | `eval/fidelity/{representation,attention,memory,recurrent}.py` |
-| §3 Behavioral evaluation | ✅ Done | PPL default; retrieval + instruction + reasoning opt-in |
+| §3 Behavioral evaluation | ✅ Done | PPL + retrieval + instruction following default; reasoning opt-in |
 | §4 System evaluation | ✅ Done | TTFT/ITL/tok-s default; VRAM/bandwidth/kernel/GPU opt-in |
 
 **Tests:** `tests/test_eval_runner.py` (default-branch smoke + probe/manifest); `tests/test_regression_validation.py` (WP5 identity + Phase-5 baseline drift); `tests/test_online_inference.py` (throughput); per-model `tests/test_*_reference.py` (full FIDELITY+BEHAVIOR+SYSTEM with all opt-in flags for identity/TurboQuant/QJL/RocketKV).
 
 **Intentional gaps vs this section's aspirational text:**
 
-- BEHAVIOR task metrics beyond PPL are **opt-in** (CLI: `--retrieval`, `--instruction-following`, `--reasoning`) — matches plan recommendation but not the default `run_eval.py` invocation.
+- BEHAVIOR default stack is **PPL + retrieval + instruction following** (plan recommendation). Reasoning remains opt-in (`--reasoning`). Skip flags: `--skip-retrieval`, `--skip-instruction-following`.
 - SYSTEM metrics beyond latency/throughput are **opt-in** (`--peak-memory`, `--memory-bandwidth`, `--kernel-cost`, `--gpu-utilization`).
 - Peak VRAM / GPU utilization report unavailable on MPS/CPU (CUDA-only); documented in `docs/methodology/CURRENT_STATE.md`.
 - BEHAVIOR retrieval/instruction/reasoning are **synthetic in-repo generators**, not LongBench/RULER-scale benchmarks (documented limitation).
@@ -55,12 +55,12 @@ That split was **too coarse**. The engine now uses **three primary evaluation di
           │                 │                 │
     Representation      Task Quality       Latency / TTFT
     Attention           PPL (default)      Throughput / ITL
-    Memory              Retrieval*         Peak VRAM*
-    Recurrent†          Reasoning*         Memory BW*
-                        Instruction*       Kernel Cost*
-                        Following*         GPU Util*
+    Memory              Retrieval (default)  Peak VRAM*
+    Recurrent†          Instruction (default) Memory BW*
+                        Reasoning*           Kernel Cost*
+                                             GPU Util*
 
-    * opt-in sub-metrics (CLI flags on scripts/run_eval.py)
+    * SYSTEM / reasoning opt-in (CLI flags); use --skip-retrieval / --skip-instruction-following to disable defaults
     † hybrid models only (Falcon-H1); eval/fidelity/recurrent.py
 ```
 
@@ -107,15 +107,11 @@ Answer:
 | Planned capability | Module | Default | Status |
 | ------------------ | ------ | ------- | ------ |
 | Perplexity | `behavior/task_quality.py` | **on** | ✅ |
-| Long-context retrieval | `behavior/retrieval.py` | opt-in | ✅ |
-| Instruction following | `behavior/instruction_following.py` | opt-in | ✅ |
+| Long-context retrieval | `behavior/retrieval.py` | **on** | ✅ |
+| Instruction following | `behavior/instruction_following.py` | **on** | ✅ |
 | Reasoning (Option C — bonus) | `behavior/reasoning.py` | opt-in | ✅ |
 
-Plan recommendation was **PPL + long-context retrieval + instruction following**. All three exist; default runs include **PPL only** because each extra task adds a full `KVCacheEngine` generate pass. Enable the full recommendation via:
-
-```bash
-python scripts/run_eval.py --retrieval --instruction-following ...
-```
+Plan recommendation was **PPL + long-context retrieval + instruction following** — all three run **by default** in `EvaluationRunner.run()` and `scripts/run_eval.py`. Use `--skip-retrieval` / `--skip-instruction-following` for faster smoke runs. Reasoning remains opt-in (`--reasoning`).
 
 All BEHAVIOR metrics run through **`KVCacheEngine`** (compressed KV drives real decode), not a single forward pass.
 

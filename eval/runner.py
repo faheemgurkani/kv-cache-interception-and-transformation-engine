@@ -123,9 +123,9 @@ class EvaluationRunner:
         # BEHAVIOR
         run_behavior: bool = True,
         run_perplexity: bool = True,
-        run_retrieval: bool = False,
+        run_retrieval: bool = True,
         run_reasoning: bool = False,
-        run_instruction_following: bool = False,
+        run_instruction_following: bool = True,
         # SYSTEM
         run_system: bool = True,
         run_throughput: bool = True,

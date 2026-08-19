@@ -18,8 +18,10 @@ metrics:
   - representation
   - attention
   - memory
-  # BEHAVIOR (task_quality on by default; retrieval/reasoning/instruction_following are opt-in flags)
+  # BEHAVIOR (task_quality + retrieval + instruction_following on by default; reasoning is opt-in)
   - perplexity
+  - retrieval
+  - instruction_following
   # SYSTEM (latency_throughput on by default; the rest are opt-in flags)
   - throughput
 

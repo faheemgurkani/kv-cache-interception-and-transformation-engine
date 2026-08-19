@@ -41,12 +41,14 @@ def main() -> None:
         help="Run all context lengths from configs/model.yaml.",
     )
     parser.add_argument("--skip-perplexity", action="store_true", help="Skip BEHAVIOR/task_quality (perplexity).")
+    parser.add_argument("--skip-retrieval", action="store_true", help="Skip BEHAVIOR/retrieval (needle-in-haystack).")
+    parser.add_argument(
+        "--skip-instruction-following",
+        action="store_true",
+        help="Skip BEHAVIOR/instruction_following.",
+    )
     parser.add_argument("--skip-fidelity", action="store_true", help="Skip FIDELITY (representation/memory/attention).")
     parser.add_argument("--skip-throughput", action="store_true", help="Skip SYSTEM/latency_throughput.")
-    parser.add_argument("--retrieval", action="store_true", help="Run BEHAVIOR/retrieval (needle-in-haystack).")
-    parser.add_argument(
-        "--instruction-following", action="store_true", help="Run BEHAVIOR/instruction_following."
-    )
     parser.add_argument("--reasoning", action="store_true", help="Run BEHAVIOR/reasoning (synthetic arithmetic).")
     parser.add_argument("--peak-memory", action="store_true", help="Run SYSTEM/vram (peak CUDA memory).")
     parser.add_argument("--memory-bandwidth", action="store_true", help="Run SYSTEM/memory_bandwidth.")
@@ -67,9 +69,9 @@ def main() -> None:
     run_kwargs = {
         "run_fidelity": not args.skip_fidelity,
         "run_perplexity": not args.skip_perplexity,
-        "run_retrieval": args.retrieval,
+        "run_retrieval": not args.skip_retrieval,
         "run_reasoning": args.reasoning,
-        "run_instruction_following": args.instruction_following,
+        "run_instruction_following": not args.skip_instruction_following,
         "run_throughput": not args.skip_throughput,
         "run_peak_memory": args.peak_memory,
         "run_memory_bandwidth": args.memory_bandwidth,

@@ -11,7 +11,7 @@ Model (fixed) → KVCacheEngine (fixed) → KVCompressor (variable) → eval/ (f
 The engine is **not** a single-algorithm reproduction. It fixes the model, incremental decode loop, and metrics while exposing KV-cache compressors as interchangeable plug-ins, and always reports three independent evaluation dimensions instead of a coarse offline/online split:
 
 - **FIDELITY** *(did the transformation preserve the KV representation and attention behavior?)* — tensor RMSE, relative reconstruction error, cosine similarity, attention-score/output RMSE, attention-distribution KL divergence, compression ratio, actual memory reduction, metadata overhead.
-- **BEHAVIOR** *(does the model still behave correctly after KV transformation?)* — sliding-window perplexity, plus opt-in needle-in-haystack retrieval, instruction-following compliance, and synthetic reasoning accuracy, all measured through real compressed-KV decoding, not a single forward pass.
+- **BEHAVIOR** *(does the model still behave correctly after KV transformation?)* — sliding-window perplexity, needle-in-haystack retrieval, and instruction-following compliance by default; synthetic reasoning accuracy opt-in — all measured through real compressed-KV decoding, not a single forward pass.
 - **SYSTEM** *(does the compression actually make inference better?)* — TTFT, inter-token latency, decode/end-to-end latency, tokens/sec, peak VRAM, actual KV memory, compress/decompress time, and (best-effort) memory bandwidth and GPU utilization. A method with a higher compression ratio can still lose here if it adds enough per-step compute.
 
 FIDELITY does not reliably predict BEHAVIOR — that gap is the central finding this framework is built to surface — and SYSTEM exists as its own branch because a compression ratio win on paper can be a runtime loss in practice.
@@ -92,11 +92,12 @@ python scripts/run_eval.py --compressor qjl --context-length 512
 python scripts/run_eval.py --compressor rocketkv --context-length 512
 
 # Opt-in BEHAVIOR / SYSTEM sub-metrics (each adds its own generate() pass)
-python scripts/run_eval.py --compressor turboquant --retrieval --instruction-following
+python scripts/run_eval.py --compressor turboquant --reasoning
+python scripts/run_eval.py --compressor turboquant --skip-retrieval --skip-instruction-following  # PPL-only BEHAVIOR
 python scripts/run_eval.py --compressor turboquant --peak-memory --memory-bandwidth --kernel-cost
 ```
 
-FIDELITY always runs; BEHAVIOR/task_quality (perplexity) and SYSTEM/latency_throughput run by default. Retrieval, instruction-following, reasoning, peak VRAM, memory bandwidth, kernel cost, and GPU utilization are opt-in flags — see `python scripts/run_eval.py --help`.
+FIDELITY always runs; BEHAVIOR (perplexity + retrieval + instruction following) and SYSTEM/latency_throughput run by default. Reasoning, peak VRAM, memory bandwidth, kernel cost, and GPU utilization are opt-in; use `--skip-retrieval` / `--skip-instruction-following` for faster runs — see `python scripts/run_eval.py --help`.
 
 **Modal sweeps** — see [docs/reproducibility/REPRODUCIBILITY.md §11](docs/reproducibility/REPRODUCIBILITY.md)
 

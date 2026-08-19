@@ -87,7 +87,7 @@ Three branches instead of an offline/online split — `eval/runner.py` (`Evaluat
 
 **FIDELITY** (`eval/fidelity/`, single offline forward pass): tensor RMSE/relative-error/cosine similarity (`representation.py`), QK^T score MSE/RMSE/cosine/max-error + attention-output RMSE + attention-distribution KL divergence (`attention.py`), compression ratio + actual bytes + metadata overhead (`memory.py`), hybrid recurrent exact-preservation (`recurrent.py`).
 
-**BEHAVIOR** (`eval/behavior/`, through `KVCacheEngine`): sliding-window perplexity (`task_quality.py`, on by default), needle-in-haystack retrieval (`retrieval.py`, opt-in), instruction-following format compliance (`instruction_following.py`, opt-in), synthetic arithmetic reasoning (`reasoning.py`, opt-in).
+**BEHAVIOR** (`eval/behavior/`, through `KVCacheEngine`): sliding-window perplexity (`task_quality.py`, on by default), needle-in-haystack retrieval (`retrieval.py`, on by default), instruction-following format compliance (`instruction_following.py`, on by default), synthetic arithmetic reasoning (`reasoning.py`, opt-in).
 
 **SYSTEM** (`eval/system/`, through `KVCacheEngine`): TTFT + inter-token latency (mean/p50/p99) + tokens/sec + end-to-end latency (`latency_throughput.py`, on by default), peak CUDA memory (`vram.py`, opt-in), analytical KV-bandwidth (`memory_bandwidth.py`, opt-in), compress/decompress vs. rest-of-forward-pass time (`kernel_cost.py`, opt-in), best-effort NVML sampling (`gpu_utilization.py`, opt-in).
 

@@ -244,8 +244,8 @@ Runs through `KVCacheEngine`, i.e. compressed KV actually driving autoregressive
 |---|---|---|---|
 | Perplexity (baseline) | `eval/behavior/task_quality.py` | Sliding-window NLL, stride 512, standard HF forward | on (`include_baselines`) |
 | Perplexity (compressed) | `eval/behavior/task_quality.py` | Token-by-token `engine.step`, single persistent cache, explicit mask + position_ids | **on** |
-| Retrieval | `eval/behavior/retrieval.py` | Needle-in-haystack: unique numeric code embedded at a controlled depth in a synthetic filler context; exact-match accuracy on recall via `engine.generate` | opt-in (`--retrieval`) |
-| Instruction following | `eval/behavior/instruction_following.py` | Yes/no format-constrained prompts; fraction of completions that are a single word from the allowed set, checked structurally (not content-correctness) | opt-in (`--instruction-following`) |
+| Retrieval | `eval/behavior/retrieval.py` | Needle-in-haystack: unique numeric code embedded at a controlled depth in a synthetic filler context; exact-match accuracy on recall via `engine.generate` | **on** (default) |
+| Instruction following | `eval/behavior/instruction_following.py` | Yes/no format-constrained prompts; fraction of completions that are a single word from the allowed set, checked structurally (not content-correctness) | **on** (default) |
 | Reasoning | `eval/behavior/reasoning.py` | Synthetic multi-step add/subtract chains; exact-match accuracy on the final integer | opt-in (`--reasoning`) |
 
 **PPL formula:** \( \mathrm{PPL} = \exp\left(\frac{1}{N}\sum_i \mathrm{NLL}_i\right) \) over scored tokens in sliding windows.

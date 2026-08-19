@@ -21,6 +21,7 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **9** Pareto analysis | ✅ Done | ✅ Done | 📝 Pending | `eval/pareto/`, `scripts/analyze_pareto.py` |
 | **10** Hardware-aware eval (single GPU) | ✅ Done | ✅ Done | 📝 Pending | `eval/hardware/`, Modal A10G path |
 | **14** Reproducibility harness | ✅ Done | ✅ Done | 📝 Pending | `eval/reproducibility/manifest.py`, `tests/test_reproducibility_harness.py` |
+| **15** Main research question | — | 📝 Spec only | 📝 Pending | Paper framing only — see Phase 15 paper change log |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 | **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
@@ -85,7 +86,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | `KVBench: Bridging Offline Fidelity and Online Inference Evaluation…` |
 | **Codebase** | Three-branch eval; interception engine naming in `README.md` |
-| **Change** | Consider: *KVBench: A Controlled KV Interception Engine for Fidelity, Behavior, and System Evaluation of Cache Compression in SLMs* (or keep “Bridging…” with subtitle mentioning three branches) |
+| **Change** | Consider: *KVBench: A Controlled KV Interception Engine for Fidelity, Behavior, and System Evaluation of Cache Compression in SLMs* (or keep “Bridging…” with subtitle mentioning three branches). **Phase 15:** de-emphasize “comparing methods” in title if space allows — foreground *evaluation* / *controlled* / *instrument*. |
 | **Needs new results?** | No — framing only |
 | **Phase** | 1, 6 |
 
@@ -114,7 +115,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | L58 “What: Section A … Section B”; L60 contributions (1) dual Section A/B protocol |
 | **Codebase** | L58 already says “interception-and-transformation engine” — good. “What” axis is outdated. |
-| **Change** | **L58 *What* bullet:** FIDELITY (representation/attention/memory) + BEHAVIOR (PPL, retrieval, instruction following) + SYSTEM (latency/throughput). **L60 contribution (1):** “three-branch evaluation protocol” not “dual Section A/B”. **Contribution (3):** “FIDELITY does not predict BEHAVIOR” (not offline→online). |
+| **Change** | **L58 *What* bullet:** FIDELITY (representation/attention/memory) + BEHAVIOR (PPL, retrieval, instruction following) + SYSTEM (latency/throughput). **L60 contribution (1):** “three-branch evaluation protocol” not “dual Section A/B”. **Phase 15:** state explicit research question — *how should KV transformations be evaluated under controlled inference conditions?* — and position KVBench as the **instrument**, case studies as **demonstrations**. **Contribution (3):** “FIDELITY does not predict BEHAVIOR” (not offline→online). |
 | **Needs new results?** | Framing no; empirical paragraph yes if models/methods change |
 | **Phase** | 1, 2, 6 |
 
@@ -296,7 +297,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | | |
 | --- | --- |
 | **Current** | L598 “benchmarking and evaluation study”; L608 “Offline fidelity does not predict online quality”; L617 TurboQuant throughput as mechanism story |
-| **Change** | L598: “controlled experimentation framework” — contribution is matched interception, not ranking winners. L608: **FIDELITY does not predict BEHAVIOR**; SYSTEM explains TurboQuant speed penalty separately. L623 implications: report all three branches + cost + controlled conditions. |
+| **Change** | L598: “controlled experimentation framework” — contribution is **how to evaluate**, not ranking winners. **Phase 15:** opening sentence must state research question explicitly. L608: **FIDELITY does not predict BEHAVIOR**; SYSTEM explains TurboQuant speed penalty separately. L617 Pareto: “no single winner” supports **evaluation** claim, not deployment recommendation. L623 implications: report all three branches + cost + controlled conditions. |
 | **Needs new results?** | Empirical paragraphs yes; framing no |
 | **Phase** | 1, 2, 3, 6 |
 
@@ -305,7 +306,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | | |
 | --- | --- |
 | **Current** | “benchmarking framework”; “dual Section A/Section B metrics” |
-| **Change** | List: (i) interception engine, (ii) plug-in API, (iii) FIDELITY/BEHAVIOR/SYSTEM/Cost, (iv) controlled conditions export, (v) case-study findings. **Future work (Phases 11–12):** external benchmarks (LongBench/RULER), long-context scaling (2K–32K), batch/concurrency grids — explicitly **out of scope** for current paper. |
+| **Change** | Restate Phase 15 research question in first sentence. List: (i) interception engine, (ii) plug-in API, (iii) FIDELITY/BEHAVIOR/SYSTEM/Cost, (iv) controlled conditions + reproducibility export, (v) case-study **demonstrations** (not “findings = best method”). **Future work (Phases 11–12):** external benchmarks, long-context scaling — out of scope. **Last sentence:** “methodology for evaluating KV transformations,” not “yardstick for comparing methods.” |
 | **Needs new results?** | Findings bullet yes; structure no |
 | **Phase** | 1–10 (future work cites 11–12 only) |
 
@@ -1178,21 +1179,20 @@ making direct comparison difficult.
 
 ---
 
-# Phase 15: Redefine the Main Research Question
+# Phase 15: Redefine the Main Research Question 📝 **Paper only**
+
+> **Status (2026-08-20):** **Paper-writeup phase only** — no engine or test changes required. The codebase already implements the *answer* to the reframed question (controlled interception + FIDELITY/BEHAVIOR/SYSTEM + `controlled_conditions`). This section is the **rewrite specification** for `docs/research_paper_writeup/conference_101719.tex` so the manuscript states the question explicitly instead of implying a compressor horse-race.
 
 This is probably the **single most important conceptual change**.
 
-### Current implicit question:
+### Research question shift
 
-> **Which KV-cache compression method performs best?**
-
-Change it to:
-
-> **How should KV-cache transformations be evaluated under controlled and realistic inference conditions?**
-
-Then:
-
-> **KVBench is the instrument for answering that question.**
+| | Current paper (implicit) | Target paper (explicit) |
+| --- | ------------------------ | ----------------------- |
+| **Primary question** | Which KV-cache compression method performs best? | **How should KV-cache transformations be evaluated under controlled and realistic inference conditions?** |
+| **Role of KVBench** | “Benchmarking framework” / “yardstick for comparing methods” | **Instrument for answering the evaluation question** — controlled interception environment, not a winner-picker |
+| **Case studies (TQ/QJL/RocketKV)** | Read as the main contribution | **Demonstrations** of what the instrument reveals when conditions are matched |
+| **Empirical headline** | Rankings and trade-offs (still valid) | Rankings **illustrate** why multi-branch, controlled evaluation is necessary — not the end goal |
 
 This turns your work from:
 
@@ -1202,7 +1202,63 @@ into:
 
 **"an inference-aware methodology for evaluating KV transformations."**
 
+### Phrasing guide — retire vs. adopt
 
+| Retire (horse-race framing) | Adopt (methodology framing) |
+| --------------------------- | --------------------------- |
+| “benchmarking framework” (standalone noun) | “controlled interception-and-transformation **evaluation environment**” |
+| “yardstick for comparing KV compression **methods**” | “**instrument** for evaluating KV transformations under matched conditions” |
+| “which compressor wins” / “best method” (implicit) | “what each branch measures” / “when rankings flip under controlled comparison” |
+| “dual Section A/B” as the contribution | “three-branch FIDELITY / BEHAVIOR / SYSTEM protocol” (Phase 1 terminology) |
+| Contribution (2) = “27-job study” as co-equal with (1) | Contribution (1) = protocol + engine; (2) = **case-study demonstrations** on two SLMs |
+
+**Keep unchanged:** empirical numbers, Pareto figure, offline≠online finding, GQA vs MHA narrative — only the *framing* around them changes.
+
+### When to apply
+
+| Timing | Rationale |
+| ------ | --------- |
+| **First pass of paper rewrite** (same session as Phase 1 terminology + Phase 6/7 controlled-conditions table) | Question framing is structural — do **before** polishing result tables |
+| **No new experiments required** | Reframing is prose-only; existing Phase-5 bundles support the case-study role |
+| **After Phase 15, before Phase 16/17** | Phase 15 sets the *question*; Phases 16–17 refine *problem statement* and *novelty claim* (separate sections below) |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section (label, lines) | Why | What to change |
+| ---- | ------------------------ | --- | -------------- |
+| **Rewrite pass 1** | **Title** (L31) | Title currently emphasizes “Bridging Offline Fidelity and Online Inference” — comparison framing | Consider: *KVBench: A Controlled Evaluation Instrument for KV-Cache Transformations in Small Language Models* (or keep subtitle + add “controlled evaluation methodology”). See also [Title](#title-l31) in paper alignment guide. |
+| **Rewrite pass 1** | **Abstract** (L44–46) | Opens with “hard to compare methods”; closes with “yardstick for comparing KV compression methods” | **Opening:** state the evaluation problem (“protocols incompatible; metrics siloed”). **Middle:** “We present KVBench, a controlled interception engine and three-branch evaluation protocol (FIDELITY, BEHAVIOR, SYSTEM) for KV transformations on SLMs.” **End:** replace “yardstick for comparing methods” with “demonstrates that controlled multi-branch evaluation is necessary — case studies on TurboQuant, QJL, and RocketKV show offline fidelity does not predict behavior or system outcomes.” Keep numeric claims. |
+| **Rewrite pass 1** | **Keywords** (L48–50) | “benchmarking” centers horse-race | Add: `controlled evaluation`, `KV interception`; keep method names as case-study tags |
+| **Rewrite pass 1** | **§Introduction** opening (L52–57) | Literature survey OK; gap paragraph should lead to *evaluation* gap | After L56, add explicit sentence: *“The open question is not only which compressor to deploy, but how to evaluate KV transformations under incremental decode when representation, behavior, and system metrics disagree.”* |
+| **Rewrite pass 1** | **§Introduction** KVBench paragraph (L58) | Already says “interception-and-transformation engine” — good | Reframe **What** axis: three branches not Section A/B. Add: *“KVBench is the instrument; plug-ins are case studies.”* De-emphasize “comparing compressors” as the goal. |
+| **Rewrite pass 1** | **Contributions** (L60) | (1) engine+protocol, (2) 27-job study, (3) offline≠online — (2) reads as co-primary | **Reorder/reword:** (1)~Controlled interception engine + three-branch evaluation protocol + reproducible configuration export. (2)~Empirical demonstrations on Qwen3 + OLMo~2 that FIDELITY, BEHAVIOR, and SYSTEM diverge under matched conditions. (3)~Evidence that architecture (GQA vs MHA) changes conclusions — motivating controlled replication, not winner claims. |
+| **Rewrite pass 1** | **§Related Work → Positioning** (L80–81) | “missing shared yardstick” = comparison frame | Replace with: *“missing shared **evaluation methodology** under controlled incremental decode.”* Case-study methods are **coverage**, not the research output. |
+| **Rewrite pass 1** | **§Methodology opening** (L83–86) | “benchmarking harness rather than a new compressor” — close but passive | Lead with: *“This section specifies **how** KV transformations should be evaluated inside KVBench.”* Case-study families = plug-in **coverage** of quantization / sketching / eviction. |
+| **Rewrite pass 1** | **§Design Principles** (`\label{subsec:design}`, L88–96) | Dual evaluation bullet | Add opening principle: **Evaluation question.** *Only the compressor varies; model, input, decode loop, hardware, and metric definitions are fixed* (cross-ref Phase 6/7 controlled-conditions table). |
+| **Rewrite pass 1** | **§Experiments opening** (L215–218) | “This section describes … full Phase-5 **results**” | Reframe: *“This section **demonstrates** the evaluation instrument on two SLMs and three compressor families; results illustrate branch divergence, not a definitive ranking.”* |
+| **Rewrite pass 1** | **§Discussion opening** (L598) | Already says “contribution is the shared protocol” — **best anchor in current `.tex`** | Strengthen first sentence: *“KVBench addresses **how** to evaluate KV-cache transformations, not which algorithm wins outright.”* Keep “four patterns” paragraph; rename Section A/B → FIDELITY/BEHAVIOR in body text. |
+| **Rewrite pass 1** | **§Discussion → Implications** (L623) | Practitioner list is methodology-aligned | Preface with: *“These implications follow from treating KVBench as an evaluation instrument, not a leaderboard.”* |
+| **Rewrite pass 1** | **§Conclusion** (L627–629) | Closes with “yardstick for comparing KV compression methods” | **First sentence:** restate research question answered. **Middle:** list protocol contributions (engine, three branches, cost, reproducibility export). **Last sentence:** replace “yardstick for comparing methods” with *“a controlled methodology for evaluating KV transformations before deployment on resource-constrained models.”* Case-study rankings = **examples**, not the contribution claim. |
+| **Optional** | **Fig. pipeline caption** (L98–102) | Visual may still say Section A/B | Caption should show FIDELITY / BEHAVIOR / SYSTEM boxes; subtitle: “only the plug-in varies.” |
+| **Do not** | Results tables / figures (L319+, Pareto L475+) | Empirical content stays | Do **not** rewrite numbers or drop Pareto — interpret in Discussion as “instrument output,” not “winner chart” |
+
+### Cross-references (apply in same rewrite pass)
+
+| Related phase | Overlap with Phase 15 |
+| ------------- | --------------------- |
+| **Phase 1** | Section A/B → FIDELITY/BEHAVIOR/SYSTEM terminology (required for consistent question framing) |
+| **Phase 6–7** | Controlled comparison principle + conditions table (supports “matched conditions” claim) |
+| **Phase 14** | Reproducibility export (supports “instrument” credibility) |
+| **Phase 16** | Problem-statement diagram — apply **after** Phase 15 question sentence is in Intro |
+| **Phase 17** | Novelty claim refinement — apply **after** Phase 15; avoids defending “first benchmark ever” |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | — | No changes; existing engine is the instrument Phase 15 describes. |
+| **Documentation** | ✅ Done | This section + paper alignment guide [Introduction](#introduction-l5260), [Abstract](#abstract-l4446), [§Discussion](#discussion-l595623-labelsecdiscussion), [§Conclusion](#conclusion-l625629-labelsecconclusion). |
+| **Paper** | 📝 Pending | Full pass on sections in table above. **No new GPU jobs.** Apply at start of `.tex` rewrite. |
 
 ---
 

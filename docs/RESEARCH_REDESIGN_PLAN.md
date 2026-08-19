@@ -4,7 +4,7 @@
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phases 15–18** are **paper-only** (framing / problem / novelty / terminology specs). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phases 15–19** are **paper-only** (framing, problem, novelty, terminology, domain positioning). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -25,6 +25,7 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **16** Core problem statement | — | 📝 Spec only | 📝 Pending | Problem cascade + metric decoupling — Phase 16 |
 | **17** Novelty reframe | — | 📝 Spec only | 📝 Pending | Safe novelty claim — Phase 17 |
 | **18** What KVBench is | — | 📝 Spec only | 📝 Pending | Terminology boundary (not vLLM/serving) — Phase 18 |
+| **19** Domain positioning | — | 📝 Spec only | 📝 Pending | LLM inference-systems / KV eval infrastructure — Phase 19 |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 | **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
@@ -335,7 +336,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 
 | Tier | When | Scope |
 | ---- | ---- | ----- |
-| **Minimal** | Re-sweep done; tight page limit | Terminology pass (Section A/B → three branches) + controlled conditions table + caption renames; keep 3 methods; **regenerate Pareto from CLI** (Phase 9); **Phases 15–18 prose** (question, problem paragraph, safe novelty sentence, KVBench definition) |
+| **Minimal** | Re-sweep done; tight page limit | Terminology pass (Section A/B → three branches) + controlled conditions table + caption renames; keep 3 methods; **regenerate Pareto from CLI** (Phase 9); **Phases 15–19 prose** (question, problem, novelty, definition, domain positioning) |
 | **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) + optional **problem-cascade figure** (Phase 16) + reproducibility subsection (Phase 14) |
 
 ### Phases 15–18 — recommended `.tex` rewrite order

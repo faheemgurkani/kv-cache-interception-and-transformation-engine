@@ -7,7 +7,7 @@ Scope and caveats for the **KV Cache Interception and Transformation Engine** (c
 | Status | Item |
 |---|---|
 | ✅ | Unified KV interception + plug-in compressors + FIDELITY/BEHAVIOR/SYSTEM eval |
-| ✅ | Phase 6–7 controlled conditions contract (`eval/controlled_conditions.py`, full axis export) |
+| ✅ | Phase 6–7 controlled conditions + Phase 9 Pareto (`eval/pareto/`, `scripts/analyze_pareto.py`) |
 | ✅ | Case studies: TurboQuant, QJL, RocketKV on Qwen3-1.7B, replicated on OLMo2-1B |
 | ✅ | Compression taxonomy (Phase 4) + SnapKV + Palu plug-ins |
 | ⚠️ | WikiText-2, ctx ≤512 per run — sufficient for arXiv framework paper, not top-tier conference breadth |

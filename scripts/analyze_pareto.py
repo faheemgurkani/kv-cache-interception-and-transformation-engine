@@ -7,6 +7,7 @@ import argparse
 import json
 from pathlib import Path
 
+import setup_path  # noqa: F401
 from eval.pareto.analysis import analyze_pareto, load_pareto_points_from_json
 from eval.pareto.plot import save_pareto_figure
 from framework.config import PROJECT_ROOT

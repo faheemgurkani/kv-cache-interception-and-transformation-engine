@@ -4,7 +4,7 @@
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5** and **8** are flagged **not planned** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, and **7** are **complete in the engine and documentation**. The paper still reflects the **pre-redesign** framing. **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below — apply when revised experimental results are ready. Phases **5** and **8** are **not planned**.
+**Executive verdict:** Phases **1–4**, **6**, **7**, and **9** are **complete in the engine and documentation**. The paper still reflects the **pre-redesign** framing. **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below — apply when revised experimental results are ready. Phases **5** and **8** are **not planned**.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |

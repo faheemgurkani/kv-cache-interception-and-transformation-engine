@@ -364,6 +364,21 @@ Every `EvaluationResult` includes a `taxonomy` block classifying the compressor 
 | Hybrid | D | RocketKV |
 | Modified attention | E (secondary) | QJL, RocketKV, Palu (RoPE path) |
 
+### 6.7 Pareto analysis (`eval/pareto/`, Phase 9)
+
+After sweeps, compute non-dominated trade-offs from job JSON or `EvaluationResult` lists:
+
+| View | Axes | Use |
+|---|---|---|
+| **2D (paper figure)** | max compression ratio vs min `log10(PPL / baseline)` | `compute_frontier_2d()` — matches `plot_pareto.pdf` |
+| **3D** | + max tokens/sec | `compute_pareto_frontier()` with quality / memory / speed |
+
+**CLI:** `python scripts/analyze_pareto.py results/phase5_modal_baseline/*.json results/phase5_modal_sweep_128_256_512/*.json --context-length 512 --output-dir results/pareto`
+
+**Reporter:** `ResultReporter.save_pareto(results, context_length=512)` writes `pareto_ctx512.json` and `plot_pareto_ctx512.pdf`.
+
+Legacy Phase-5 bundles (`section_a_fidelity` / `section_b_inference`) and new three-branch `to_dict()` payloads are both supported.
+
 ---
 
 ## 7. Phase 5 sweep design

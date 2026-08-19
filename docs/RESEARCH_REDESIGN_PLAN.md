@@ -4,7 +4,7 @@
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phases 15–19** are **paper-only** (framing, problem, novelty, terminology, domain positioning). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phases 15–21** are **paper-only** (framing through Related Work restructure and Intro narrative). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -26,6 +26,8 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **17** Novelty reframe | — | 📝 Spec only | 📝 Pending | Safe novelty claim — Phase 17 |
 | **18** What KVBench is | — | 📝 Spec only | 📝 Pending | Terminology boundary (not vLLM/serving) — Phase 18 |
 | **19** Domain positioning | — | 📝 Spec only | 📝 Pending | LLM inference-systems / KV eval infrastructure — Phase 19 |
+| **20** Related Work restructure | — | 📝 Spec only | 📝 Pending | Four-section Related Work + eval gap — Phase 20 |
+| **21** Introduction narrative | — | 📝 Spec only | 📝 Pending | Seven-paragraph Intro story — Phase 21 |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 | **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
@@ -123,9 +125,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | L58 “What: Section A … Section B”; L60 contributions (1) dual Section A/B protocol |
 | **Codebase** | L58 already says “interception-and-transformation engine” — good. “What” axis is outdated. |
-| **Change** | **L56–57 (Phase 16):** metric decoupling cascade (compression ratio ≠ memory ≠ speed ≠ fidelity ≠ behavior). **L58 *What*:** FIDELITY + BEHAVIOR + SYSTEM. **Phase 15:** explicit research question; KVBench as **instrument**. **Phase 18:** one-sentence boundary vs serving engines. **L60 contributions:** protocol first, case studies second (Phase 17). |
+| **Change** | **Phase 21 seven-paragraph outline** (see [Phase 21](#phase-21-rewrite-the-introduction-around-this-story--paper-only)). Merge L54–58 into ¶1–4; KVBench ¶6; contributions ¶7 (Phase 15 reorder). **Phase 16** gap in ¶3–5. **Phase 18** boundary one sentence in ¶6. |
 | **Needs new results?** | Framing no; empirical paragraph yes if models/methods change |
-| **Phase** | 1, 2, 6, 15, 16, 17, 18 |
+| **Phase** | 1, 2, 6, 15, 16, 18, 19, 21 |
 
 #### Related Work (L62–81)
 
@@ -133,9 +135,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | “offline fidelity and online quality always reported together”; cites Palu/SnapKV in eviction/sketching subsections |
 | **Codebase** | Palu/SnapKV implemented as plug-ins; not in paper results |
-| **Change** | L66, L78, L81: FIDELITY/BEHAVIOR/SYSTEM terminology. **Phase 17:** canonical novelty paragraph in L81; distinguish from serving benchmarks (L78). **Phase 18:** “not a full serving stack” — keep and strengthen. Do not claim SnapKV/Palu results unless sweeps run. |
-| **Needs new results?** | SnapKV/Palu claims: yes if included in results |
-| **Phase** | 1, 4, 17, 18 |
+| **Change** | **Phase 20:** restructure into four subsections (see below). L66, L78, L81: FIDELITY/BEHAVIOR/SYSTEM terminology. **Phase 17:** canonical novelty in §4 closing. **Phase 19:** systems framing opening. Retire standalone `\subsection{Positioning of KVBench}` — fold into §4 *What is still missing?* |
+| **Needs new results?** | SnapKV/Palu empirical claims: yes if sweeps run; Related Work restructure: no |
+| **Phase** | 1, 4, 17, 19, 20 |
 
 #### §Methodology opening (L83–86, `\label{sec:methodology}`)
 
@@ -337,10 +339,10 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 
 | Tier | When | Scope |
 | ---- | ---- | ----- |
-| **Minimal** | Re-sweep done; tight page limit | Terminology pass (Section A/B → three branches) + controlled conditions table + caption renames; keep 3 methods; **regenerate Pareto from CLI** (Phase 9); **Phases 15–19 prose** (question, problem, novelty, definition, domain positioning) |
+| **Minimal** | Re-sweep done; tight page limit | Terminology pass + controlled conditions table + **Phases 15–21 prose** (framing, Related Work restructure, Intro narrative); regenerate Pareto (Phase 9) |
 | **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) + optional **problem-cascade figure** (Phase 16) + reproducibility subsection (Phase 14) |
 
-### Phases 15–19 — recommended `.tex` rewrite order
+### Phases 15–21 — recommended `.tex` rewrite order
 
 Apply in **one framing pass** before editing result numbers (can precede re-sweep):
 
@@ -351,8 +353,12 @@ Apply in **one framing pass** before editing result numbers (can precede re-swee
 | 3 | **17** | Abstract, Intro, Related Work L66/L78/L81, Case-Study disclaimer L167, Conclusion |
 | 4 | **18** | Abstract, Intro L58, Methodology opening L83–86, `\label{subsec:engine}` L106, pipeline caption |
 | 5 | **19** | Intro opening L54, Keywords, Related Work framing, Experiments opening, Conclusion scope |
+| 6 | **21** | **Rewrite `\label{sec:introduction}`** (L52–60) as seven-paragraph story **before** finalizing Related Work cross-refs |
+| 7 | **20** | **Restructure `\label{sec:related}`** (L62–81) into four subsections; merge/remove old `\subsection{Positioning}` into §4 closing |
 
-**No new GPU jobs** for steps 1–5. Cross-link [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) for line-level detail per section.
+**No new GPU jobs** for steps 1–7. Step **21 before 20** so Intro sets up the Related Work gap narrative; step **20 last** in Related Work so §4 “What is still missing?” closes into KVBench.
+
+Cross-link [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) for line-level detail.
 
 ---
 

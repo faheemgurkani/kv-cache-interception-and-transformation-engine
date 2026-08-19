@@ -121,9 +121,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | L58 “What: Section A … Section B”; L60 contributions (1) dual Section A/B protocol |
 | **Codebase** | L58 already says “interception-and-transformation engine” — good. “What” axis is outdated. |
-| **Change** | **L58 *What* bullet:** FIDELITY (representation/attention/memory) + BEHAVIOR (PPL, retrieval, instruction following) + SYSTEM (latency/throughput). **L60 contribution (1):** “three-branch evaluation protocol” not “dual Section A/B”. **Phase 15:** state explicit research question — *how should KV transformations be evaluated under controlled inference conditions?* — and position KVBench as the **instrument**, case studies as **demonstrations**. **Contribution (3):** “FIDELITY does not predict BEHAVIOR” (not offline→online). |
+| **Change** | **L56–57 (Phase 16):** metric decoupling cascade (compression ratio ≠ memory ≠ speed ≠ fidelity ≠ behavior). **L58 *What*:** FIDELITY + BEHAVIOR + SYSTEM. **Phase 15:** explicit research question; KVBench as **instrument**. **Phase 18:** one-sentence boundary vs serving engines. **L60 contributions:** protocol first, case studies second (Phase 17). |
 | **Needs new results?** | Framing no; empirical paragraph yes if models/methods change |
-| **Phase** | 1, 2, 6 |
+| **Phase** | 1, 2, 6, 15, 16, 17, 18 |
 
 #### Related Work (L62–81)
 
@@ -131,18 +131,18 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | “offline fidelity and online quality always reported together”; cites Palu/SnapKV in eviction/sketching subsections |
 | **Codebase** | Palu/SnapKV implemented as plug-ins; not in paper results |
-| **Change** | L66, L78, L81: replace “offline/online” with “fidelity/behavior/system”. **Do not** claim SnapKV/Palu empirical results unless sweeps are run. Optional sentence: “The engine also hosts SnapKV and Palu plug-ins (taxonomy categories A and C) for future sweeps.” |
+| **Change** | L66, L78, L81: FIDELITY/BEHAVIOR/SYSTEM terminology. **Phase 17:** canonical novelty paragraph in L81; distinguish from serving benchmarks (L78). **Phase 18:** “not a full serving stack” — keep and strengthen. Do not claim SnapKV/Palu results unless sweeps run. |
 | **Needs new results?** | SnapKV/Palu claims: yes if included in results |
-| **Phase** | 1, 4 |
+| **Phase** | 1, 4, 17, 18 |
 
 #### §Methodology opening (L83–86, `\label{sec:methodology}`)
 
 | | |
 | --- | --- |
 | **Current** | “benchmarking harness”; “dual offline/online evaluation contract” |
-| **Change** | “controlled interception-and-transformation environment”; “three-branch FIDELITY / BEHAVIOR / SYSTEM contract” |
+| **Change** | “Controlled interception-and-transformation **evaluation environment**” (Phase 18); three-branch contract (Phase 1). Not a new compressor (Phase 17). |
 | **Needs new results?** | No |
-| **Phase** | 1, 6 |
+| **Phase** | 1, 6, 17, 18 |
 
 #### §Design Principles (L88–96, `\label{subsec:design}`)
 

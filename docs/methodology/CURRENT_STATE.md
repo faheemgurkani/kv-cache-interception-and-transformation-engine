@@ -18,6 +18,8 @@ Scope and caveats for the **KV Cache Interception and Transformation Engine** (c
 | Topic | Limit |
 |---|---|
 | **KIVI** | Stub only (`NotImplementedError`) |
+| **SnapKV** | Prefill-only eviction; standard attention on retained FP16 K/V; no decode-time eviction |
+| **Palu** | G-LRD latent cache via truncated SVD; full fused RoPE Triton kernel not yet ported — reconstructs K/V at decompress |
 | **QJL BEHAVIOR** | Literature ProdQJL online (`framework/qjl_online.py`): float `S q`, sign only on keys; FIDELITY uses the same estimator via `attention_fidelity`. QJL re-swept August 2026 (Modal `i220485`); bundles `results/*_qjl_prodqjl/` and canonical `phase5_modal_qjl` / `olmo2_phase5_qjl`. |
 | **RocketKV** | Token budgets `r256`/`r512`/`r1024` + online HSA; post-fix PPL still ~7–11M @ ctx=512 |
 | **TurboQuant 2-bit @ ctx=128** | Anomalously bad PPL; use ctx≥256 for comparisons |

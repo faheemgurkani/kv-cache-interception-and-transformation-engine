@@ -4,7 +4,9 @@ What actually happens when the real FIDELITY/BEHAVIOR/SYSTEM evaluation pipeline
 
 Run 2026-08-21: `python scripts/run_eval.py --compressor identity --context-length 128` against each model in turn (via a per-model `configs/model_<name>.yaml`, temporarily swapped into `configs/model.yaml`). `transformers==5.8.1`, this repo's `.venv`.
 
-**Update 2026-08-18 (86th commit):** Gemma3 support landed — `gemma3_text` adapter, per-layer RoPE (`framework/rope.py`), and full eval-branch verification in `tests/test_gemma3_reference.py`. Live gate evaluation confirms **3 of 5 models pass all three compatibility gates** (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`). Full audit: [`ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md § audit`](../../ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#implementation-verification-audit-2026-08-18). See [Current status (2026-08-18)](#current-status-2026-08-18) below; the 2026-08-21 sections below remain as historical record for the initial probe.
+**Update 2026-08-19 (94th commit):** TinyDeepSeek support landed — `deepseek_v3` adapter, `project_attention_states()` / MLA split-RoPE path, asymmetric K/V memory, and full eval-branch verification in `tests/test_tinydeepseek_reference.py`. **4 of 5 models pass Gate B**; TinyDeepSeek Gate C still fails (expanded KV, not native latent). See [Current status (2026-08-19)](#current-status-2026-08-19).
+
+**Update 2026-08-18 (86th commit):** Gemma3 support landed — `gemma3_text` adapter, per-layer RoPE (`framework/rope.py`), and full eval-branch verification in `tests/test_gemma3_reference.py`. Live gate evaluation confirms **3 of 5 models pass all three compatibility gates** (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`). Full audit: [`ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md § audit`](../../ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#implementation-verification-audit-2026-08-18). The 2026-08-21 sections below remain as historical record for the initial probe.
 
 ## Two real bugs found and fixed while getting these numbers
 
@@ -15,7 +17,7 @@ Both were pre-existing engine/environment defects, unrelated to the shortlist mo
 
 Both are now fixed in the working tree; anyone hitting either error should re-check `configs/model*.yaml` paths against the current `models/` layout and confirm `pip show datasets` succeeds.
 
-## Current status (2026-08-18)
+## Current status (2026-08-19)
 
 Verified via live gate evaluation and `tests/test_*_reference.py`:
 
@@ -24,8 +26,29 @@ Verified via live gate evaluation and `tests/test_*_reference.py`:
 | `olmo2_1b` | PASS | PASS | PASS | ✅ all compressors |
 | `qwen3_0.6b` | PASS | PASS | PASS | ✅ all compressors |
 | `gemma3_270m` | PASS | PASS | PASS | ✅ identity, TurboQuant, QJL, RocketKV (`test_gemma3_reference.py`) |
-| `tinydeepseek_0.5b` | PASS | FAIL | FAIL | ❌ Gate B blocks FIDELITY; use `--skip-fidelity` for BEHAVIOR/SYSTEM only |
+| `tinydeepseek_0.5b` | PASS | PASS | FAIL | ✅ identity, TurboQuant, QJL, RocketKV (`test_tinydeepseek_reference.py`; expanded KV disclosure) |
 | `falcon_h1_0.5b` | PASS | FAIL | PASS | ❌ Gate B blocks FIDELITY; hybrid state counted in memory (Gate C pass) |
+
+### `tinydeepseek_0.5b` — now supported on expanded-cache path
+
+Changes in 92–94th commits:
+- `deepseek_v3` registered in `ATTENTION_ADAPTER_REGISTRY` (`qk_norm_layout="mla"`)
+- `project_attention_states()` / `project_mla_qkv()` for split nope/RoPE + interleaved RoPE
+- Asymmetric K/V memory: `resolve_key_head_dim()` / `resolve_value_head_dim()` (64/32)
+- `get_model_eval_metadata` records `cache_representation="expanded_kv"` + MLA fields
+- All eval branches pass in `tests/test_tinydeepseek_reference.py` (12 tests, ~29 min)
+- Gate C **still fails** by design: visible cache is HF expanded K/V, not native `kv_lora_rank` latent
+
+## Current status (2026-08-18) — superseded for TinyDeepSeek
+
+<details>
+<summary>Prior status before TinyDeepSeek adapter (94th commit)</summary>
+
+| Model | Gate A | Gate B | Gate C | Full eval |
+|---|---|---|---|---|
+| `tinydeepseek_0.5b` | PASS | FAIL | FAIL | ❌ Gate B blocks FIDELITY |
+
+</details>
 
 ### `gemma3_270m` — now fully supported
 
@@ -88,7 +111,10 @@ NotImplementedError: Online attention adapters are not implemented for model_typ
 
 Simple adapter-registry gate — model loads and forwards fine up to this point (weights load cleanly, ~2 min for 579 shards).
 
-### `tinydeepseek_0.5b`
+### `tinydeepseek_0.5b` — RESOLVED (was: Gate B NotImplementedError)
+
+<details>
+<summary>Historical traceback (2026-08-21, fixed in 94th commit)</summary>
 
 ```
 File "eval/fidelity/attention.py", line 107, in _compute_layer_queries
@@ -98,18 +124,20 @@ File "framework/model_adapter.py", line 83, in load_attention_ops
 NotImplementedError: Online attention adapters are not implemented for model_type='deepseek_v3'. Supported: gemma3_text, olmo2, qwen2, qwen3.
 ```
 
-**This is a significant, positive correction to the static architecture probe**, which (loading with `trust_remote_code=True` to inspect the vendored code directly) found an `ImportError` and concluded the model couldn't be assessed at all. Run through the engine's *actual* load path (`framework/model.py::ModelLayer`, which never passes `trust_remote_code`), the model loads cleanly in ~29s as transformers' **native** `DeepseekV3ForCausalLM` — the vendored `modeling_tinydeepseek.py` (whose `is_torch_fx_available` import fails against `transformers==5.8.1`) is never reached, because `model_type="deepseek_v3"` in `config.json` matches a real, already-supported transformers architecture. Confirmed live: `DeepseekV3Attention` exposes genuine MLA submodules (`kv_a_layernorm`, `kv_a_proj_with_mqa`, `kv_b_proj`, `kv_lora_rank=256`, `qk_nope_head_dim=32`, `qk_rope_head_dim=32`, `v_head_dim=32`), and a real forward pass succeeds — `iter_layer_kv` also succeeds (26 `DynamicLayer`s, keys shape `(1,4,5,64)`, values shape `(1,4,5,32)` — note the **asymmetric key/value last dimension**, 64 = `qk_nope_head_dim + qk_rope_head_dim`, 32 = `v_head_dim`, a structural difference from every other model in the shortlist where key/value share one `head_dim`). TinyDeepSeek remains blocked at Gate B (`load_attention_ops` for `deepseek_v3` not registered) and Gate C (native latent KV not exposed), **not** by an unrecoverable import failure.
+</details>
 
-(Caveat worth carrying forward: the cache being iterated here is the native implementation's already-expanded per-head K/V, not DeepSeek's actual compressed-latent representation — see the "what would count as really supporting MLA" discussion in `../../architecture/MODEL_ARCHITECTURE_MATRIX.md`.)
+**This is a significant, positive correction to the static architecture probe**, which (loading with `trust_remote_code=True` to inspect the vendored code directly) found an `ImportError` and concluded the model couldn't be assessed at all. Run through the engine's *actual* load path (`framework/model.py::ModelLayer`, which never passes `trust_remote_code`), the model loads cleanly in ~29s as transformers' **native** `DeepseekV3ForCausalLM`. Confirmed live: `DeepseekV3Attention` exposes genuine MLA submodules; `iter_layer_kv` succeeds (26 `DynamicLayer`s, keys `(1,4,T,64)`, values `(1,4,T,32)`). Full eval (identity, TurboQuant, QJL, RocketKV) verified in `tests/test_tinydeepseek_reference.py`. Gate C still fails (native latent not exposed); reports disclose `cache_representation="expanded_kv"`.
 
-## Correspondence table — current status (2026-08-18)
+(Caveat worth carrying forward: the cache being iterated is HF's already-expanded per-head K/V, not DeepSeek's native compressed-latent representation.)
+
+## Correspondence table — current status (2026-08-19)
 
 | Model | FIDELITY/representation+memory | FIDELITY/attention | BEHAVIOR+SYSTEM (identity/turboquant) | BEHAVIOR+SYSTEM (qjl/rocketkv) |
 |---|:---:|:---:|:---:|:---:|
 | olmo2_1b | ✅ | ✅ | ✅ | ✅ |
 | qwen3_0.6b | ✅ | ✅ | ✅ | ✅ |
 | gemma3_270m | ✅ | ✅ | ✅ | ✅ |
-| tinydeepseek_0.5b | ✅ | ❌ (Gate B) | ⚠️ `--skip-fidelity` | ❌ (Gate B) |
+| tinydeepseek_0.5b | ✅ | ✅ (expanded KV) | ✅ | ✅ |
 | falcon_h1_0.5b | ✅ (visible state incl. Mamba) | ❌ (Gate B) | ⚠️ `--skip-fidelity` | ❌ (Gate B) |
 
 Falcon-H1 memory accounting counts all visible state: `eval/fidelity/memory.py` uses `visible_state_bytes()` (attention K/V + Mamba recurrent/conv). Gate C passes; compression still targets attention K/V only.
@@ -133,10 +161,10 @@ Falcon-H1 memory accounting counts all visible state: `eval/fidelity/memory.py` 
 
 Full technical detail lives in [`ENGINE_INTERNALS.md §8`](../../architecture/ENGINE_INTERNALS.md#8-diversifying-to-other-architecture-families) and [`ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md`](../../ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md). Ranked summary, current as of 2026-08-18:
 
-1. **Add `load_attention_ops` branches for `falcon_h1`, `deepseek_v3`.** ✅ **Done for `gemma3_text`** (86th commit). Falcon-H1 additionally needs registering the existing `qk_norm_layout="none"` scaffold.
+1. **Add `load_attention_ops` branches for `falcon_h1`.** ✅ **Done for `gemma3_text`** (86th commit) **and `deepseek_v3`** (94th commit). Falcon-H1 additionally needs registering the existing `qk_norm_layout="none"` scaffold.
 2. **Per-layer RoPE selection** — ✅ **done for Gemma3** (`build_rope_context().get_rope(layer_idx)` in FIDELITY/attention).
 3. **Hybrid state interface** — ✅ **done (WP1):** `iter_layer_states()` + `visible_state_bytes()`. Falcon memory accounting fixed; Mamba compression remains passthrough by policy.
 4. **MLA-native latent state** — still open: TinyDeepSeek Gate C fails until native `kv_lora_rank` interception lands (expanded cache benchmarked today with disclosure).
 5. **`--skip-fidelity` on `scripts/run_eval.py`** — ✅ **implemented (WP1).**
 
-What this document adds is **live confirmation** (tracebacks, successful runs, numbers) plus corrections (TinyDeepSeek loads via native `deepseek_v3`; Falcon visible-state memory accounting; Gemma3 fully unblocked 2026-08-18).
+What this document adds is **live confirmation** (tracebacks, successful runs, numbers) plus corrections (TinyDeepSeek loads via native `deepseek_v3` and full eval works on expanded cache, 94th commit; Falcon visible-state memory accounting; Gemma3 fully unblocked 2026-08-18).

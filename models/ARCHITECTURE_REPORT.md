@@ -72,10 +72,10 @@ The checkpoint ships its own `modeling_tinydeepseek.py`/`configuration_tinydeeps
 
 Full live-run evidence (exact commands, output) is in [`docs/results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md`](../docs/results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md).
 
-**Engine correspondence — ✅ loads and forwards; ❌ blocked at adapter gate (Gate B) + state-semantics gate (Gate C):**
-- `load_attention_ops` → **fails**: `NotImplementedError("... model_type='deepseek_v3' ...")` — adapter branch not yet registered.
-- `iter_layer_kv` → **succeeds** — so FIDELITY/representation+memory and BEHAVIOR/SYSTEM under `identity`/`turboquant` would very likely work today if FIDELITY/attention didn't unconditionally run first and abort the whole evaluation (see the correspondence doc linked above).
-- **The deeper, still-valid scientific caveat**: the cache being iterated above is the native implementation's already-*expanded* per-head K/V (post `kv_b_proj`), not DeepSeek's actual compressed-latent (`kv_lora_rank=256`-dim) representation — HF's eager `DeepseekV3Attention` materializes conventional K/V for caching rather than exposing the "absorbed"/latent cache format real efficient DeepSeek inference would use. So even once the adapter branch is added, compressing this cache benchmarks compression of a **reconstruction**, not the model's native latent representation — the same "don't force MLA back into ordinary K/V" concern from the original analysis still applies, just one layer further into the stack than initially thought (HF's own eager implementation does the reconstruction, not something this engine would need to add). A scientifically faithful MLA benchmark would need to intercept before `kv_b_proj` expansion, which is a genuinely new state-type addition (see the cross-cutting section below), not just an `AttentionOps` branch.
+**Engine correspondence — ✅ FULLY SUPPORTED on expanded-cache path (94th commit); Gate C fails by design (native latent not exposed):**
+- `load_attention_ops` → **succeeds** (`model_type="deepseek_v3"`, `qk_norm_layout="mla"`). FIDELITY/attention uses `project_attention_states()` / `project_mla_qkv()` for split nope/RoPE with asymmetric K/V (`D_k=64`, `D_v=32`).
+- `iter_layer_kv` → **succeeds** — FIDELITY/representation+memory, BEHAVIOR, and SYSTEM all run end-to-end. Verified: identity, TurboQuant, QJL, RocketKV (`tests/test_tinydeepseek_reference.py`).
+- **Scientific caveat (unchanged):** the cache being iterated is HF's already-*expanded* per-head K/V (post `kv_b_proj`), not the native compressed-latent (`kv_lora_rank=256`) representation. Reports disclose `cache_representation="expanded_kv"`. Gate C fails until MLA-native interception lands.
 - The vendored `modeling_tinydeepseek.py`'s import error is real but **irrelevant to this engine** unless something explicitly sets `trust_remote_code=True` in the future — worth remembering if that ever changes.
 
 ---
@@ -131,13 +131,13 @@ Full live-run evidence (exact commands, output) is in [`docs/results/shortlist_5
 | qwen3_0.6b | GQA | ✅ | ✅ (`qwen3`) | ✅ | ✅ | ✅ | ✅ |
 | gemma3_270m | MQA + local/global | ✅ | ✅ (`gemma3_text`, 86th commit) | ✅ | ✅ (per-layer RoPE) | ✅ | ✅ |
 | falcon_h1_0.5b | Hybrid Attn+Mamba2 | ✅ | ❌ no `falcon_h1` branch | ✅ (attn K/V only) | ❌ (Gate B) | ⚠️ `--skip-fidelity` runs; memory uses full visible bytes | ❌ (Gate B) |
-| tinydeepseek_0.5b | MLA | ✅ (native `deepseek_v3`) | ❌ no `deepseek_v3` branch | ✅ | ❌ (Gate B) | ⚠️ `--skip-fidelity` likely runs | ❌ (Gate B) |
+| tinydeepseek_0.5b | MLA | ✅ (native `deepseek_v3`) | ✅ (`deepseek_v3`, 94th commit) | ✅ | ✅ (expanded KV; Gate C fails) | ✅ | ✅ |
 
-**3 of 5 fully work today** (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m` — confirmed via reference tests and live gate evaluation, 2026-08-18). **2 of 5** remain blocked at Gate B only (`falcon_h1_0.5b`, `tinydeepseek_0.5b`). Falcon-H1 dual-state **accounting** is fixed (Gate C passes; `visible_state_bytes()` counts Mamba state); the remaining Falcon gap is the attention adapter. TinyDeepSeek additionally fails Gate C until MLA-native latent interception lands (expanded-cache disclosure is recorded in `ModelCapabilities`).
+**4 of 5 fully work today** (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`, `tinydeepseek_0.5b` — confirmed via reference tests and live gate evaluation, 2026-08-19). **`falcon_h1_0.5b`** remains blocked at Gate B only. Falcon-H1 dual-state **accounting** is fixed (Gate C passes). TinyDeepSeek fails Gate C by design until MLA-native latent interception lands (`cache_representation="expanded_kv"` disclosure in reports).
 
 ## What would actually need to change in the engine (ranked by how much of the shortlist it unblocks)
 
-1. **`framework/model_adapter.py::load_attention_ops`** — add `model_type == "falcon_h1"` and `model_type == "deepseek_v3"` branches. **Done for Gemma3** (`gemma3_text`, 86th commit). Falcon-H1 additionally needs registering the existing `qk_norm_layout="none"` path in `project_qkv`. This unblocks Gate B for the two remaining models.
+1. **`framework/model_adapter.py::load_attention_ops`** — add `model_type == "falcon_h1"` branch. **Done for Gemma3** (`gemma3_text`, 86th commit) **and TinyDeepSeek** (`deepseek_v3`, 94th commit). Falcon-H1 additionally needs registering the existing `qk_norm_layout="none"` path in `project_qkv`.
 2. **Per-layer RoPE selection** — **done for Gemma3** (`framework/rope.py::build_rope_context().get_rope(layer_idx)` in FIDELITY/attention; QJL/RocketKV receive per-layer embeddings from the native forward pass).
 3. **Hybrid state interface** — **done (WP1):** `iter_layer_states()` + `visible_state_bytes()` count Falcon Mamba state; Gate C passes. Compression remains attention-K/V-only by policy.
 4. **A latent-KV (MLA) state type** — still open for TinyDeepSeek: Gate C fails until native `kv_lora_rank` interception lands. Today's cache is HF's expanded per-head K/V reconstruction.
@@ -145,4 +145,4 @@ Full live-run evidence (exact commands, output) is in [`docs/results/shortlist_5
 
 Live-run evidence (real tracebacks, successful-run numbers for `olmo2_1b`/`qwen3_0.6b`/`gemma3_270m`) behind every claim above: [`docs/results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md`](../docs/results/shortlist_5model_eval/EVAL_FRAMEWORK_CORRESPONDENCE.md).
 
-The remaining structural gaps (Falcon-H1 adapter, TinyDeepSeek adapter + MLA-native state) match the `ModelAdapterRegistry` / typed-state direction in `docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md`.
+The remaining structural gaps (Falcon-H1 adapter; optional MLA-native latent state for TinyDeepSeek Gate C) match the `ModelAdapterRegistry` / typed-state direction in `docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md`.

@@ -219,12 +219,19 @@ def extract_compression_budget(compressor: KVCompressor) -> dict[str, Any]:
     """Method-specific compression budget — the knob that defines aggressiveness."""
     budget: dict[str, Any] = {
         "compressor": compressor.name,
+        "compression_method": compressor.name,
         "bitwidth": getattr(compressor, "bitwidth", None),
     }
 
     stage = getattr(compressor, "stage", None)
     if stage is not None:
         budget["stage"] = stage.value if hasattr(stage, "value") else str(stage)
+
+    pipeline = getattr(compressor, "pipeline", None)
+    if pipeline is not None and hasattr(pipeline, "seed"):
+        budget["seed"] = getattr(pipeline, "seed")
+    elif hasattr(compressor, "seed"):
+        budget["seed"] = getattr(compressor, "seed")
 
     for attr in (
         "token_budget",
@@ -282,6 +289,7 @@ def build_controlled_conditions(
     tokenizer: PreTrainedTokenizerBase | None = None,
     model_path: Path | str | None = None,
     device: torch.device | None = None,
+    model_precision: torch.dtype | str | None = None,
     dataset: str | None = None,
     dataset_split: str | None = None,
     perplexity_stride: int | None = None,
@@ -332,6 +340,7 @@ def build_controlled_conditions(
         "context_length": context_length,
         "generation_length": gen_len,
         "batch_size": eval_config.get("batch_size", 1),
+        "precision": format_model_precision(model_precision),
         "decode_loop": "incremental_kv_engine_no_recompression",
         "decoding_configuration": build_decoding_configuration(
             generation_length=gen_len,

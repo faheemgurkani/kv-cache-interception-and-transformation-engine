@@ -247,6 +247,7 @@ class EvaluationRunner:
             tokenizer=self.model_layer.tokenizer,
             model_path=self.model_layer.model_path,
             device=self.model_layer.device,
+            model_precision=self.model_layer.torch_dtype,
             perplexity_stride=stride,
             generation_length=num_new_tokens,
             run_fidelity=run_fidelity,

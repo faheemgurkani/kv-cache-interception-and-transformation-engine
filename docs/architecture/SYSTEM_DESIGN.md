@@ -1,8 +1,26 @@
 # System Design — KV Cache Interception and Transformation Engine
 
-**Purpose:** compression task analysis and benchmarking. Fixed model + eval stack; **only `compressors/` changes per method.**
+**Purpose:** controlled KV interception and transformation under matched conditions — not “run N compressors and pick a winner.” Fixed model + input + decode loop + eval stack; **only `compressors/` changes per method.**
 
-This is a **generic evaluation framework**, not a TurboQuant-only implementation. The engine provides unified KV interception, plug-in compressors, and three evaluation branches — **FIDELITY** (did the transformation preserve the KV representation and attention behavior?), **BEHAVIOR** (does the model still behave correctly after KV transformation?), and **SYSTEM** (does the compression actually make inference better?). Published KV-compression papers propose new algorithms; this repo standardizes how those algorithms are measured under online inference.
+This is a **controlled interception environment**, not a single-algorithm reproduction. The engine provides unified KV interception, plug-in compressors, and three evaluation branches — **FIDELITY** (did the transformation preserve the KV representation and attention behavior?), **BEHAVIOR** (does the model still behave correctly after KV transformation?), and **SYSTEM** (does the compression actually make inference better?). Published KV-compression papers propose new algorithms; this repo standardizes how those algorithms are measured under the same incremental inference path.
+
+## Phase 6: controlled comparison
+
+```text
+                    SAME MODEL
+                        │
+                    SAME INPUT
+                        │
+                 SAME DECODE LOOP
+                        │
+          KV INTERCEPTION (KVCacheEngine)
+                        │
+          Compressor A  vs  Compressor B   ← only variable axis
+                        │
+             FIDELITY / BEHAVIOR / SYSTEM
+```
+
+Every run records the contract in `EvaluationResult.controlled_conditions` (`eval/controlled_conditions.py`): which axes are fixed vs. which vary. Export via `to_dict()["controlled_conditions"]`.
 
 ## Architecture
 

@@ -1,4 +1,9 @@
-"""KV-cache interception engine — compresses KV flow between transformer steps."""
+"""KV-cache interception engine — compresses KV flow between transformer steps.
+
+Phase 6 contract: this engine is the fixed decode path. Model weights, input
+tokens, attention implementation (eager), and incremental no-recompression
+semantics are shared across runs; only the bound ``KVCompressor`` plug-in varies.
+"""
 
 from __future__ import annotations
 
@@ -37,6 +42,9 @@ class KVCacheEngine:
     """
     Intercepts past_key_values after each forward pass, runs the plug-in
     compressor, and decompresses before the next step.
+
+    This is the controlled interception point (Phase 6): every compressor shares
+    the same incremental decode loop; swap ``compressor`` only.
 
     Online mode stores **incremental** compressed payloads: each token's K/V is
     compressed once when it is produced and never re-compressed on later steps.

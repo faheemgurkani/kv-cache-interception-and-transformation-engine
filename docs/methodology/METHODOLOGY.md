@@ -24,6 +24,44 @@ Equations: [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) · Res
 
 Context construction: WikiText-2 test split is tokenized and concatenated to exactly `context_length` tokens via `data/loader.py` (`build_long_context_ids`).
 
+### 1.1 Controlled interception contract (Phase 6)
+
+KVBench’s methodological contribution is the **controlled interception environment**, not any single compressor. Every evaluation run holds these axes fixed and varies **only the KV transformation**:
+
+```text
+                    SAME MODEL
+                        │
+                    SAME INPUT
+                        │
+                 SAME DECODE LOOP  (KVCacheEngine, incremental, no re-compression)
+                        │
+                ┌───────┴───────┐
+                │               │
+          Method A          Method B   ← only compressor plug-in changes
+                │               │
+                └───────┬───────┘
+                        ↓
+                  SAME INFERENCE
+                        ↓
+             FIDELITY / BEHAVIOR / SYSTEM
+                        ↓
+                 FAIR COMPARISON
+```
+
+**Principle:** different KV transformations execute through the same inference path under matched conditions.
+
+**Code:** `eval/controlled_conditions.py` builds a `ControlledInterceptionContract` per run; `EvaluationRunner.run()` attaches it to `EvaluationResult.controlled_conditions` and exports it in JSON as `controlled_conditions` (`fixed` vs `variable` axes).
+
+| Held fixed | May vary |
+|---|---|
+| Model, tokenizer, precision, eager attention | Compressor plug-in (`compressors/`) |
+| Dataset, context length, batch size | Bitwidth, stage, method-specific budget |
+| Incremental decode loop (`framework/kv_engine.py`) | Taxonomy category (metadata) |
+| FIDELITY / BEHAVIOR / SYSTEM metric definitions | — |
+| PPL stride, throughput token count, attention window | — |
+
+Legacy paper writeup (`docs/research_paper_writeup/`) still labels branches Section A/B; code and docs use FIDELITY / BEHAVIOR / SYSTEM. Paper narrative update is deferred.
+
 ---
 
 ## 2. System architecture

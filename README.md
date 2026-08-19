@@ -2,10 +2,12 @@
 
 **A unified interception engine and three-dimensional evaluation stack for KV-cache compression in small language models (SLMs).**
 
-This repository implements the **KV Cache Interception and Transformation Engine**: it intercepts K/V tensors at the decode boundary, transforms them through interchangeable compression plug-ins, and measures fidelity, generation behavior, and system-level inference cost under incremental decode. The reproducible benchmarking protocol and case-study results are published under the name **[KVBench](docs/research_paper_writeup/conference_101719.tex)** (research manuscript in preparation).
+This repository implements the **KV Cache Interception and Transformation Engine**: a **controlled interception environment** where the same model, input, and incremental decode loop run under matched conditions and **only the KV compressor plug-in varies**. Results are measured on FIDELITY / BEHAVIOR / SYSTEM — not a coarse offline/online split. The reproducible case-study protocol is published under the name **[KVBench](docs/research_paper_writeup/conference_101719.tex)** (research manuscript in preparation; paper narrative update for Phase 6 deferred).
 
 ```text
 Model (fixed) → KVCacheEngine (fixed) → KVCompressor (variable) → eval/ (fixed)
+                              ↓
+                  FIDELITY / BEHAVIOR / SYSTEM
 ```
 
 The engine is **not** a single-algorithm reproduction. It fixes the model, incremental decode loop, and metrics while exposing KV-cache compressors as interchangeable plug-ins, and always reports three independent evaluation dimensions instead of a coarse offline/online split:

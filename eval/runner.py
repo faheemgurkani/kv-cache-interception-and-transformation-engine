@@ -1,5 +1,10 @@
 """Paper-independent evaluation orchestrator.
 
+Phase 6: every run executes under a controlled interception contract — same
+model, same input construction, same incremental decode loop, same metric
+definitions; only the KV compressor plug-in varies. See
+``eval/controlled_conditions.py``.
+
 Every run produces three independent branches instead of the old offline/online
 split:
 
@@ -30,6 +35,7 @@ from compressors.registry import get_compressor
 from compressors.taxonomy import get_method_taxonomy
 from data.loader import build_long_context_ids, load_wikitext2
 from eval.behavior import BehaviorMetrics, evaluate_behavior
+from eval.controlled_conditions import ControlledInterceptionContract, build_controlled_conditions
 from eval.cost import CostMetrics, evaluate_cost
 from eval.fidelity import FidelityMetrics, evaluate_fidelity
 from eval.system import SystemMetrics, evaluate_system
@@ -57,6 +63,7 @@ class EvaluationResult:
     model_capabilities: ModelCapabilities | None = field(default=None, repr=False)
     model_metadata: dict[str, object] | None = field(default=None, repr=False)
     compatibility_probe: CompatibilityProbe | None = field(default=None, repr=False)
+    controlled_conditions: ControlledInterceptionContract | None = field(default=None, repr=False)
 
     # --- back-compat accessors (previous Section A/B field names) ---
     @property
@@ -97,6 +104,9 @@ class EvaluationResult:
                 None
                 if get_method_taxonomy(self.compressor) is None
                 else get_method_taxonomy(self.compressor).to_dict()  # type: ignore[union-attr]
+            ),
+            "controlled_conditions": (
+                None if self.controlled_conditions is None else self.controlled_conditions.to_dict()
             ),
         }
 
@@ -218,6 +228,15 @@ class EvaluationRunner:
                 system=system,
             )
 
+        controlled = build_controlled_conditions(
+            model_metadata=probe.metadata,
+            eval_config=self.eval_config,
+            context_length=context_length,
+            compressor_name=self.compressor.name,
+            bitwidth=getattr(self.compressor, "bitwidth", None),
+            stage=_compressor_stage(self.compressor),
+        )
+
         return EvaluationResult(
             compressor=self.compressor.name,
             bitwidth=getattr(self.compressor, "bitwidth", None),
@@ -230,6 +249,7 @@ class EvaluationRunner:
             model_capabilities=probe.capabilities,
             model_metadata=probe.metadata,
             compatibility_probe=probe,
+            controlled_conditions=controlled,
         )
 
     def run_all_context_lengths(

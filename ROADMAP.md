@@ -33,6 +33,7 @@ Research manuscript (**KVBench**) in preparation. This roadmap lists planned ext
 
 - [ ] Contributor tutorials for new compressors and SLM adapters
 - [ ] Published arXiv manuscript + updated `CITATION.cff`
+- [ ] Phase 6 paper rewrite: controlled interception narrative + FIDELITY/BEHAVIOR/SYSTEM (code/docs done; `docs/research_paper_writeup/` deferred)
 - [ ] Example notebooks for inspecting FIDELITY/BEHAVIOR/SYSTEM artifacts
 
 ## Explicitly out of scope (for now)

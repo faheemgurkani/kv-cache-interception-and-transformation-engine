@@ -55,3 +55,6 @@ def test_evaluation_runner_identity_smoke():
     assert payload["cost"]["compression"]["theoretical_compression_ratio"] == 1.0
     assert payload["cost"]["offline"]["calibration_required"] is False
     assert payload["cost"]["online"]["end_to_end_decode_cost_ms"] is not None
+    assert payload["controlled_conditions"] is not None
+    assert payload["controlled_conditions"]["variable"]["compressor"] == "identity"
+    assert payload["controlled_conditions"]["fixed"]["context_length"] == 128

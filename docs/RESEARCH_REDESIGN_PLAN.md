@@ -2,7 +2,7 @@
 
 ## Implementation status — Phases 1–4 (§1–230, verified 2026-08-19)
 
-**Executive verdict:** **Phases 1–4 are complete** in code, core documentation, and tests. Phase 4 adds compression **taxonomy** (A–E) plus **SnapKV** (eviction) and **Palu** (projection) plug-ins. **Phase 5 (heterogeneous/adaptive plugin API) is not planned for implementation** — retained below as design reference only.
+**Executive verdict:** **Phases 1–4 are complete** in code, core documentation, and tests. Phase 4 adds compression **taxonomy** (A–E) plus **SnapKV** (eviction) and **Palu** (projection) plug-ins. **Phase 5 (heterogeneous/adaptive plugin API) is not planned for implementation** — retained below as design reference only. **Phase 6 (controlled interception as central contribution) is done in code + docs**; **paper narrative update is deferred** (`docs/research_paper_writeup/` still uses Section A/B framing).
 
 | Phase / section | Status | Primary evidence |
 | --------------- | ------ | ---------------- |
@@ -13,6 +13,7 @@
 | §Phase 3 Cost accounting | ✅ Done | `eval/cost/accounting.py`, `EvaluationResult.cost`, compressor hooks |
 | §Phase 4 Taxonomy + SnapKV/Palu | ✅ Done | `compressors/taxonomy.py`, `snapkv`, `palu` plug-ins |
 | §Phase 5 Plugin architecture upgrade | ⏸ Not planned | Aspirational only — do not implement or follow up |
+| §Phase 6 Controlled interception | ✅ Code/docs done · 📝 Paper later | `eval/controlled_conditions.py`, `EvaluationResult.controlled_conditions` |
 
 **Tests:** `tests/test_eval_runner.py` (default-branch smoke + probe/manifest); `tests/test_regression_validation.py` (WP5 identity + Phase-5 baseline drift); `tests/test_online_inference.py` (throughput + PPL); `tests/test_behavior_modules.py` and `tests/test_system_modules.py` (unit + module-isolation for every BEHAVIOR/SYSTEM sub-metric); per-model `tests/test_*_reference.py` (full integration).
 
@@ -283,7 +284,9 @@ This is important because recent methods increasingly use heterogeneous and adap
 
 ---
 
-# Phase 6: Make the Interception Engine the Central Methodological Contribution
+# Phase 6: Make the Interception Engine the Central Methodological Contribution ✅ **Code/docs done · 📝 Paper deferred**
+
+> **Status (2026-08-19):** **Implementation complete** — controlled interception contract in `eval/controlled_conditions.py`, emitted on every `EvaluationResult` as `controlled_conditions`; `framework/kv_engine.py` and evaluation docs frame FIDELITY / BEHAVIOR / SYSTEM under matched conditions. **Paper update deferred** — `docs/research_paper_writeup/conference_101719.tex` still uses “benchmarking framework” + Section A/B naming; rewrite abstract, contributions, and figure captions later.
 
 This is important for your paper.
 
@@ -319,7 +322,9 @@ The key methodological value is:
 
 > **Different KV transformations are executed through the same inference path under matched conditions.**
 
-That controlled environment is much more important than simply saying "we benchmark several methods." 
+That controlled environment is much more important than simply saying "we benchmark several methods."
+
+**Code:** `eval/controlled_conditions.py` · **Runner field:** `EvaluationResult.controlled_conditions` · **Export:** `to_dict()["controlled_conditions"]` · **Tests:** `tests/test_controlled_conditions.py`
 
 ---
 

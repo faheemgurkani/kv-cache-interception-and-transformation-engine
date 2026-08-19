@@ -32,6 +32,8 @@ class ConformanceSpec:
     num_q_heads: int
     num_kv_heads: int
     head_dim: int
+    hybrid: bool = False
+    expect_state_semantics: bool = True
 
 
 CONFORMANCE_MODELS = [
@@ -66,6 +68,15 @@ CONFORMANCE_MODELS = [
         num_q_heads=4,
         num_kv_heads=1,
         head_dim=256,
+    ),
+    ConformanceSpec(
+        name="falcon_h1_0.5b",
+        model_path=PROJECT_ROOT / "models" / "falcon_h1_0.5b",
+        num_layers=36,
+        num_q_heads=8,
+        num_kv_heads=2,
+        head_dim=64,
+        hybrid=True,
     ),
 ]
 
@@ -113,7 +124,8 @@ def test_adapter_conformance(conformance_model):
     assert attention_gate.passed is True
 
     semantics_gate = check_state_semantics_gate(config, outputs.past_key_values)
-    assert semantics_gate.passed is True
+    if spec.expect_state_semantics:
+        assert semantics_gate.passed is True
 
     layers = list(iter_layer_kv(outputs.past_key_values))
     assert len(layers) == spec.num_layers
@@ -151,4 +163,7 @@ def test_adapter_conformance(conformance_model):
 
     cache_bytes = get_cache_size_bytes(outputs.past_key_values)
     state_bytes = visible_state_bytes(outputs.past_key_values)
-    assert cache_bytes == state_bytes
+    if spec.hybrid:
+        assert state_bytes > cache_bytes
+    else:
+        assert cache_bytes == state_bytes

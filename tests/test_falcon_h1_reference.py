@@ -264,6 +264,9 @@ def _assert_eval_branches_complete(result, compressor_name: str) -> None:
         assert result.fidelity.attention.cosine_similarity > 0.99
         assert mem.compression_ratio == pytest.approx(1.0, rel=1e-3)
         assert mem.kv_compression_ratio == pytest.approx(1.0, rel=1e-3)
+        assert result.fidelity.recurrent.applicable is True
+        assert result.fidelity.recurrent.exact_preservation is True
+        assert result.fidelity.recurrent.max_abs_error == 0.0
     elif compressor_name == "turboquant":
         assert result.fidelity.representation.key_cosine_similarity > 0.8
         assert result.fidelity.attention.cosine_similarity > 0.8
@@ -326,4 +329,8 @@ def test_falcon_h1_identity_acceptance(falcon_runner: EvaluationRunner):
     assert result.fidelity.attention.cosine_similarity > 0.99
     assert result.fidelity.representation.key_cosine_similarity > 0.99
     assert result.fidelity.memory.compression_ratio == pytest.approx(1.0, rel=1e-3)
+    assert result.fidelity.recurrent.applicable is True
+    assert result.fidelity.recurrent.exact_preservation is True
+    assert result.fidelity.recurrent.max_abs_error == 0.0
+    assert result.fidelity.recurrent.layers_with_recurrent == FALCON_SPEC["num_layers"]
     assert result.behavior.perplexity is not None and result.behavior.perplexity > 0

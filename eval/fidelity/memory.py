@@ -7,9 +7,10 @@ from dataclasses import dataclass
 import torch
 
 from compressors.base import KVCompressor
-from framework.kv_cache import apply_compressor, compressed_size_bytes, get_cache_size_bytes
+from framework.kv_cache import compressed_size_bytes, get_cache_size_bytes
 from framework.model import ModelLayer
 from framework.model_capabilities import resolve_model_capabilities
+from framework.state_compression import compress_state, compressed_attention_layers
 from framework.state_interface import (
     attention_kv_bytes,
     count_visible_state_elements,
@@ -92,7 +93,8 @@ def evaluate_memory_from_cache(
     visible_bytes = visible_state_bytes(past_key_values)
     num_elements = count_visible_state_elements(past_key_values)
 
-    compressed_layers = apply_compressor(past_key_values, compressor)
+    compressed_states = compress_state(past_key_values, compressor, capabilities=caps)
+    compressed_layers = compressed_attention_layers(compressed_states)
     payload_bytes = compressed_size_bytes(compressed_layers, compressor)
     shared_metadata_bytes = compressor.shared_storage_bytes()
     compressed_kv_bytes = payload_bytes + shared_metadata_bytes

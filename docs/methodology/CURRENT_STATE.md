@@ -10,7 +10,7 @@ Scope and caveats for the **KV Cache Interception and Transformation Engine** (c
 | ✅ | Case studies: TurboQuant, QJL, RocketKV on Qwen3-1.7B, replicated on OLMo2-1B |
 | ⚠️ | WikiText-2, ctx ≤512 per run — sufficient for arXiv framework paper, not top-tier conference breadth |
 | 🔜 | More contexts, algorithms (SnapKV, KIVI, AdaKV), benchmarks (LongBench, RULER) |
-| ⚠️ | All **5 of 5** shortlist models are fully wired for eval (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`, `tinydeepseek_0.5b`, `falcon_h1_0.5b`). TinyDeepSeek Gate C fails on expanded KV (by design). Legacy `qwen3_1.7b`/`olmo1b` unchanged. See [ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md § audit](../ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#implementation-verification-audit-2026-08-18), [MODEL_ARCHITECTURE_MATRIX.md](../architecture/MODEL_ARCHITECTURE_MATRIX.md), [results/shortlist_5model_eval/](../results/shortlist_5model_eval/) |
+| ⚠️ | All **5 of 5** shortlist models are fully wired for eval (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`, `tinydeepseek_0.5b`, `falcon_h1_0.5b`). **TinyDeepSeek Gate C fails by design** (expanded KV ≠ native latent); all other gates pass. FIDELITY includes a **recurrent** sub-metric for hybrid models (§25). Legacy `qwen3_1.7b`/`olmo1b` unchanged. See [ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md § audit](../ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#implementation-verification-audit-2026-08-19-hardened), [MODEL_ARCHITECTURE_MATRIX.md](../architecture/MODEL_ARCHITECTURE_MATRIX.md), [results/shortlist_5model_eval/](../results/shortlist_5model_eval/) |
 
 ## Implementation limits
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from compressors.base import CompressedKV, KVCompressor
-from framework.model_capabilities import StateType
+from framework.model_capabilities import ModelCapabilities, StateType
 from framework.state_interface import LayerState, RecurrentState, iter_layer_states
 
 

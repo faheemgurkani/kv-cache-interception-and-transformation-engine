@@ -4,6 +4,7 @@ Sub-metrics:
 - representation — tensor-level reconstruction RMSE (compressors/representation.py)
 - attention      — QK^T attention-score preservation
 - memory         — KV-cache storage accounting (bytes, compression ratio, effective bitwidth)
+- recurrent      — hybrid Mamba state preservation R'_t = R_t (§25; hybrid models only)
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import torch
 from compressors.base import KVCompressor
 from eval.fidelity.attention import AttentionMetrics, evaluate_attention_fidelity
 from eval.fidelity.memory import MemoryMetrics, evaluate_memory_from_cache
+from eval.fidelity.recurrent import RecurrentMetrics, evaluate_recurrent_fidelity
 from eval.fidelity.representation import RepresentationMetrics, evaluate_representation
 from framework.config import load_eval_config
 from framework.model import ModelLayer
@@ -23,10 +25,12 @@ __all__ = [
     "AttentionMetrics",
     "FidelityMetrics",
     "MemoryMetrics",
+    "RecurrentMetrics",
     "RepresentationMetrics",
     "evaluate_attention_fidelity",
     "evaluate_fidelity",
     "evaluate_memory_from_cache",
+    "evaluate_recurrent_fidelity",
     "evaluate_representation",
 ]
 
@@ -39,16 +43,19 @@ class FidelityMetrics:
         representation: RepresentationMetrics,
         attention: AttentionMetrics,
         memory: MemoryMetrics,
+        recurrent: RecurrentMetrics,
     ) -> None:
         self.representation = representation
         self.attention = attention
         self.memory = memory
+        self.recurrent = recurrent
 
     def to_dict(self) -> dict:
         return {
             "representation": self.representation.to_dict(),
             "attention": self.attention.to_dict(),
             "memory": asdict(self.memory),
+            "recurrent": self.recurrent.to_dict(),
         }
 
 
@@ -84,9 +91,20 @@ def evaluate_fidelity(
         compressor,
         past_key_values=past_key_values,
     )
+    recurrent = evaluate_recurrent_fidelity(
+        past_key_values,
+        compressor,
+        model_layer.config,
+        device=model_layer.device,
+    )
     del outputs
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     if hasattr(compressor, "reset_state"):
         compressor.reset_state()
-    return FidelityMetrics(representation=representation, attention=attention, memory=memory)
+    return FidelityMetrics(
+        representation=representation,
+        attention=attention,
+        memory=memory,
+        recurrent=recurrent,
+    )

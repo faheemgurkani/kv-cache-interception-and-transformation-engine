@@ -4,7 +4,7 @@
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phases 15–23** are **paper-only** (framing through results narrative). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, **14**, **24**, and **25** are **complete in the engine and documentation**. **Phases 15–23** are **paper-only** (framing through results narrative). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto/cross-dim (Phases 9/24/25) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -30,11 +30,13 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **21** Introduction narrative | — | 📝 Spec only | 📝 Pending | Seven-paragraph Intro story — Phase 21 |
 | **22** Contributions rewrite | — | 📝 Spec only | 📝 Pending | Five-contribution taxonomy + Intro packaging — Phase 22 |
 | **23** Results narrative | — | 📝 Spec only | 📝 Pending | Seven research findings vs leaderboard — Phase 23 |
+| **24** Cross-dimensional analysis | ✅ Done | ✅ Done | 📝 Pending | `eval/cross_dim/`, `scripts/analyze_cross_dim.py` |
+| **25** Trade-off figures | ✅ Done | ✅ Done | 📝 Pending | `plot_tradeoff_*.pdf` + Phase 9 Pareto — Phase 25 |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 | **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
 
-**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_reproducibility_harness.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_hardware_profile.py`, `tests/test_modal_merge_hardware.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
+**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_reproducibility_harness.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_cross_dim_analysis.py`, `tests/test_hardware_profile.py`, `tests/test_modal_merge_hardware.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
 
 **Paper rewrite hub:** [`conference_101719.tex`](research_paper_writeup/conference_101719.tex) — full section-by-section spec in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below.
 
@@ -278,11 +280,11 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | Axis labels “Section A” vs “Section B”; `plot_offline_vs_online.pdf`. **Pareto:** `plot_pareto.pdf` at T=512 — memory ratio vs log PPL ratio, marker area ∝ tok/s, empirical front (L475–481); cited in Discussion L617. |
 | **Codebase** | `scripts/analyze_pareto.py`, `eval/pareto/analysis.py`, `ResultReporter.save_pareto()` — regenerates 2D/3D front from job bundles + writes `pareto_ctx512.json`. |
-| **Change** | **Offline-vs-online figure:** regenerate with FIDELITY vs BEHAVIOR labels. **Pareto figure:** *concept unchanged* — re-export via CLI from post-rewrite bundles (do not hand-draw). Update caption footnote: “Pareto front computed by `scripts/analyze_pareto.py` from job JSON.” Optionally cite optimal set from `pareto_ctx512.json` in text. |
-| **When** | During paper rewrite pass **after** re-sweep bundles land (same timing as result tables). Pareto can be regenerated **without** new GPU jobs if existing Phase-5 JSON is reused. |
-| **Why** | Paper already demonstrates the trade-off analysis (Phase 9 goal met visually); engine gap was reproducibility — now closed. Rewrite pass should align figure provenance with automated export, not change the scientific claim. |
+| **Change** | **Offline-vs-online figure:** regenerate with FIDELITY vs BEHAVIOR labels. **Pareto figure (Phase 9 / F7):** re-export via `scripts/analyze_pareto.py`. **Trade-off figure (Phase 25):** add `plot_tradeoff_ctx512.pdf` (Quality↔Memory + Quality↔Speed panels) via `scripts/analyze_cross_dim.py`. **Correlation appendix (Phase 24):** optional table from `correlations_ctx512.json`. Update captions with CLI provenance. |
+| **When** | During paper rewrite pass **after** re-sweep bundles land (same timing as result tables). Can replot from existing Phase-5 JSON without new GPU jobs. |
+| **Why** | Paper already demonstrates trade-off analysis; engine now automates Pareto + cross-dim export. |
 | **Needs new results?** | **Only if** sweep grid/methods change; otherwise replot from existing JSON |
-| **Phase** | 1, 2, 9 |
+| **Phase** | 1, 2, 9, 23, 24, 25 |
 
 #### §Experiments setup — hardware block (L216–229, extends Phase 7 table)
 
@@ -338,6 +340,8 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | Cost tree | §6.5 + `eval/cost/accounting.py` |
 | Taxonomy table | `compressors/taxonomy.py` `METHOD_TAXONOMY` |
 | Pareto optimal set | `python scripts/analyze_pareto.py … --context-length 512` → `pareto_ctx512.json` |
+| Cross-dim correlations | `python scripts/analyze_cross_dim.py … --context-length 512` → `correlations_ctx512.json` |
+| Trade-off figure | `results/cross_dim/plot_tradeoff_ctx512.pdf` (Phase 25); Pareto: `plot_pareto_ctx512.pdf` (Phase 9/F7) |
 | Hardware + VRAM/GPU util | `result.to_dict()["hardware"]`, `system.peak_memory`, `system.gpu_utilization`; Modal merge CSV |
 | Result numbers | `results/phase5_modal_*`, `results/olmo2_phase5_*` (or post-rewrite bundles) |
 
@@ -346,7 +350,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | Tier | When | Scope |
 | ---- | ---- | ----- |
 | **Minimal** | Re-sweep done; tight page limit | Terminology pass + controlled conditions table + **Phases 15–22 prose**; **Phase 23** findings structure in Experiments + Discussion; regenerate Pareto (Phase 9) |
-| **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) + optional **problem-cascade figure** (Phase 16) + reproducibility subsection (Phase 14) + **Phase 24** correlation table (optional appendix) |
+| **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) + optional **problem-cascade figure** (Phase 16) + reproducibility subsection (Phase 14) + **correlation table** from `correlations_ctx512.json` (Phase 24) + **trade-off figure** (Phase 25) |
 
 ### Phases 15–22 — recommended `.tex` rewrite order
 
@@ -372,6 +376,10 @@ Apply in **one framing pass** before editing result numbers (can precede re-swee
 | 9 | **23** | `\label{sec:experiments}` opening L215–218; `\label{sec:qwen3}` / `\label{sec:olmo2}` paragraph leads L319+; **NEW** `\subsection{Research Findings}` or restructure `\label{sec:discussion}` L595–623 as seven finding blocks; Pareto + offline-vs-online captions |
 
 Apply step **9** when result tables/figures are updated (re-sweep or replot from existing JSON). **Finding 6 (workload)** is **future work only** — do not claim multi-workload answers (Phase 11 deferred).
+
+| Step | Phase | Primary `.tex` targets |
+| ---- | ----- | -------------------- |
+| 10 | **24–25** | Regenerate `plot_pareto.pdf`, `plot_tradeoff.pdf`, optional appendix correlation table from CLI; Discussion **F1/F3/F7** cites `correlations_ctx512.json` weak predictors |
 
 Cross-link [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) for line-level detail.
 
@@ -1930,6 +1938,7 @@ Use these as **building blocks**; merge for Intro if page-limited (see packaging
 | **3** | Cost as optional sub-bullet under C2 or C3 (full tier) |
 | **4** | C5 taxonomy table cross-ref |
 | **7, 14** | C3 controlled conditions + reproducibility export |
+| **23** | C4 empirical demonstrations expressed as **Findings 1–7** |
 
 ### Completeness record
 
@@ -2021,7 +2030,8 @@ Use these as **building blocks**; merge for Intro if page-limited (see packaging
 | **23** | ¶7 / C4 land as finding-led Discussion |
 | **9** | F7 Pareto — regenerate via `scripts/analyze_pareto.py` |
 | **11** | F6 deferred — do not claim |
-| **24** | Optional appendix: correlation matrix supporting F1–F3 (full tier) |
+| **24** | Optional appendix: correlation matrix supporting F1–F3 (full tier) — **`correlations_ctx512.json`** |
+| **25** | **`plot_tradeoff_ctx512.pdf`** visualizes F7; complements Phase 9 Pareto |
 
 ### Completeness record
 
@@ -2033,52 +2043,127 @@ Use these as **building blocks**; merge for Intro if page-limited (see packaging
 
 ---
 
-# Phase 24: Add Cross-Dimensional Analysis
+# Phase 24: Add Cross-Dimensional Analysis ✅ **Done**
 
-This is particularly valuable.
+> **Status (2026-08-20):** **Implementation complete** — `eval/cross_dim/` computes Pearson correlations across six predefined metric pairs from job JSON or `EvaluationResult` lists. CLI: `scripts/analyze_cross_dim.py`. Reporter: `ResultReporter.save_cross_dim()`. Tests: `tests/test_cross_dim_analysis.py`. Paper appendix / Discussion citation deferred.
 
-Analyze correlations such as:
+Answers the Phase 23 question: **which metrics actually predict real inference performance?** — by quantifying decoupling (weak |r|) rather than asserting it in prose only.
 
-```text
-Compression Ratio ↔ Memory Reduction
-Compression Ratio ↔ PPL
-Reconstruction Error ↔ PPL
-Reconstruction Error ↔ Task Accuracy
-Memory Reduction ↔ Throughput
-Online Overhead ↔ Throughput
-```
+### Metric pairs (engine defaults)
 
-Then ask:
+| Pair | Metrics | Phase 23 finding |
+| ---- | ------- | ---------------- |
+| Compression ratio ↔ memory reduction | `theoretical_compression_ratio` ↔ `compression_ratio` | F2 |
+| Compression ratio ↔ PPL | `compression_ratio` ↔ `perplexity_ratio` | F2 |
+| Reconstruction error ↔ PPL | `attention_rmse` ↔ `perplexity_ratio` | F1, F4 |
+| Reconstruction error ↔ task accuracy | `attention_rmse` ↔ `retrieval_accuracy` | F1 (requires BEHAVIOR retrieval in bundle) |
+| Memory reduction ↔ throughput | `compression_ratio` ↔ `tokens_per_second` | F3 |
+| Online overhead ↔ throughput | `online_overhead_ms` ↔ `tokens_per_second` | F3 |
 
-> Which metrics actually predict real inference performance?
+**Summary question** (exported in JSON): *Which metrics actually predict real inference performance?*
 
-This could become one of the most interesting empirical contributions of the paper.
+**Interpretation guide for paper:**
+
+| \|r\| range | Write in Discussion |
+| ---------- | ------------------- |
+| **< 0.5** | Metric X is a **weak predictor** of Y under this grid — supports decoupling claim |
+| **≥ 0.5** | Partial coupling — cite with caution; do not overgeneralize beyond SLM grid |
+| **n < 3** | Omit pair or mark “insufficient sample” (legacy bundles without cost/retrieval) |
+
+### Code ↔ paper mapping
+
+| Artifact | Path | Paper use |
+| -------- | ---- | --------- |
+| Correlation export | `results/cross_dim/correlations_ctx512.json` | Appendix table or Discussion footnote |
+| Pearson bar chart | `plot_correlation_ctx512.pdf` | Optional appendix figure |
+| CLI | `scripts/analyze_cross_dim.py` | Reproducibility appendix command |
+| Reporter hook | `ResultReporter.save_cross_dim(results)` | Post-sweep automation |
+
+**Point-ID fix (shared with Phase 9):** job `label` (e.g. `rocketkv_r256`, `turboquant` bitwidth via `stage`+`bN`) prevents config collapse when merging bundles.
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 2, step 10** | **§Discussion Finding 1 / 4** (L608) | Currently cites Pearson r from offline-vs-online figure only | Add: *“Cross-dimensional analysis (`correlations_ctx512.json`) shows attention RMSE ↔ PPL ratio \|r\| < 0.5 on the Phase-5 grid — reconstruction is not a reliable BEHAVIOR proxy.”* Use **actual r** from JSON after replot. |
+| **Rewrite pass 2** | **§Discussion Finding 3** (L617) | Memory ↔ speed decoupling asserted in prose | Cite `compression_ratio` ↔ `tokens_per_second` and `online_overhead_ms` ↔ `tokens_per_second` pairs from JSON. |
+| **Optional** | **Appendix: Cross-dimensional correlations** | Full tier only | Small table: pair label, n, Pearson r, linked Finding ID |
+| **Optional** | **`fig:offon` caption** (L613) | Complements correlation export | Note figure r matches `analyze_cross_dim` attention_rmse ↔ perplexity_ratio pair |
+| **Do not** | Claim retrieval ↔ RMSE correlation | Legacy Phase-5 bundles lack retrieval metrics | Pair appears with n=0 until BEHAVIOR retrieval sweeps run (Phase 11) |
+
+### Cross-references
+
+| Phase | Link |
+| ----- | ---- |
+| **23** | F1, F2, F3, F4 supported by correlation pairs |
+| **9** | Pareto answers F7; correlations answer “why no single winner” |
+| **25** | Trade-off figure visualizes same points |
+| **3** | `theoretical_compression_ratio` pair requires cost in bundle |
+| **11** | Retrieval accuracy pair deferred until external workloads |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | `eval/cross_dim/{points,correlation,plot}.py`, CLI, reporter, tests; point_id fix in `eval/pareto/analysis.py`. |
+| **Documentation** | ✅ Done | This section; `METHODOLOGY.md` §6.8. |
+| **Paper** | 📝 Pending | Discussion cites + optional appendix. Regenerate from Phase-5 JSON — **no new GPU jobs**. |
 
 ---
 
-# Phase 25: Add a "Compression Trade-off" Figure
+# Phase 25: Add a "Compression Trade-off" Figure ✅ **Done**
 
-A central figure could show:
+> **Status (2026-08-20):** **Implementation complete** — Phase 9 `plot_pareto.pdf` covers **F7** (memory vs log PPL, marker ∝ tok/s). Phase 25 adds a **reader-facing trade-off figure** with explicit Quality↔Memory and Quality↔Speed panels (`plot_tradeoff_ctx512.pdf`) plus optional 3D scatter (`--3d`). Same CLI as Phase 24: `scripts/analyze_cross_dim.py`.
+
+### Figure map (choose at rewrite time)
+
+| Figure | File | Axes | Phase / Finding |
+| ------ | ---- | ---- | --------------- |
+| **Pareto (existing)** | `plot_pareto_ctx512.pdf` | compression ratio × log₁₀ PPL ratio; size ∝ tok/s | Phase 9, **F7** |
+| **Trade-off (new)** | `plot_tradeoff_ctx512.pdf` | Panel A: memory ratio × **quality score**; Panel B: tok/s × quality score | **Phase 25** — central thesis visual |
+| **3D (optional)** | `plot_tradeoff_3d_ctx512.pdf` | compression ratio × tok/s × quality score | Appendix only |
+| **Offline vs online** | `plot_offline_vs_online.pdf` | attention RMSE × log PPL ratio | **F4** |
+
+**Quality score:** `1 / (1 + max(0, log10(PPL/baseline)))` — higher is better; matches commented dumbbell figure semantics in `.tex`.
+
+### Target visual (Phase 25 panels)
 
 ```text
-                 QUALITY
-                    ↑
-                    │
-                    │
-             ● A    │
-                    │       ● B
-                    │
-        ● C         │
-                    │
-                    └────────────────→
-                         MEMORY / SPEED
+  Quality score ↑          Quality score ↑
+       ● A                        ● A
+                 ● B
+  ● C                              ● C
+       └─ Memory ratio →           └─ tok/s →
 ```
 
-Or a 3D/paired plot showing:
+This communicates **no config dominates all three axes** more directly than a single Pareto plot for non-expert readers.
 
-> **Quality ↔ Memory ↔ Speed**
+### Paper change log — section by section (`conference_101719.tex`)
 
-This visually communicates the central thesis much better than another large table.
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 2, step 10** | **NEW fig: trade-off** (Experiments or Discussion, near `fig:pareto`) | Phase 25 deliverable | Include `plot_tradeoff_ctx512.pdf`. Caption: *“Quality↔Memory and Quality↔Speed trade-offs at T=512; quality score from BEHAVIOR PPL ratio. Generated by `scripts/analyze_cross_dim.py`.”* Cross-ref **Finding 7**. |
+| **Rewrite pass 2** | **`fig:pareto` caption** (L480) | Provenance | Footnote: regenerated via `scripts/analyze_pareto.py`; optimal set in `pareto_ctx512.json`. |
+| **Rewrite pass 2** | **§Discussion L617** | F7 narrative | Reference both Pareto front **and** trade-off panels: *“No single point dominates quality, memory, and speed (Fig. pareto + Fig. tradeoff).”* |
+| **Page-limited** | Keep Pareto only | Already in paper | Trade-off figure → appendix; still regenerate both from CLI |
+| **Do not** | Replace result tables with figures only | Evidence requirement | Figures supplement tables |
+
+### Cross-references
+
+| Phase | Link |
+| ----- | ---- |
+| **9** | Pareto = F7 primary; Phase 25 extends visualization |
+| **23** | F7 finding text references both figures |
+| **24** | Same CLI / JSON bundle; generate figures together |
+| **16** | Visual encodes metric decoupling cascade |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | `eval/cross_dim/plot.py` (`save_tradeoff_figure`, `save_tradeoff_3d_figure`); wired in CLI + reporter. |
+| **Documentation** | ✅ Done | This section; `METHODOLOGY.md` §6.8; [Figures row](#figures-offline-vs-online-pareto-l475-l608615) in paper alignment guide. |
+| **Paper** | 📝 Pending | Add trade-off figure at rewrite step **10**; regenerate Pareto. **No new GPU jobs** for current grid. |
 
 ---
 

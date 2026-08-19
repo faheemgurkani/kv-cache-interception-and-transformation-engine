@@ -110,8 +110,22 @@ def _dig(data: dict[str, Any], *path: str) -> Any:
     return cur
 
 
-def _point_id(compressor: str, context_length: int, stage: str | None, bitwidth: int | None) -> str:
-    suffix = stage or (f"b{bitwidth}" if bitwidth is not None else "default")
+def _point_id(
+    compressor: str,
+    context_length: int,
+    stage: str | None,
+    bitwidth: int | None,
+    label: str | None = None,
+) -> str:
+    if label:
+        safe = str(label).replace(" ", "_")
+        return f"{safe}_ctx{context_length}"
+    suffix_parts: list[str] = []
+    if stage:
+        suffix_parts.append(str(stage))
+    if bitwidth is not None:
+        suffix_parts.append(f"b{bitwidth}")
+    suffix = "_".join(suffix_parts) if suffix_parts else "default"
     return f"{compressor}_{suffix}_ctx{context_length}"
 
 
@@ -162,7 +176,7 @@ def extract_pareto_point(record: EvaluationResult | dict[str, Any]) -> ParetoPoi
 
     ratio = float(perplexity) / float(perplexity_baseline)
     label = payload.get("label") or _dig(payload, "job", "label")
-    pid = _point_id(str(compressor), int(context_length), stage, bitwidth)
+    pid = _point_id(str(compressor), int(context_length), stage, bitwidth, label)
 
     return ParetoPoint(
         point_id=pid,

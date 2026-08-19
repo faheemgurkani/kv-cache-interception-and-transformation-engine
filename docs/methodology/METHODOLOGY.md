@@ -379,7 +379,42 @@ After sweeps, compute non-dominated trade-offs from job JSON or `EvaluationResul
 
 Legacy Phase-5 bundles (`section_a_fidelity` / `section_b_inference`) and new three-branch `to_dict()` payloads are both supported.
 
-### 6.8 Hardware-aware evaluation (`eval/hardware/`, Phase 10)
+### 6.8 Cross-dimensional analysis (`eval/cross_dim/`, Phases 24–25)
+
+Compute Pearson correlations across metric axes and export trade-off figures from the same job JSON / `EvaluationResult` lists used for Pareto analysis.
+
+| Pair | Metrics | Phase 23 finding |
+|---|---|---|
+| Theoretical ↔ measured compression | `cost.compression.theoretical_compression_ratio` ↔ `fidelity.memory.compression_ratio` | F2 |
+| Compression ↔ quality | `compression_ratio` ↔ `perplexity_ratio` | F2 |
+| Reconstruction ↔ quality | `attention_rmse` ↔ `perplexity_ratio` | F1 |
+| Reconstruction ↔ task accuracy | `attention_rmse` ↔ `retrieval.exact_match_accuracy` | F1 (when BEHAVIOR tasks run) |
+| Memory ↔ throughput | `compression_ratio` ↔ `tokens_per_second` | F3 |
+| Online overhead ↔ throughput | `online_overhead_ms` ↔ `tokens_per_second` | F3 |
+
+**Quality score** (trade-off plots): `1 / (1 + max(0, log10(PPL/baseline)))` — higher is better BEHAVIOR proxy.
+
+**CLI:**
+
+```bash
+python scripts/analyze_cross_dim.py \
+  results/phase5_modal_baseline/*.json \
+  results/phase5_modal_sweep_128_256_512/*.json \
+  results/phase5_modal_qjl/*.json \
+  results/phase5_modal_rocketkv/*.json \
+  --context-length 512 --exclude-identity \
+  --output-dir results/cross_dim
+```
+
+**Outputs:** `correlations_ctx512.json`, `plot_tradeoff_ctx512.pdf` (Quality↔Memory + Quality↔Speed panels), `plot_correlation_ctx512.pdf` (Pearson bar chart). Optional `--3d` for `plot_tradeoff_3d_ctx512.pdf`.
+
+**Reporter:** `ResultReporter.save_cross_dim(results, context_length=512)`.
+
+**Tests:** `tests/test_cross_dim_analysis.py`.
+
+Point IDs use job `label` when present (e.g. `rocketkv_r256_ctx512`) so distinct configs at the same context do not collapse during bundle merge.
+
+### 6.9 Hardware-aware evaluation (`eval/hardware/`, Phase 10)
 
 **Scope:** one **single NVIDIA GPU per job** on Modal (`gpu=a10g` with `[a10g, l4, any]` fallbacks). A multi-GPU tier matrix (A100 / H100 / RTX 4090) is **not** automated — change `configs/modal.yaml` and rerun manually if needed.
 

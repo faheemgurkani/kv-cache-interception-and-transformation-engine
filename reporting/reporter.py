@@ -227,6 +227,28 @@ class ResultReporter:
         )
         return json_path
 
+    def save_cross_dim(
+        self,
+        results: list[EvaluationResult],
+        name: str = "cross_dim",
+        *,
+        context_length: int | None = 512,
+        exclude_identity: bool = False,
+        write_plot: bool = True,
+    ) -> Path:
+        """Write cross-dimensional correlation JSON (+ optional PDFs) under ``output_dir``."""
+        from reporting.cross_dim_report import save_cross_dim_analysis
+
+        _, json_path = save_cross_dim_analysis(
+            results,
+            self.output_dir,
+            context_length=context_length,
+            exclude_identity=exclude_identity,
+            write_plot=write_plot,
+            name_prefix=name,
+        )
+        return json_path
+
     @staticmethod
     def print_summary(results: list[EvaluationResult]) -> None:
         for result in results:

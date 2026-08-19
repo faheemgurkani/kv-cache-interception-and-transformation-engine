@@ -14,6 +14,7 @@
 | §Phase 4 Taxonomy + SnapKV/Palu | ✅ Done | `compressors/taxonomy.py`, `snapkv`, `palu` plug-ins |
 | §Phase 5 Plugin architecture upgrade | ⏸ Not planned | Aspirational only — do not implement or follow up |
 | §Phase 6 Controlled interception | ✅ Code/docs done · 📝 Paper later | `eval/controlled_conditions.py`, `EvaluationResult.controlled_conditions` |
+| §Phase 8 Multiple compression budgets | ⏸ Not planned | Existing sweeps sufficient; do not implement or follow up |
 
 **Tests:** `tests/test_eval_runner.py` (default-branch smoke + probe/manifest); `tests/test_regression_validation.py` (WP5 identity + Phase-5 baseline drift); `tests/test_online_inference.py` (throughput + PPL); `tests/test_behavior_modules.py` and `tests/test_system_modules.py` (unit + module-isolation for every BEHAVIOR/SYSTEM sub-metric); per-model `tests/test_*_reference.py` (full integration).
 
@@ -356,7 +357,9 @@ Your methodology can explicitly say:
 
 ---
 
-# Phase 8: Add Multiple Compression Budgets
+# Phase 8: Add Multiple Compression Budgets ⏸ **Not planned**
+
+> **Status (2026-08-19):** Out of scope. This section is **design reference only** — do **not** implement, schedule, or follow up on Phase 8. Current method-specific budget sweeps (TurboQuant bitwidth/stages, RocketKV token budgets) in existing results are sufficient for the paper; proceed from Phase 7 directly to Phase 9+.
 
 Don't only test one compression setting.
 

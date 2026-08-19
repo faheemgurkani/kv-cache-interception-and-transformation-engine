@@ -41,3 +41,5 @@ Research manuscript (**KVBench**) in preparation. This roadmap lists planned ext
 - Claiming novelty for TurboQuant / QJL / RocketKV algorithms themselves  
 - Exhaustive 7B–70B factorial sweeps as the primary paper claim  
 - Hybrid / linear-attention models that are not standard KV-cache causal LMs (e.g. Qwen3.5 hybrid) without a redesign of the interception contract  
+- **Phase 5:** heterogeneous/adaptive per-layer/head/token plugin API  
+- **Phase 8:** unified multi-budget compression–quality curve sweeps (existing per-method grids are sufficient)

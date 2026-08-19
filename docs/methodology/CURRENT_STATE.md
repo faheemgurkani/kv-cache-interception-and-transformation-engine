@@ -26,7 +26,7 @@ Scope and caveats for the **KV Cache Interception and Transformation Engine** (c
 | **Baseline eval order** | Baseline PPL runs before RocketKV attention patch (`eval/runner.py`) |
 | **FIDELITY vs BEHAVIOR** | FIDELITY metrics do not always predict BEHAVIOR/PPL (by design — framework surfaces the gap) |
 | **BEHAVIOR retrieval/reasoning/instruction-following** | Synthetic, in-repo generators (needle-in-haystack, add/subtract chains, yes/no format compliance) — not scraped benchmarks, so no license/contamination risk, but also not LongBench/RULER/MMLU-scale coverage yet |
-| **SYSTEM peak VRAM / GPU utilization** | CUDA-only (`torch.cuda`, optional `pynvml`); report as unavailable (not an error) on MPS/CPU |
-| **SYSTEM kernel_cost for RocketKV** | RocketKV's online path calls `compress_layer_from_kv` directly, bypassing the timed `compress_kv`/`decompress_kv` wrapper — its per-step compression cost reads as "attention" time in `kernel_cost` output |
+| **SYSTEM peak VRAM / GPU utilization** | **CUDA:** allocator peaks via `torch.cuda.max_memory_*`. **MPS:** `torch.mps.current_allocated_memory` / `driver_allocated_memory` (polled peak). **CPU:** process RSS peak via `psutil`. GPU util uses NVML on CUDA; **MPS/CPU fall back to process CPU %** during inference (`eval/system/device_metrics.py`). |
+| **SYSTEM kernel_cost for RocketKV** | Timed wrapper now includes `compress_layer_from_kv` and layer `decompress` (no longer reads as pure attention time). |
 
 Raw job JSON: `results/` (gitignored). Version-controlled numbers: [Qwen3-1.7B](../results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md) · [OLMo2-1B](../results/olmo2_1b/PHASE5_EVAL_RESULTS.md) · [5-model shortlist](../results/shortlist_5model_eval/). Methodology: [METHODOLOGY.md](METHODOLOGY.md).

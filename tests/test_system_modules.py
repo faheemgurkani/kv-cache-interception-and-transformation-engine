@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -10,6 +11,7 @@ import torch
 
 from compressors.identity import IdentityCompressor
 from eval.system import SystemMetrics, evaluate_system
+from eval.system.device_metrics import PeakMemoryTracker
 from eval.system.gpu_utilization import GPUUtilizationMetrics, evaluate_gpu_utilization
 from eval.system.kernel_cost import KernelCostMetrics, _timed_methods, evaluate_kernel_cost
 from eval.system.latency_throughput import ThroughputMetrics, _percentile, evaluate_throughput
@@ -118,7 +120,7 @@ def test_evaluate_system_wiring_respects_flags(monkeypatch):
     )
     monkeypatch.setattr(
         "eval.system.evaluate_peak_vram",
-        lambda *a, **k: PeakMemoryMetrics(4, 2, 100.0, 120.0, False),
+        lambda *a, **k: PeakMemoryMetrics(4, 2, 100.0, 120.0, 130.0, "mps", False),
     )
     monkeypatch.setattr(
         "eval.system.evaluate_memory_bandwidth",
@@ -130,7 +132,7 @@ def test_evaluate_system_wiring_respects_flags(monkeypatch):
     )
     monkeypatch.setattr(
         "eval.system.evaluate_gpu_utilization",
-        lambda *a, **k: GPUUtilizationMetrics(False, 0, None, None),
+        lambda *a, **k: GPUUtilizationMetrics(True, "process_cpu", 3, 42.0, 55.0),
     )
 
     full = evaluate_system(
@@ -209,17 +211,34 @@ def test_memory_bandwidth_mocked_engine_accumulates_two_x_nbytes():
     )
 
 
-def test_gpu_utilization_unavailable_without_cuda():
-    model_layer = MagicMock()
-    model_layer.device = torch.device("cpu")
-    input_ids = torch.tensor([[1, 2]])
-    with patch("torch.cuda.is_available", return_value=False):
-        metrics = evaluate_gpu_utilization(model_layer, input_ids, IdentityCompressor(), num_new_tokens=1)
-    assert metrics.available is False
-    assert metrics.mean_utilization_pct is None
+def test_timed_methods_wraps_compress_layer_from_kv():
+    compressor = MagicMock()
+    compressor.compress_kv = MagicMock(side_effect=lambda *a, **k: "k")
+    compressor.decompress_kv = MagicMock(side_effect=lambda *a, **k: "d")
+
+    def slow_layer(*args, **kwargs):
+        time.sleep(0.001)
+        return "layer"
+
+    compressor.compress_layer_from_kv = slow_layer
+
+    with _timed_methods(compressor) as totals:
+        compressor.compress_layer_from_kv(1, 2, 3)
+        compressor.compress_kv(torch.zeros(1))
+
+    assert totals["compress"] >= 0.001
 
 
-def test_peak_vram_reports_cuda_flag():
+def test_peak_memory_tracker_process_rss():
+    tracker = PeakMemoryTracker(torch.device("cpu"))
+    tracker.reset()
+    tracker.sample()
+    snap = tracker.snapshot()
+    assert snap.peak_process_rss_mb > 0
+    assert snap.memory_backend in {"process_rss", "cuda", "mps"}
+
+
+def test_gpu_utilization_non_cuda_uses_process_cpu():
     model_layer = MagicMock()
     model_layer.device = torch.device("cpu")
     fake_engine = MagicMock()
@@ -227,11 +246,10 @@ def test_peak_vram_reports_cuda_flag():
     model_layer.make_kv_engine.return_value = fake_engine
 
     with patch("torch.cuda.is_available", return_value=False):
-        metrics = evaluate_peak_vram(model_layer, torch.tensor([[1, 2]]), IdentityCompressor(), num_new_tokens=1)
+        metrics = evaluate_gpu_utilization(model_layer, torch.tensor([[1, 2]]), IdentityCompressor(), num_new_tokens=1)
 
-    assert metrics.cuda_available is False
-    assert metrics.peak_allocated_mb is None
-    fake_engine.generate.assert_called_once()
+    assert metrics.available is True
+    assert metrics.utilization_backend == "process_cpu"
 
 
 # --- Module integration (real model) -----------------------------------------------
@@ -290,7 +308,18 @@ def test_evaluate_peak_vram_on_device(model_layer: ModelLayer):
     ids = model_layer.tokenize("VRAM probe.")[:, :8]
     metrics = evaluate_peak_vram(model_layer, ids, IdentityCompressor(), num_new_tokens=2)
     assert metrics.generated_tokens == 2
-    if torch.cuda.is_available():
-        assert metrics.peak_allocated_mb is not None and metrics.peak_allocated_mb > 0
-    else:
-        assert metrics.peak_allocated_mb is None
+    assert metrics.memory_backend in {"cuda", "mps", "process_rss"}
+    assert metrics.peak_process_rss_mb is not None and metrics.peak_process_rss_mb > 0
+    assert metrics.peak_allocated_mb is not None and metrics.peak_allocated_mb > 0
+
+
+@pytestmark_model
+def test_rocketkv_kernel_cost_captures_compression_time(model_layer: ModelLayer):
+    from compressors.rocketkv import RocketKVCompressor
+
+    ids = model_layer.tokenize("RocketKV kernel cost.")[:, :8]
+    compressor = RocketKVCompressor(token_budget=64, hsa_budget=64)
+    metrics = evaluate_kernel_cost(model_layer, ids, compressor, num_new_tokens=2)
+    assert metrics.total_step_time_ms > 0
+    assert metrics.compress_time_ms > 0
+    assert metrics.compress_decompress_overhead_frac > 0.0

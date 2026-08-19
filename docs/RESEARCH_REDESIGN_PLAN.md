@@ -11,7 +11,7 @@
 | §3 Behavioral evaluation | ✅ Done | PPL + retrieval + instruction following default; reasoning opt-in |
 | §4 System evaluation | ✅ Done | TTFT/ITL/tok-s default; VRAM/bandwidth/kernel/GPU opt-in |
 
-**Tests:** `tests/test_eval_runner.py` (default-branch smoke + probe/manifest); `tests/test_regression_validation.py` (WP5 identity + Phase-5 baseline drift); `tests/test_online_inference.py` (throughput); per-model `tests/test_*_reference.py` (full FIDELITY+BEHAVIOR+SYSTEM with all opt-in flags for identity/TurboQuant/QJL/RocketKV).
+**Tests:** `tests/test_eval_runner.py` (default-branch smoke + probe/manifest); `tests/test_regression_validation.py` (WP5 identity + Phase-5 baseline drift); `tests/test_online_inference.py` (throughput + PPL); `tests/test_behavior_modules.py` and `tests/test_system_modules.py` (unit + module-isolation for every BEHAVIOR/SYSTEM sub-metric); per-model `tests/test_*_reference.py` (full integration).
 
 **Intentional gaps vs this section's aspirational text:**
 

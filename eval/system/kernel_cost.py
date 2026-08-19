@@ -2,16 +2,8 @@
 
 Wall-clock only (no CUDA event profiler dependency, so this also works on MPS/CPU).
 Compress/decompress time is measured by temporarily wrapping the compressor's
-`compress_kv` / `decompress_kv` — the two methods every KVCompressor must implement
-— so this works uniformly across plug-ins without per-compressor instrumentation.
-`attention_execution_time_ms` is a proxy: total step time minus measured
-compress/decompress time, i.e. "everything else in the forward pass" (attention +
-MLP + norms) — the compression engine cannot isolate attention alone without a
-CUDA kernel trace.
-
-Caveat: RocketKV's online path (framework/rocketkv_online.py) calls
-`compress_layer_from_kv` directly instead of `compress_kv`, so its per-step
-compression cost is not captured here and will read as pure "attention" time.
+``compress_kv`` / ``decompress_kv``, optional ``compress_layer_from_kv`` (RocketKV),
+and layer ``decompress`` — restored after measurement.
 """
 
 from __future__ import annotations
@@ -43,30 +35,70 @@ class KernelCostMetrics:
 
 @contextmanager
 def _timed_methods(compressor: KVCompressor):
-    """Monkeypatch compress_kv/decompress_kv to accumulate wall-clock time, then restore."""
+    """Monkeypatch compressor hooks to accumulate wall-clock time, then restore."""
     totals = {"compress": 0.0, "decompress": 0.0}
-    orig_compress = compressor.compress_kv
-    orig_decompress = compressor.decompress_kv
+    originals: dict[str, object] = {}
+    in_layer_decompress = {"active": False}
 
-    def timed_compress(*args, **kwargs):
-        start = time.perf_counter()
-        result = orig_compress(*args, **kwargs)
-        totals["compress"] += time.perf_counter() - start
-        return result
+    def _wrap(name: str, fn, bucket: str):
+        originals[name] = fn
 
-    def timed_decompress(*args, **kwargs):
+        def timed(*args, **kwargs):
+            if bucket == "decompress" and in_layer_decompress["active"]:
+                return fn(*args, **kwargs)
+            start = time.perf_counter()
+            result = fn(*args, **kwargs)
+            totals[bucket] += time.perf_counter() - start
+            return result
+
+        return timed
+
+    compressor.compress_kv = _wrap("compress_kv", compressor.compress_kv, "compress")  # type: ignore[method-assign]
+
+    orig_decompress_kv = compressor.decompress_kv
+
+    def timed_decompress_kv(*args, **kwargs):
+        if in_layer_decompress["active"]:
+            return orig_decompress_kv(*args, **kwargs)
         start = time.perf_counter()
-        result = orig_decompress(*args, **kwargs)
+        result = orig_decompress_kv(*args, **kwargs)
         totals["decompress"] += time.perf_counter() - start
         return result
 
-    compressor.compress_kv = timed_compress  # type: ignore[method-assign]
-    compressor.decompress_kv = timed_decompress  # type: ignore[method-assign]
+    compressor.decompress_kv = timed_decompress_kv  # type: ignore[method-assign]
+
+    if hasattr(compressor, "compress_layer_from_kv"):
+        originals["compress_layer_from_kv"] = compressor.compress_layer_from_kv  # type: ignore[attr-defined]
+        compressor.compress_layer_from_kv = _wrap(  # type: ignore[method-assign]
+            "compress_layer_from_kv",
+            compressor.compress_layer_from_kv,  # type: ignore[attr-defined]
+            "compress",
+        )
+
+    if hasattr(compressor, "decompress"):
+        originals["decompress"] = compressor.decompress
+        orig_decompress = compressor.decompress
+
+        def timed_decompress_bound(compressed):
+            in_layer_decompress["active"] = True
+            start = time.perf_counter()
+            try:
+                return orig_decompress(compressed)
+            finally:
+                totals["decompress"] += time.perf_counter() - start
+                in_layer_decompress["active"] = False
+
+        compressor.decompress = timed_decompress_bound  # type: ignore[method-assign]
+
     try:
         yield totals
     finally:
-        compressor.compress_kv = orig_compress  # type: ignore[method-assign]
-        compressor.decompress_kv = orig_decompress  # type: ignore[method-assign]
+        compressor.compress_kv = originals["compress_kv"]  # type: ignore[method-assign]
+        compressor.decompress_kv = orig_decompress_kv  # type: ignore[method-assign]
+        if "compress_layer_from_kv" in originals:
+            compressor.compress_layer_from_kv = originals["compress_layer_from_kv"]  # type: ignore[method-assign]
+        if "decompress" in originals:
+            compressor.decompress = originals["decompress"]  # type: ignore[method-assign]
 
 
 @torch.no_grad()

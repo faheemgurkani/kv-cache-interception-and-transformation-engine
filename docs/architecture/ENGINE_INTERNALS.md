@@ -214,10 +214,10 @@ All four call `compressor.reset_state()` before each trial (stateful compressors
 ### 5.3 `eval/system/` — also through `KVCacheEngine`
 
 - `latency_throughput.py::evaluate_throughput` — a **manual** `engine.step()` loop (not a single `engine.generate()` call) specifically so TTFT (first step) and ITL (every subsequent step, individually timed) can be split apart; `end_to_end_latency_ms` and `tokens_per_second` are derived from the same loop.
-- `vram.py::evaluate_peak_vram` — `torch.cuda.reset_peak_memory_stats` / `max_memory_allocated` bracketing `engine.generate()`; reports `cuda_available=False` gracefully off-CUDA rather than raising.
+- `vram.py::evaluate_peak_vram` — peak memory via `eval/system/device_metrics.py`: CUDA allocator peaks, MPS polled allocator APIs, or process RSS on CPU; always reports `peak_process_rss_mb` and `memory_backend`.
 - `memory_bandwidth.py::evaluate_memory_bandwidth` — analytical, not profiled: sums `2 × cache.nbytes` per step (decompress-read + recompress-write) over a manual step loop, divides by wall time.
-- `kernel_cost.py::evaluate_kernel_cost` — monkey-patches `compressor.compress_kv`/`decompress_kv` (via a `contextmanager`, restored afterward) to accumulate wall time separately from total step time; the remainder is reported as `attention_execution_time_ms` (a proxy, not a real kernel trace). Documented caveat: RocketKV's online path calls `compress_layer_from_kv` directly, bypassing this wrapper, so its real per-step cost reads as "attention" time.
-- `gpu_utilization.py::evaluate_gpu_utilization` — best-effort background-thread NVML polling during `engine.generate()`; requires CUDA + `pynvml`, else returns `available=False` rather than raising.
+- `kernel_cost.py::evaluate_kernel_cost` — monkey-patches `compress_kv`/`decompress_kv`, optional `compress_layer_from_kv` (RocketKV), and layer `decompress`; remainder is `attention_execution_time_ms` (proxy, not a kernel trace).
+- `gpu_utilization.py::evaluate_gpu_utilization` — NVML GPU % on CUDA; process CPU % fallback on MPS/CPU (`utilization_backend`: `nvml` | `process_cpu`).
 
 `eval/runner.py::EvaluationRunner.run()` threads `fidelity.memory.compressed_bytes` into `SystemMetrics.actual_kv_memory_bytes` so a SYSTEM-only consumer doesn't need to cross-reference FIDELITY output separately.
 

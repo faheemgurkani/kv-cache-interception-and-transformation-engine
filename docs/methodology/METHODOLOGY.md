@@ -263,14 +263,14 @@ Also runs through `KVCacheEngine`. Answers whether compression actually helps in
 | TTFT | `eval/system/latency_throughput.py` | Wall-clock time of the first `engine.step()` call (prefill + compressing the full prompt's KV) | **on** |
 | Inter-token latency (ITL: mean/p50/p99) | `eval/system/latency_throughput.py` | Wall-clock time of each subsequent `engine.step()` call | **on** |
 | Decode latency, tokens/sec, end-to-end latency | `eval/system/latency_throughput.py` | Derived from the same step loop | **on** |
-| Peak VRAM | `eval/system/vram.py` | `torch.cuda.max_memory_allocated`/`reserved` around `engine.generate()`; `None` off CUDA | opt-in (`--peak-memory`) |
-| Actual KV memory | `eval/runner.py` | `fidelity.memory.compressed_bytes`, threaded into `SystemMetrics.actual_kv_memory_bytes` so a SYSTEM-only view doesn't require cross-referencing FIDELITY | via `run_system=True` |
-| Compress/decompress time | `eval/system/kernel_cost.py` | Wraps `compress_kv`/`decompress_kv` to accumulate wall time, vs. total step time | opt-in (`--kernel-cost`) |
-| Attention execution time (proxy) | `eval/system/kernel_cost.py` | Total step time minus measured compress/decompress time ("everything else" in the forward pass — no CUDA kernel trace available) | opt-in (`--kernel-cost`) |
+| Peak VRAM / device memory | `eval/system/vram.py` | CUDA peaks; MPS polled allocator; CPU/MPS also report process RSS | opt-in (`--peak-memory`) |
+| GPU / compute utilization | `eval/system/gpu_utilization.py` | NVML GPU % on CUDA; process CPU % on MPS/CPU | opt-in (`--gpu-utilization`) |
+| Compress/decompress time | `eval/system/kernel_cost.py` | Wraps `compress_kv`/`decompress_kv`, plus `compress_layer_from_kv` (RocketKV) and layer `decompress` | opt-in (`--kernel-cost`) |
+| Attention execution time (proxy) | `eval/system/kernel_cost.py` | Total step time minus measured compress/decompress time | opt-in (`--kernel-cost`) |
 | Memory bandwidth (analytical) | `eval/system/memory_bandwidth.py` | \( 2 \times \sum_{\text{steps}} \text{cache.nbytes} \) (decompress-read + recompress-write per step) ÷ elapsed time | opt-in (`--memory-bandwidth`) |
-| GPU utilization | `eval/system/gpu_utilization.py` | Best-effort NVML sampling thread during `engine.generate()`; requires CUDA + `pynvml`, else reports unavailable (not an error) | opt-in (`--gpu-utilization`) |
+| Actual KV memory | `eval/runner.py` | `fidelity.memory.compressed_bytes`, threaded into `SystemMetrics.actual_kv_memory_bytes` | via `run_system=True` |
 
-**Caveat (kernel_cost + RocketKV):** RocketKV's online path calls `compress_layer_from_kv` directly rather than `compress_kv`, so its per-step compression cost is not captured by the timed wrapper and reads as attention time.
+**Kernel-cost timing:** `evaluate_kernel_cost` wraps `compress_kv`, `decompress_kv`, optional `compress_layer_from_kv` (RocketKV online path), and layer-level `decompress`, with reentrancy guard so nested `decompress_kv` calls inside `decompress()` are not double-counted.
 
 ### 6.4 Shared baseline
 
@@ -302,7 +302,7 @@ See [CURRENT_STATE.md](CURRENT_STATE.md):
 - TurboQuant online throughput dominated by per-step compress/decompress
 - QJL/RocketKV catastrophic PPL on Qwen3-1.7B under this pipeline reflects measured behavior, not implementation shortcuts (post-audit)
 - BEHAVIOR's retrieval/reasoning/instruction-following are synthetic in-repo generators, not external benchmarks — legible failure modes, not benchmark-scale coverage
-- SYSTEM's peak VRAM and GPU utilization require CUDA (report `None`/unavailable on MPS/CPU, not an error)
+- SYSTEM's peak memory and utilization now work on MPS/CPU (MPS allocator polling + process RSS; process CPU % when NVML unavailable)
 
 ---
 

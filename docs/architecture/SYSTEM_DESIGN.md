@@ -89,7 +89,7 @@ Three branches instead of an offline/online split — `eval/runner.py` (`Evaluat
 
 **BEHAVIOR** (`eval/behavior/`, through `KVCacheEngine`): sliding-window perplexity (`task_quality.py`, on by default), needle-in-haystack retrieval (`retrieval.py`, on by default), instruction-following format compliance (`instruction_following.py`, on by default), synthetic arithmetic reasoning (`reasoning.py`, opt-in).
 
-**SYSTEM** (`eval/system/`, through `KVCacheEngine`): TTFT + inter-token latency (mean/p50/p99) + tokens/sec + end-to-end latency (`latency_throughput.py`, on by default), peak CUDA memory (`vram.py`, opt-in), analytical KV-bandwidth (`memory_bandwidth.py`, opt-in), compress/decompress vs. rest-of-forward-pass time (`kernel_cost.py`, opt-in), best-effort NVML sampling (`gpu_utilization.py`, opt-in).
+**SYSTEM** (`eval/system/`, through `KVCacheEngine`): TTFT + inter-token latency (mean/p50/p99) + tokens/sec + end-to-end latency (`latency_throughput.py`, on by default), peak device/process memory (`vram.py`, opt-in; CUDA/MPS/CPU), analytical KV-bandwidth (`memory_bandwidth.py`, opt-in), compress/decompress vs. rest-of-forward-pass time including RocketKV `compress_layer_from_kv` (`kernel_cost.py`, opt-in), NVML GPU util or process CPU util fallback (`gpu_utilization.py`, opt-in).
 
 Orchestrator: `eval/runner.py`. WikiText-2 samples concatenated to target length via `data/loader.py`.
 

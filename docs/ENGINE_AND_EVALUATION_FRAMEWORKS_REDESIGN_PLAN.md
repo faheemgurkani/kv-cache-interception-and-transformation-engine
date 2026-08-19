@@ -1641,7 +1641,7 @@ Required for:
 * QJL
 * RocketKV
 
-This is why Gemma3 currently fails even though its cache can be read.
+This is why a model can fail Gate B even when its cache is readable (historical example: Gemma3 before the `gemma3_text` adapter landed in the 86th commit).
 
 ---
 

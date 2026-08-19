@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
 import torch
 
@@ -12,7 +15,6 @@ from eval.system.kernel_cost import KernelCostMetrics, _timed_methods, evaluate_
 from eval.system.latency_throughput import ThroughputMetrics, _percentile, evaluate_throughput
 from eval.system.memory_bandwidth import MemoryBandwidthMetrics, evaluate_memory_bandwidth
 from eval.system.vram import PeakMemoryMetrics, evaluate_peak_vram
-from framework.kv_engine import CompressedCache
 from framework.model import ModelLayer
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

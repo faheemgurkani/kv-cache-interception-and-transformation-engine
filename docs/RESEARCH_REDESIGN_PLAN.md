@@ -4,7 +4,7 @@
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phases 15–22** are **paper-only** (framing through contribution rewrite). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phases 15–23** are **paper-only** (framing through results narrative). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -29,6 +29,7 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **20** Related Work restructure | — | 📝 Spec only | 📝 Pending | Four-section Related Work + eval gap — Phase 20 |
 | **21** Introduction narrative | — | 📝 Spec only | 📝 Pending | Seven-paragraph Intro story — Phase 21 |
 | **22** Contributions rewrite | — | 📝 Spec only | 📝 Pending | Five-contribution taxonomy + Intro packaging — Phase 22 |
+| **23** Results narrative | — | 📝 Spec only | 📝 Pending | Seven research findings vs leaderboard — Phase 23 |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 | **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
@@ -265,10 +266,10 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 
 | | |
 | --- | --- |
-| **Current** | Table captions “Section A fidelity”, “Section B online metrics/PPL” |
-| **Change** | Rename captions: **FIDELITY**, **BEHAVIOR (perplexity)**, **SYSTEM (throughput/latency)**. Split combined tables if BEHAVIOR and SYSTEM were merged. **Replace numeric cells only from new sweep bundles** — do not hand-edit. |
-| **Needs new results?** | **Yes** for all numeric cells |
-| **Phase** | 1, 2 |
+| **Current** | Method-by-method paragraphs (“TurboQuant results”, “QJL results”) read as **leaderboard**; Table captions “Section A fidelity”, “Section B online metrics/PPL” |
+| **Change** | **Phase 23:** keep tables as **evidence appendix**; shorten per-method prose to 1–2 sentences each pointing to **finding numbers** (F1–F7). Rename captions: **FIDELITY**, **BEHAVIOR (perplexity)**, **SYSTEM (throughput/latency)**. Optionally add cross-method summary table up front (`tab:cross`) framed as “answers to evaluation questions,” not rankings. **Replace numeric cells only from new sweep bundles** — do not hand-edit. |
+| **Needs new results?** | **Yes** for all numeric cells; narrative restructure **no** |
+| **Phase** | 1, 2, 9, 23 |
 
 #### Figures: offline-vs-online, Pareto (L475+, L608–615)
 
@@ -311,9 +312,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | | |
 | --- | --- |
 | **Current** | L598 “benchmarking and evaluation study”; L608 “Offline fidelity does not predict online quality”; L617 TurboQuant throughput as mechanism story |
-| **Change** | L598: “controlled experimentation framework” — contribution is **how to evaluate**, not ranking winners. **Phase 15:** opening sentence must state research question explicitly. L608: **FIDELITY does not predict BEHAVIOR**; SYSTEM explains TurboQuant speed penalty separately. L617 Pareto: “no single winner” supports **evaluation** claim, not deployment recommendation. L623 implications: report all three branches + cost + controlled conditions. |
+| **Change** | **Phase 23:** restructure body as **seven research findings** (F1–F7) with `\textbf{Finding N: …?}` headers — see [Phase 23](#phase-23-change-the-results-narrative--paper-only). Migrate existing L608–621 content into finding blocks; retire method-centric paragraph titles. L598: contribution is **how to evaluate**, not ranking winners. **Phase 15:** opening sentence states research question. L617 Pareto = **F7** (“no single winner on all axes”). L623 implications: report FIDELITY + BEHAVIOR + SYSTEM + cost + controlled conditions. |
 | **Needs new results?** | Empirical paragraphs yes; framing no |
-| **Phase** | 1, 2, 3, 6, 15 |
+| **Phase** | 1, 2, 3, 6, 15, 23 |
 
 #### §Conclusion (L625–629, `\label{sec:conclusion}`)
 
@@ -343,8 +344,8 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 
 | Tier | When | Scope |
 | ---- | ---- | ----- |
-| **Minimal** | Re-sweep done; tight page limit | Terminology pass + controlled conditions table + **Phases 15–22 prose** (framing, Intro, Related Work, **contributions**); regenerate Pareto (Phase 9) |
-| **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) + optional **problem-cascade figure** (Phase 16) + reproducibility subsection (Phase 14) |
+| **Minimal** | Re-sweep done; tight page limit | Terminology pass + controlled conditions table + **Phases 15–22 prose**; **Phase 23** findings structure in Experiments + Discussion; regenerate Pareto (Phase 9) |
+| **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) + optional **problem-cascade figure** (Phase 16) + reproducibility subsection (Phase 14) + **Phase 24** correlation table (optional appendix) |
 
 ### Phases 15–22 — recommended `.tex` rewrite order
 
@@ -361,7 +362,15 @@ Apply in **one framing pass** before editing result numbers (can precede re-swee
 | 7 | **22** | **Finalize `\textbf{Contributions.}` block** (L60) using five-contribution taxonomy; mirror in Abstract + Conclusion L627–629 |
 | 8 | **20** | **Restructure `\label{sec:related}`** (L62–81) into four subsections; merge/remove old `\subsection{Positioning}` into §4 closing |
 
-**No new GPU jobs** for steps 1–8. Step **21 before 22** (Intro narrative before contribution bullets); step **22 before 20** (contributions locked before Related Work positioning). Step **20 last** so §4 *What is still missing?* closes into KVBench.
+**No new GPU jobs** for steps 1–8. Step **21 before 22** (Intro narrative before contribution bullets); step **22 before 20** (contributions locked before Related Work positioning). Step **20 last** in framing pass so §4 *What is still missing?* closes into KVBench.
+
+### Phase 23 — results narrative pass (after framing or with re-sweep)
+
+| Step | Phase | Primary `.tex` targets |
+| ---- | ----- | -------------------- |
+| 9 | **23** | `\label{sec:experiments}` opening L215–218; `\label{sec:qwen3}` / `\label{sec:olmo2}` paragraph leads L319+; **NEW** `\subsection{Research Findings}` or restructure `\label{sec:discussion}` L595–623 as seven finding blocks; Pareto + offline-vs-online captions |
+
+Apply step **9** when result tables/figures are updated (re-sweep or replot from existing JSON). **Finding 6 (workload)** is **future work only** — do not claim multi-workload answers (Phase 11 deferred).
 
 Cross-link [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) for line-level detail.
 

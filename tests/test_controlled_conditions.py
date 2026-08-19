@@ -11,6 +11,7 @@ from compressors.identity import IdentityCompressor
 from compressors.rocketkv import RocketKVCompressor
 from compressors.snapkv import SnapKVCompressor
 from compressors.turboquant import TurboQuantCompressor
+from compressors.qjl import QJLCompressor
 from quantizers.turboquant_pipeline import TurboQuantStage
 from eval.controlled_conditions import (
     PHASE6_PRINCIPLE,
@@ -132,6 +133,25 @@ def test_extract_compression_budget_method_specific(compressor, expected_keys):
     budget = extract_compression_budget(compressor)
     for key, value in expected_keys.items():
         assert budget[key] == value
+
+
+def test_extract_compression_budget_includes_qjl_seed():
+    budget = extract_compression_budget(QJLCompressor(seed=42))
+    assert budget["seed"] == 42
+    assert budget["compression_method"] == "qjl"
+
+
+def test_build_controlled_conditions_exports_precision():
+    contract = build_controlled_conditions(
+        model_metadata={"model_id": "test"},
+        eval_config=_eval_config(),
+        context_length=128,
+        compressor=IdentityCompressor(),
+        tokenizer=_FakeTokenizer(),
+        device=torch.device("cpu"),
+        model_precision=torch.float16,
+    )
+    assert contract.fixed["precision"] == "float16"
 
 
 def test_build_decoding_configuration_is_deterministic_greedy():

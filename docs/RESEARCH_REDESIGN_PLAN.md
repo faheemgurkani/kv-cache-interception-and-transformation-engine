@@ -279,6 +279,18 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | **Needs new results?** | **Yes** for numeric VRAM/GPU util cells; **no** for setup prose |
 | **Phase** | 7, 10 |
 
+#### **NEW** §Reproducibility / artifact availability (insert after `\label{subsec:exp_config}`, Phase 14)
+
+| | |
+| --- | --- |
+| **Current** | L229 mentions “hyperparameters, and timestamps” in passing; no structured config export |
+| **Codebase** | Per-job `controlled_conditions`, `cost`, `hardware`; YAML configs; `REPRODUCIBILITY.md` |
+| **Change** | Subsection or appendix: (1) **Table: Standardized run configuration** (Phase 14 YAML fields); (2) sentence that JSON replay is supported; (3) repo URL, config paths, `git rev-parse HEAD` pin, Modal reproduce commands. |
+| **When** | Paper rewrite — **no new GPU jobs required** for this prose |
+| **Why** | Literature comparison problem (different models/tasks/budgets) — reproducibility is explicit contribution |
+| **Needs new results?** | No |
+| **Phase** | 14 |
+
 #### §Discussion (L595–623, `\label{sec:discussion}`)
 
 | | |
@@ -302,6 +314,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | Paper element | Source in repo |
 | ------------- | -------------- |
 | Controlled conditions table | Any `result.to_dict()["controlled_conditions"]["fixed"]` from a reference job |
+| Phase 14 reproducibility manifest | Map fields via [Phase 14 field mapping](#engine-encapsulation--field-mapping) |
 | FIDELITY metric definitions | `docs/methodology/METHODOLOGY.md` §6.1 |
 | BEHAVIOR protocols | §6.2 + `eval/behavior/*.py` docstrings |
 | SYSTEM metrics | §6.3 |
@@ -1079,7 +1092,9 @@ The recent literature increasingly connects compression to actual serving system
 
 ---
 
-# Phase 14: Add Reproducibility as a First-Class Feature
+# Phase 14: Add Reproducibility as a First-Class Feature ✅ **Done**
+
+> **Status (2026-08-20):** **Implementation complete** — every evaluation job exports a standardized reproducibility harness via `controlled_conditions` (Phase 7), `cost` (Phase 3 calibration block), `hardware` (Phase 10), version-controlled YAML configs, and `docs/reproducibility/REPRODUCIBILITY.md`. **Paper update deferred** — `.tex` still describes hyperparameters in prose only; controlled-conditions table + artifact paragraph pending.
 
 Your benchmark should record a standardized configuration:
 
@@ -1099,6 +1114,39 @@ precision:
 
 Every result should be reproducible from this configuration.
 
+### Engine encapsulation — field mapping
+
+The Phase 14 YAML checklist is **not a separate file format**; it is assembled from existing exports and configs:
+
+| Phase 14 field | Engine source | JSON / config path |
+| -------------- | ------------- | ------------------ |
+| `model` | `get_model_eval_metadata()` | `controlled_conditions.fixed.model` · top-level `model` in `to_dict()` |
+| `context_length` | runner arg | `controlled_conditions.fixed.context_length` · `context_length` |
+| `generation_length` | `configs/eval.yaml` `generated_tokens` | `controlled_conditions.fixed.generation_length` |
+| `hardware` | Phase 10 profile | `controlled_conditions.fixed.hardware` · `hardware` |
+| `batch_size` | `configs/eval.yaml` | `controlled_conditions.fixed.batch_size` |
+| `compression_method` | compressor plug-in | `controlled_conditions.variable.compressor` · `compression_budget.compression_method` |
+| `compression_ratio` | measured + theoretical | **Outcome:** `fidelity.memory.compression_ratio` · **Theoretical:** `cost.compression.theoretical_compression_ratio` |
+| `calibration` | compressor offline hooks | `cost.offline` (`calibration_required`, `calibration_dataset`, `calibration_time_ms`, …) |
+| `dataset` | WikiText-2 config | `controlled_conditions.fixed.dataset` |
+| `seed` | compressor pipeline (QJL/TurboQuant) | `controlled_conditions.variable.compression_budget.seed` · Modal `job.compressor_kwargs` |
+| `precision` | `ModelLayer.torch_dtype` | `controlled_conditions.fixed.precision` (e.g. `float16`) |
+
+**Version-controlled sweep grid (source of truth before run):**
+
+| File | Role |
+| ---- | ---- |
+| `configs/model.yaml` | Model path, context lengths |
+| `configs/eval.yaml` | Dataset split, PPL stride, generated tokens, batch size |
+| `configs/modal_sweeps.yaml` | Compressor presets, bitwidths, budgets, seeds |
+| `configs/modal.yaml` | GPU, hardware collection policy |
+
+**Artifacts per job:** `result.to_dict()` JSON (local or Modal volume) includes `controlled_conditions`, `cost`, `hardware`, `fidelity`/`behavior`/`system`, timestamps; Modal payloads add `job`, `started_at`, `finished_at`. Merge: `modal_app/merge.py` CSV.
+
+**Manual step (not auto-exported):** record `git rev-parse HEAD` when publishing numbers (`REPRODUCIBILITY.md` §2).
+
+**Code:** `eval/controlled_conditions.py` (`build_controlled_conditions`, `extract_compression_budget`, `format_model_precision`) · `eval/runner.py` · `docs/reproducibility/REPRODUCIBILITY.md` · **Tests:** `tests/test_controlled_conditions.py`
+
 This is particularly important because one of the central problems in the literature is that different papers use different:
 
 * models
@@ -1106,7 +1154,27 @@ This is particularly important because one of the central problems in the litera
 * budgets
 * serving stacks
 
-making direct comparison difficult. 
+making direct comparison difficult.
+
+### Paper change log — when, why, what (`docs/research_paper_writeup/conference_101719.tex`)
+
+| When | Section (label) | Why | What to change |
+| ---- | --------------- | --- | -------------- |
+| **Paper rewrite** (no new experiments required for prose) | **§Experimental Configuration** (`\label{subsec:exp_config}`, L220–229) | Paper lists setup in bullets but not as a reproducibility contract | Add **Table: Standardized run configuration** (model, dataset/split, ctx lengths, gen length 64, batch 1, FP16, greedy decode, A10G, PPL stride 512). Sentence: *“Every job JSON includes `controlled_conditions` (fixed vs. variable axes) enabling exact replay.”* |
+| **Same pass** | **§Design Principles** (`\label{subsec:design}`, L88–96) | Reproducibility is a design principle, not an afterthought | New bullet: **Reproducible configuration export** — fixed model/input/decode/hardware vs. variable compressor + budget; per-job JSON + YAML configs in repo. |
+| **Same pass** | **§Evaluation Protocol** (`\label{subsec:eval_protocol}`, L255+) | Readers need to know what is held constant | Short paragraph: only `compression_method` / budget varies; cite `variable.compression_budget` fields (bitwidth, stage, RocketKV budgets, QJL seed 42). |
+| **Same pass** | **§Plug-in Interface** (`\label{subsec:plugins}`, L153–155) | Calibration differs by method | Note TurboQuant offline Lloyd-Max vs QJL/RocketKV calibration-free; point to `cost.offline` block. |
+| **At re-sweep or artifact submission** | **NEW §Reproducibility** (insert after `\label{subsec:exp_config}` or appendix) | Artifact reviewers expect explicit availability statement | Bullets: repo URL, config files, Modal sweep scripts, `results/` bundle layout, `git` SHA pin, CLI reproduce commands from `REPRODUCIBILITY.md`. |
+| **Abstract / Conclusion** (L44–46, L625–629) | Framing | Claim reproducibility as contribution | One clause: *“standardized per-job configuration export”* alongside controlled interception. |
+| **Do not** | Results tables (L319+) | Numbers unchanged | Do **not** block rewrite on new sweeps — configuration table is structural |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | Phase 14 YAML fields mapped to `controlled_conditions` + `cost` + `hardware` + configs; `precision` and `seed` in export. |
+| **Documentation** | ✅ Done | This section + `REPRODUCIBILITY.md` + `METHODOLOGY.md` §1.1 cross-ref. |
+| **Paper** | 📝 Pending | Controlled-conditions table + reproducibility subsection + artifact paragraph. See table above. |
 
 ---
 

@@ -4,7 +4,7 @@
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phase 15** is **paper-only** (research-question reframing spec). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phases 15–18** are **paper-only** (framing / problem / novelty / terminology specs). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -22,6 +22,9 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **10** Hardware-aware eval (single GPU) | ✅ Done | ✅ Done | 📝 Pending | `eval/hardware/`, Modal A10G path |
 | **14** Reproducibility harness | ✅ Done | ✅ Done | 📝 Pending | `eval/reproducibility/manifest.py`, `tests/test_reproducibility_harness.py` |
 | **15** Main research question | — | 📝 Spec only | 📝 Pending | Paper framing only — see Phase 15 paper change log |
+| **16** Core problem statement | — | 📝 Spec only | 📝 Pending | Problem cascade + metric decoupling — Phase 16 |
+| **17** Novelty reframe | — | 📝 Spec only | 📝 Pending | Safe novelty claim — Phase 17 |
+| **18** What KVBench is | — | 📝 Spec only | 📝 Pending | Terminology boundary (not vLLM/serving) — Phase 18 |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 | **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
@@ -70,7 +73,10 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | Concept | Paper today | Codebase today | Paper should say |
 | ------- | ----------- | -------------- | ---------------- |
 | Evaluation split | Section A (offline) + Section B (online) | **FIDELITY** / **BEHAVIOR** / **SYSTEM** | Three independent branches; retire “Section A/B” except in a one-line legacy note if needed |
-| Primary contribution | “Benchmarking framework” / “dual metrics” | Controlled **interception-and-transformation engine** | Engine + protocol as contribution; methods are case studies |
+| Primary contribution | “Benchmarking framework” / “dual metrics” | Controlled **interception-and-transformation engine** | Engine + protocol as contribution; methods are case studies (**Phases 15, 17, 18**) |
+| Problem statement | Fragmentation mentioned in Intro | Metric decoupling cascade (**Phase 16**) | Explicit problem paragraph + optional figure |
+| Novelty | Implicit “shared yardstick” | Controlled env + three branches under matched conditions (**Phase 17**) | Do not claim “first benchmark” |
+| What KVBench is | “Benchmarking framework” / “harness” | Evaluation layer at KV boundary; not serving engine (**Phase 18**) | Define once; contrast vLLM/SGLang in one sentence |
 | Quality under compression | Section B = PPL + throughput only | BEHAVIOR: PPL + retrieval + instruction following (+ reasoning opt-in) | BEHAVIOR subsection; PPL in results; task probes in methodology (+ optional appendix numbers) |
 | Runtime efficiency | Throughput under Section B | SYSTEM: TTFT, ITL, tok/s, latency (+ VRAM/bandwidth opt-in) | Separate **SYSTEM** subsection; tok/s tables move under SYSTEM |
 | Cost | Not mentioned | `EvaluationResult.cost` (compression / offline / online) | New **Cost accounting** subsection |
@@ -1262,72 +1268,182 @@ into:
 
 ---
 
-# Phase 16: Reframe the Core Problem Statement
+# Phase 16: Reframe the Core Problem Statement 📝 **Paper only**
 
-The new problem should be:
+> **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. The empirical case studies already *demonstrate* the problem cascade below (e.g., QJL moderate FIDELITY / catastrophic BEHAVIOR; TurboQuant high compression / low SYSTEM throughput). Phase 16 makes that problem **explicit in prose and optionally as a figure** in the `.tex` rewrite.
+
+This is the heart of the revised paper.
+
+### Problem cascade (target narrative)
 
 ```text
 Existing KV-cache research
         ↓
 Many different algorithms
         ↓
-Different implementations
-Different models
-Different workloads
-Different metrics
-Different hardware
+Different implementations · models · workloads · metrics · hardware
         ↓
 Results are difficult to compare
         ↓
 Compression ratio ≠ memory savings
 Memory savings ≠ speedup
-Tensor fidelity ≠ behavior
-Offline quality ≠ online quality
+Tensor fidelity (FIDELITY) ≠ task behavior (BEHAVIOR)
+Offline proxies ≠ incremental-decode outcomes
         ↓
-Need controlled evaluation
+Need controlled, multi-branch evaluation under matched conditions
+        ↓
+KVBench (instrument)
 ```
 
-This is the heart of the revised paper.
+### Mapping cascade → paper evidence (already in `.tex`)
+
+| Problem link | Where paper already shows it | Phase 16 action |
+| ------------ | ---------------------------- | --------------- |
+| Metric silos / incompatible protocols | Abstract L45; Intro L56 | State explicitly in **problem paragraph** |
+| FIDELITY ≠ BEHAVIOR | Discussion L608–609 (QJL, RocketKV) | Cite as **motivation**, not surprise finding only |
+| Memory ≠ speed | Discussion L617 (TurboQuant tok/s vs compression) | Add SYSTEM branch name; Pareto figure |
+| Rankings flip across models | Discussion L621 (Qwen3 GQA vs OLMo~2 MHA) | Tie to “heterogeneous conditions” bullet |
+| Need controlled evaluation | Design principles L90–95 (partial) | Expand + cross-ref controlled-conditions table (Phase 7) |
+
+### When to apply
+
+| Timing | Rationale |
+| ------ | --------- |
+| **Rewrite pass 1, immediately after Phase 15** | Problem statement follows research question in Intro |
+| **No new experiments** | Cascade is illustrated by existing Phase-5 results |
+| **Optional figure** | Only if page budget allows — otherwise prose + Discussion cross-refs |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section (label, lines) | Why | What to change |
+| ---- | ------------------------ | --- | -------------- |
+| **Rewrite pass 1** | **§Introduction** gap paragraph (L56–57) | Currently lists fragmentation; does not state metric **decoupling** chain | Replace/extend with 3–4 sentences walking the cascade: incompatible protocols → non-comparable results → **compression ratio ≠ memory savings ≠ speedup ≠ tensor fidelity ≠ task quality** under incremental decode. End with: *“Controlled evaluation under matched conditions is therefore a prerequisite, not an optional appendix.”* |
+| **Rewrite pass 1** | **NEW §Problem statement** (insert after Intro, before `\label{sec:related}`, ~L61) **or** opening of `\label{sec:methodology}` | Readers need one canonical problem block | Short subsection (½ column) or bullet list mirroring cascade diagram above. Optional **Fig. problem** (TikZ) — same content as ASCII block in this doc. |
+| **Rewrite pass 1** | **§Design Principles** (L88–96) | Principles list mechanisms, not the *problem* | Add first bullet: **Problem.** *KV-cache literature mixes algorithms, implementations, and metrics; without fixed model/input/decode/hardware, cross-paper comparison is misleading.* |
+| **Rewrite pass 1** | **§Discussion** (L608–621) | Findings already prove cascade | Add bridging sentence at L608: *“These patterns instantiate the evaluation problem motivating KVBench: no single metric axis is sufficient.”* Rename offline/online → FIDELITY/BEHAVIOR/SYSTEM when editing. |
+| **Rewrite pass 1** | **§Conclusion** (L627) | Conclusion lists findings but not problem solved | One clause: *“The study demonstrates why uncontrolled or single-metric KV evaluation is insufficient for deployment decisions.”* |
+| **Do not** | Results tables | Numbers stand | Do not add new claims beyond what Phase-5 data supports |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | — | Engine implements the *solution*; problem is narrative only. |
+| **Documentation** | ✅ Done | This section; empirical mapping in `METHODOLOGY.md` §6 rationale. |
+| **Paper** | 📝 Pending | Intro problem paragraph + optional figure/subsection. Apply after Phase 15. |
 
 ---
 
-# Phase 17: Reframe the Novelty
+# Phase 17: Reframe the Novelty 📝 **Paper only**
 
-Do **not** claim:
+> **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. Novelty is **controlled interception + multi-branch evaluation under matched conditions**, not “first KV benchmark” or new compression algorithms.
 
-> "KV-cache compression has never been benchmarked."
+### Claims to retire vs. adopt
 
-That is now difficult to defend because 2026 work explicitly benchmarks KV optimizations across quality and system performance. 
+| Do **not** claim | Safer replacement |
+| ---------------- | ----------------- |
+| “KV-cache compression has never been benchmarked.” | “Existing studies use **heterogeneous** implementations and experimental conditions.” |
+| “First open-source KV benchmark.” | “Controlled **interception-and-transformation** environment with plug-in compressors.” |
+| “We compare all major methods.” | “We host **representative** families (quantization, sketching, eviction) as **case studies**.” |
+| Algorithm novelty for TQ/QJL/RocketKV | “KVBench does **not** claim algorithmic novelty for plug-ins” (already L167 — keep and repeat in Intro) |
 
-Instead claim something closer to:
+### Canonical novelty sentence (use in Abstract / Intro / Conclusion)
 
-> **Existing KV-cache studies evaluate individual compression mechanisms under heterogeneous implementations and experimental conditions. KVBench provides a controlled interception-and-transformation environment in which different KV transformations can be executed through a common incremental autoregressive decode loop, enabling representation-level, behavioral, and system-level comparisons under matched conditions.**
+> **Existing KV-cache studies evaluate individual compression mechanisms under heterogeneous implementations and experimental conditions. KVBench provides a controlled interception-and-transformation environment in which different KV transformations execute through a common incremental autoregressive decode loop, enabling representation-level (FIDELITY), behavioral (BEHAVIOR), and system-level (SYSTEM) comparisons under matched conditions.**
 
+Shorter variant for Abstract (if space-limited):
 
+> **KVBench is a controlled evaluation instrument — not a new compressor — that pairs FIDELITY, BEHAVIOR, and SYSTEM metrics under fixed model, data, and decode conditions.**
 
-This is a much safer novelty claim.
+### When to apply
+
+| Timing | Rationale |
+| ------ | --------- |
+| **Rewrite pass 1, after Phases 15–16** | Novelty must align with reframed question and problem statement |
+| **Related Work pass** | Differentiate from `kvbench2026serving` and method papers without overclaiming |
+| **No new experiments** | Novelty is positioning only |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section (label, lines) | Why | What to change |
+| ---- | ------------------------ | --- | -------------- |
+| **Rewrite pass 1** | **Abstract** (L45) | “reproducible benchmarking framework” underspecifies novelty | After presenting KVBench, insert controlled-environment clause (canonical sentence above, shortened). Avoid “first” or “only.” |
+| **Rewrite pass 1** | **§Introduction** (L58–60) | L58 “comparing KV compressors” sounds like novelty = comparison | Reframe: novelty = **protocol + engine**. L60 contribution (1) = controlled interception + three-branch protocol; cite Phase 15 reorder. |
+| **Rewrite pass 1** | **§Related Work → KV Cache Compression** (L66) | Good start (“does not add another algorithm”) | Keep; add: *“Novelty is methodological — shared incremental loop, not algorithmic.”* |
+| **Rewrite pass 1** | **§Related Work → Benchmarking** (L77–78) | Must distinguish from serving benchmarks | Explicit contrast: *“Concurrent serving benchmarks~\cite{kvbench2026serving} optimize deployment stacks; KVBench fixes a **controlled SLM factorial** for plug-in comparison before serving claims.”* Do not imply KVBench replaces serving eval. |
+| **Rewrite pass 1** | **§Positioning of KVBench** (L80–81) | “missing shared yardstick” is weak vs 2026 literature | Replace with canonical novelty paragraph. Emphasize **matched conditions** + **three branches**, not leaderboard. |
+| **Rewrite pass 1** | **§Case-Study Methods** (L165–167) | Already disclaims algorithm novelty | Keep L167 verbatim spirit; cross-ref in Intro contributions. |
+| **Rewrite pass 1** | **§Conclusion** (L627–629) | “community benchmark” can imply horse-race | Reframe “grow as community benchmark” → *“extensible evaluation instrument”*; novelty = protocol export (`controlled_conditions`, artifacts), not winning compressor. |
+| **Do not** | Related Work citations | Do not dismiss prior benchmarks | Acknowledge `chen2026pitfalls`, `kvbench2026serving` as **complementary** (Phase 13 serving path stays out of scope) |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | — | Code already matches safe novelty (plug-in API, controlled export). |
+| **Documentation** | ✅ Done | This section; `README.md` lead; Phase 6 principle. |
+| **Paper** | 📝 Pending | Abstract, Intro, Related Work positioning, Conclusion. Apply after Phases 15–16. |
 
 ---
 
-# Phase 18: Clarify Exactly What KVBench Is
+# Phase 18: Clarify Exactly What KVBench Is 📝 **Paper only**
 
-I would position it as:
+> **Status (2026-08-20):** **Paper-writeup phase only** — terminology boundary. The codebase name aligns with **interception-and-transformation engine** + **evaluation layer**; it is **not** a serving engine (vLLM/SGLang — Phase 13 out of scope).
 
-> **A unified KV-cache inference benchmarking and transformation framework**
+### Terminology decision table
 
-or:
+| Use (preferred) | Avoid | Why |
+| --------------- | ----- | --- |
+| **Controlled interception-and-transformation evaluation environment** | “Full inference engine” | No scheduling, batching, continuous serving, or PD disaggregation |
+| **Inference-time KV transformation and evaluation layer** | “Serving engine” / “vLLM-like” | Phase 13 explicitly not planned |
+| **Extensible plug-in evaluation engine** (for `KVCacheEngine` + runner) | “Unified inference optimization framework” (too broad) | Scope = KV boundary + eval branches |
+| **KVBench** (proper noun) | Generic “the framework” without definition | Define once in Intro |
 
-> **An extensible inference-time KV-cache compression evaluation engine**
+**Pick one primary descriptor for Abstract/Intro** (recommended):
 
-or:
+> **An extensible inference-time KV-cache compression evaluation engine** — or shorter: **a controlled KV interception-and-transformation engine for evaluation.**
 
-> **A modular KV-cache inference optimization and benchmarking framework**
+Secondary acceptable (Title/subtitle):
 
-I would **not** call it a full "inference engine."
+> *A unified KV-cache inference benchmarking and transformation framework* — only if “benchmarking” is paired with “controlled evaluation,” not “method ranking.”
 
-vLLM/SGLang are serving engines.
+### Code ↔ paper alignment (no code changes)
 
-KVBench is an **inference-time KV transformation and evaluation layer**. 
+| Code artifact | What it is | Paper should say |
+| ------------- | ---------- | ---------------- |
+| `framework/kv_engine.py` (`KVCacheEngine`) | Incremental decode loop + compress/decompress at cache boundary | “KV cache **engine**” = decode-step orchestrator, **not** full LM serving stack |
+| `eval/runner.py` | FIDELITY / BEHAVIOR / SYSTEM orchestrator | “Evaluation orchestrator” or “benchmark driver” |
+| `modal_app/worker.py` | One-shot CUDA eval jobs | “Reference hardware path,” not production serving |
+| vLLM / SGLang | Not in repo | Mention only in Related Work / future work if at all (Phase 13) |
+
+### When to apply
+
+| Timing | Rationale |
+| ------ | --------- |
+| **Same rewrite pass as Phases 15–17** | Terminology must be consistent across Abstract → Methodology |
+| **Early in Methodology** | Define KVBench once before `\label{subsec:engine}` |
+| **No new experiments** | Naming only |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section (label, lines) | Why | What to change |
+| ---- | ------------------------ | --- | -------------- |
+| **Rewrite pass 1** | **Abstract** (L45) | “benchmarking framework” is ambiguous | Use primary descriptor + parenthetical: *“…evaluation engine (not a production serving stack).”* |
+| **Rewrite pass 1** | **§Introduction** (L58) | Already “interception-and-transformation engine” — **keep** | Add boundary sentence: *“KVBench is an evaluation layer at the KV-cache boundary; it is complementary to serving systems such as vLLM and SGLang, which optimize deployment rather than controlled plug-in comparison.”* One sentence only. |
+| **Rewrite pass 1** | **§Related Work → Benchmarking** (L78) | Says “not a full serving stack” — **good anchor** | Keep; strengthen: *“KVBench does not implement continuous batching, request scheduling, or distributed serving.”* |
+| **Rewrite pass 1** | **§Methodology opening** (L83–86) | “benchmarking harness” undersells interception | Replace lead: *“KVBench is a controlled interception-and-transformation **evaluation environment** for KV-cache plug-ins on fixed causal SLMs.”* Retain “not a new compressor.” |
+| **Rewrite pass 1** | **§KV cache engine** (`\label{subsec:engine}`, L106–114) | “KV cache engine” can confuse with vLLM | Opening footnote or sentence: *“Engine here means the incremental decode orchestrator (Algorithm~\ref{alg:engine}), not a production inference server.”* |
+| **Rewrite pass 1** | **Fig. pipeline caption** (L101) | “incremental decode engine” OK | Add: *“Evaluation branches (FIDELITY / BEHAVIOR / SYSTEM) attach to the same engine; only the plug-in varies.”* |
+| **Rewrite pass 1** | **§Conclusion** (L629) | “community benchmark” + “yardstick” blurs boundary | Close with evaluation-layer framing (Phase 15) + explicit: *“not a replacement for serving-engine benchmarks.”* |
+| **Do not** | Title alone | Do not call it “Serving Engine” or “Inference Engine for Deployment” | Keep SLM + KV + evaluation in title |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Aligned | `README.md`, `SYSTEM_DESIGN.md` already use interception/evaluation framing. |
+| **Documentation** | ✅ Done | This section; Phase 13 marked not planned for serving integration. |
+| **Paper** | 📝 Pending | Terminology pass on Abstract, Intro, Methodology opening, engine subsection, Conclusion. |
 
 ---
 

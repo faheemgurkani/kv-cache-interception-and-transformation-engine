@@ -320,9 +320,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | | |
 | --- | --- |
 | **Current** | “benchmarking framework”; “dual Section A/Section B metrics” |
-| **Change** | Restate Phase 15 research question in first sentence. List: (i) interception engine, (ii) plug-in API, (iii) FIDELITY/BEHAVIOR/SYSTEM/Cost, (iv) controlled conditions + reproducibility export, (v) case-study **demonstrations** (not “findings = best method”). **Future work (Phases 11–12):** external benchmarks, long-context scaling — out of scope. **Last sentence:** “methodology for evaluating KV transformations,” not “yardstick for comparing methods.” |
+| **Change** | Restate Phase 15 research question in first sentence. Enumerate **Phase 22** C1–C3 in prose (engine, three-branch protocol, controlled export). C4 as case-study **demonstrations** — not “findings = best method”. **Future work (Phases 11–12):** external benchmarks, long-context scaling — out of scope. **Last sentence:** “methodology for evaluating KV transformations,” not “yardstick for comparing methods.” |
 | **Needs new results?** | Findings bullet yes; structure no |
-| **Phase** | 1–10, 15 (future work cites 11–12 only) |
+| **Phase** | 1–10, 15, 22 (future work cites 11–12 only) |
 
 ### What to pull from codebase when writing
 
@@ -1741,7 +1741,7 @@ This makes the paper read as a **research methodology / LLM inference-systems** 
 | **4** | Recent work demonstrates: behavioral degradation; workload dependence; hardware/runtime effects; serving-specific effects | Expand L56 with cites: `chen2026pitfalls`, `kvbench2026serving`, Oaken, Cache in the Wild (add bibs); bullet list OK in prose |
 | **5** | Therefore, evaluating KV transformations requires a **controlled, multidimensional inference environment** | Merge L56–57 gap + Phase 15 question: *how* to evaluate under incremental decode |
 | **6** | Introduce **KVBench** — interception engine, FIDELITY/BEHAVIOR/SYSTEM, plug-in API, SLM testbed | Refactor L58: keep Where/What/How but replace Section A/B with three branches; Phase 18 one-sentence serving boundary; **one** empirical preview sentence (rankings flip) — details → Experiments |
-| **7** | State **contributions** (protocol first, case studies second) | Rewrite L60 per Phase 15 contribution reorder + Phase 17 safe novelty |
+| **7** | State **contributions** (protocol first, case studies second) | Rewrite L60 per **[Phase 22](#phase-22-rewrite-the-contributions--paper-only)** minimal (3) or standard (4) packaging |
 
 ### Retire vs adopt (Intro-specific)
 
@@ -1772,7 +1772,7 @@ This makes the paper read as a **research methodology / LLM inference-systems** 
 | **Rewrite pass 1** | **¶4 Recent evidence** (extend/replace L56) | L56 good start but narrow | Add bullets as prose: behavioral failures~\cite{chen2026pitfalls}; serving benchmarks~\cite{kvbench2026serving}; offline/online cost (Oaken); workload realism (Cache in the Wild); GQA layout effects~\cite{jin2025mha2gqa,compresskv2026}. |
 | **Rewrite pass 1** | **¶5 Need** (merge L56–57) | Bridge to solution | Explicit research question (Phase 15): *how should KV transformations be evaluated under controlled incremental decode?* |
 | **Rewrite pass 1** | **¶6 KVBench** (refactor L58) | L58 too long + Section A/B | Define KVBench once (Phase 18 descriptor). Three axes: Where / What (FIDELITY, BEHAVIOR, SYSTEM) / How (plug-in). SLM testbed sentence. **One** preview result. Serving-boundary sentence. Case-study families = coverage, not novelty. |
-| **Rewrite pass 1** | **¶7 Contributions** (rewrite L60) | Horse-race ordering | Phase 15 reorder: (1) engine + three-branch protocol + reproducibility export; (2) empirical demonstrations on Qwen3 + OLMo~2; (3) architecture-aware replication evidence. Section roadmap sentence. |
+| **Rewrite pass 1** | **¶7 Contributions** (rewrite L60) | Horse-race ordering | Apply **[Phase 22](#phase-22-rewrite-the-contributions--paper-only)** minimal (3-bullet) or standard (4-bullet) packaging. Section roadmap sentence. |
 | **Rewrite pass 1** | **Abstract** (L44–46) | Must match Intro story | Apply same narrative arc in compressed form — see Phase 15 Abstract row. |
 | **Optional** | **Fig. domain taxonomy** | Visual anchor | Same ladder as Phase 19 optional figure — only if page budget |
 | **Do not** | Experiments / Results | Scope unchanged | Do not move tables into Intro |
@@ -1787,6 +1787,7 @@ This makes the paper read as a **research methodology / LLM inference-systems** 
 | **18** | ¶6 KVBench definition + serving boundary |
 | **19** | ¶1 inference-systems hook; ¶6 SLM testbed scope |
 | **20** | ¶2 points to Related Work; ¶4 foreshadows §4 gap |
+| **22** | ¶7 = authoritative contribution bullet text |
 
 ### Completeness record
 
@@ -1798,31 +1799,135 @@ This makes the paper read as a **research methodology / LLM inference-systems** 
 
 ---
 
-# Phase 22: Rewrite the Contributions
+# Phase 22: Rewrite the Contributions 📝 **Paper only**
 
-I would aim for contributions roughly like:
+> **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. The current contributions block (L60) lists three items centered on **dual Section A/B protocol** and a **$2{\times}27$-job study** as co-primary outputs. Phase 22 replaces this with a **five-contribution taxonomy** (methodology-first) and specifies **how many bullets to show in Intro** vs Conclusion given page budget and experimental support.
 
-### Contribution 1
+Phase 22 **implements** the contribution reorder sketched in Phase 15 and **lands in** Phase 21 ¶7 — it is the detailed spec for the `\textbf{Contributions.}` paragraph, not a separate section in the paper.
 
-**A unified KV interception and transformation framework** that allows heterogeneous KV optimization methods to operate inside the same autoregressive inference loop.
+### Current vs target (`conference_101719.tex` L60, L627–629)
 
-### Contribution 2
+| Current (L60) | Problem | Target (Phase 22) |
+| ------------- | ------- | ----------------- |
+| (1) “open incremental interception engine and **dual Section A/B** evaluation protocol” | Undersells three branches; horse-race framing | **C1 + C5:** unified interception engine + extensible plug-in API |
+| (2) “reproducible $2{\times}27$-job **study**” | Reads as primary empirical contribution | **C4:** cross-method **demonstrations** (not definitive ranking) |
+| (3) “offline metrics mis-rank; GQA vs MHA” | Valid finding but buried as (3) | Part of **C4** + architecture-replication clause |
+| — | Missing | **C2:** FIDELITY / BEHAVIOR / SYSTEM methodology |
+| — | Missing | **C3:** controlled comparison protocol (`controlled_conditions`, Phase 7/14) |
 
-**A multidimensional evaluation methodology** separating representation fidelity, behavioral quality, and system performance.
+### Five-contribution taxonomy (canonical wording)
 
-### Contribution 3
+Use these as **building blocks**; merge for Intro if page-limited (see packaging below).
 
-**A controlled comparison protocol** that normalizes model, workload, decode configuration, hardware and compression budget.
+#### Contribution 1 — Unified interception framework
 
-### Contribution 4
+> **A unified KV interception and transformation framework** that allows heterogeneous KV optimization methods to operate inside the same autoregressive incremental decode loop (`KVCacheEngine`, no re-compression of frozen prior payloads).
 
-**A cross-method empirical study** revealing where compression ratio, fidelity, behavioral quality and runtime efficiency diverge.
+**Engine support:** ✅ `framework/kv_engine.py`, `compressors/base.py`  
+**Paper anchor:** `\label{subsec:engine}` L106–114, Algorithm `\ref{alg:engine}`
 
-### Contribution 5
+#### Contribution 2 — Multidimensional evaluation methodology
 
-**An extensible plugin architecture** supporting quantization, eviction, projection and adaptive/stateful KV transformations.
+> **A multidimensional evaluation methodology** separating representation fidelity (**FIDELITY**), behavioral quality under incremental decode (**BEHAVIOR**), and system/runtime performance (**SYSTEM**).
 
-Only claim the ones your experiments actually support.
+**Engine support:** ✅ `eval/runner.py`, `eval/{fidelity,behavior,system}/`  
+**Paper anchor:** `\label{subsec:eval_protocol}`; retire Section A/B naming  
+**Full tier add-on:** explicit **cost accounting** dimension (Phase 3) as sub-bullet, not separate numbered contribution
+
+#### Contribution 3 — Controlled comparison protocol
+
+> **A controlled comparison protocol** that normalizes model, workload, decode configuration, hardware, and compression budget — only the plug-in varies (`controlled_conditions` export per job).
+
+**Engine support:** ✅ `eval/controlled_conditions.py`, `eval/reproducibility/manifest.py` (Phase 14)  
+**Paper anchor:** Design Principles `\label{subsec:design}`; **Controlled conditions** table (Phase 7)
+
+#### Contribution 4 — Cross-method empirical demonstrations
+
+> **A cross-method empirical study** revealing where compression ratio, fidelity, behavioral quality, and runtime efficiency **diverge** under matched conditions on two SLM architectures (Qwen3 GQA, OLMo~2 MHA).
+
+**Engine support:** ✅ Phase-5 bundles; Pareto export (Phase 9); three case-study plug-ins only in **results**  
+**Paper anchor:** Experiments + Discussion L608–621; Pareto figure  
+**Wording guard (Phase 17):** say *“demonstrates”* / *“illustrates”*, not *“determines the best method”* or *“comprehensive comparison of all KV methods”*
+
+#### Contribution 5 — Extensible plug-in architecture
+
+> **An extensible plug-in architecture** supporting quantization, eviction, projection, and hybrid KV transformations via a shared compressor interface and mechanism taxonomy (categories A–E).
+
+**Engine support:** ✅ `compressors/taxonomy.py`; TQ/QJL/RocketKV + SnapKV/Palu registered  
+**Paper anchor:** `\label{subsec:plugins}`, taxonomy table (Phase 4)  
+**Do not overclaim:** general **adaptive/stateful policy API** is Phase 5 **not planned** — adaptive behavior may exist **inside** individual plug-ins (RocketKV, SnapKV), not as a framework-level contribution
+
+### Experimental support matrix — what to claim
+
+| Contribution | Claim in Intro? | Claim in Conclusion? | Requires new GPU jobs? |
+| ------------ | --------------- | -------------------- | ---------------------- |
+| **C1** Framework | ✅ Always | ✅ Always | No |
+| **C2** Three-branch methodology | ✅ Always | ✅ Always | No |
+| **C3** Controlled protocol | ✅ Always (minimal); detail in Methodology | ✅ Always | No |
+| **C4** Empirical demonstrations | ✅ Always — **secondary** to C1–C3 | ✅ Always — summarize patterns, not winners | No for existing TQ/QJL/RocketKV; yes to add SnapKV/Palu **results** |
+| **C5** Plug-in architecture | ⚠️ Merge into C1 if tight; else ✅ | ✅ Always | No |
+| **Cost accounting** (optional) | Full tier only | Full tier | No |
+| **Reproducibility export** (optional) | Fold into C3 | ✅ Full tier | No |
+
+### Intro packaging (choose at rewrite time)
+
+| Tier | Intro `\textbf{Contributions.}` format | Maps from |
+| ---- | -------------------------------------- | --------- |
+| **Minimal (3 bullets)** — recommended for IEEE column | (1)~**Engine + plug-ins:** controlled interception framework with extensible compressor API (C1+C5). (2)~**Protocol:** FIDELITY/BEHAVIOR/SYSTEM evaluation under matched conditions with per-job configuration export (C2+C3). (3)~**Demonstrations:** case studies on Qwen3 + OLMo~2 showing metric divergence and architecture-dependent rankings (C4). | Phases 15, 17 |
+| **Standard (4 bullets)** | Split C2 and C3; keep C1+C5 merged; C4 separate | Full paper update tier |
+| **Expanded (5 bullets)** | One bullet per C1–C5 | Only if page budget allows; risk of looking like a feature list |
+
+**Retire in all tiers:**
+
+- “dual Section A/B evaluation protocol”
+- “$2{\times}27$-job study” as a **contribution headline** (keep job count in Experiments setup, not contribution claim)
+- “yardstick for comparing methods” (Phase 15/17)
+
+### When to apply
+
+| Timing | Rationale |
+| ------ | --------- |
+| **Rewrite pass 1, step 7** — immediately after Phase 21 Intro draft | ¶7 is the contribution paragraph; Phase 22 is the authoritative bullet text |
+| **Same pass as Phases 15, 17, 21** | Ordering and wording must match research question and safe novelty |
+| **Mirror in Abstract + Conclusion** | Abstract: one-sentence protocol summary + one-sentence demonstration finding. Conclusion L627–629: enumerate C1–C3 structurally; C4 as evidence, not headline |
+| **No new experiments** | Prose-only for current three case studies |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section (label, lines) | Why | What to change |
+| ---- | ------------------------ | --- | -------------- |
+| **Rewrite pass 1** | **§Introduction `\textbf{Contributions.}`** (L60) | Horse-race ordering; Section A/B | Replace with **minimal (3)** or **standard (4)** packaging from table above. End with section roadmap sentence (unchanged structure). Cross-ref `\ref{sec:methodology}`, `\ref{sec:experiments}`. |
+| **Rewrite pass 1** | **Abstract** (L45 closing clause) | Implied contribution = “yardstick” | List protocol contributions in one clause; one clause for demonstration finding (offline ≠ online; rankings flip). No numbered list in Abstract. |
+| **Rewrite pass 1** | **§Methodology opening** (L83–86) | Should reflect contribution claims | First sentence: *“This section instantiates Contributions (1–2)”* or equivalent — engine + protocol, not case-study methods. |
+| **Rewrite pass 1** | **§Design Principles** (L88–96) | C3 evidentiary home | Ensure **Controlled comparison** bullet matches C3 wording verbatim where possible. |
+| **Rewrite pass 1** | **§Experiments opening** (L215–218) | C4 must not read as contribution headline | Open with: *“We use three compressor families as **demonstrations** of the evaluation protocol (Contribution 4), not as an exhaustive method survey.”* |
+| **Rewrite pass 1** | **§Discussion opening** (L598) | Contribution framing anchor | First sentence ties to C2: multidimensional evaluation necessary. Do not reopen contribution list — interpret C4 patterns. |
+| **Rewrite pass 1** | **§Conclusion** (L627–629) | L627 repeats “benchmarking framework” + dual metrics | Restate C1–C3 in prose (engine, three branches, controlled export). L628 case-study sentence = C4 evidence. Remove “yardstick for comparing methods”; close with methodology scope (Phase 15/19). |
+| **Optional** | **Cover letter** | Reviewer routing | Bullet C1–C3 for systems/methodology venues; C4 as supporting evidence on SLMs |
+| **Do not** | Claim all five as **equal-weight** contributions if merged in Intro | Reviewer clarity | If Intro uses 3 bullets, Conclusion may spell out 5 themes in prose without re-numbering |
+| **Do not** | C5 “adaptive/stateful transformations” without Phase 5 | Overclaim | Say “plug-ins may implement stateful policies internally”; framework API remains one-plug-in / one-config |
+
+### Cross-references
+
+| Phase | Link |
+| ----- | ---- |
+| **15** | Research question — contributions answer *how* to evaluate, not *who wins* |
+| **16** | C4 demonstrations instantiate problem cascade |
+| **17** | Safe novelty — C1–C3 are methodological; C4 is illustrative |
+| **18** | C1 wording — evaluation layer, not serving engine |
+| **19** | C4 scoped to SLM inference-engineering testbed |
+| **21** | ¶7 = landing zone for Phase 22 bullets |
+| **3** | Cost as optional sub-bullet under C2 or C3 (full tier) |
+| **4** | C5 taxonomy table cross-ref |
+| **7, 14** | C3 controlled conditions + reproducibility export |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Aligned | All five contributions map to shipped code paths; C5 adaptive API explicitly **not** claimed (Phase 5 not planned). |
+| **Documentation** | ✅ Done | This section; Phase 15 contribution reorder; [Introduction in paper alignment guide](#introduction-l5260). |
+| **Paper** | 📝 Pending | Rewrite L60 + mirror Abstract/Conclusion. Apply at rewrite step **7** after Phase 21. **No new GPU jobs.** |
 
 ---
 

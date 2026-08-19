@@ -1,8 +1,8 @@
 # KVBench: Complete Research Improvement Roadmap
 
-## Implementation status — Phases 1–2 (§1–139, verified 2026-08-19)
+## Implementation status — Phases 1–3 (§1–182, verified 2026-08-19)
 
-**Executive verdict:** **Phases 1–2 are complete** in code, core documentation, and tests. The old offline/online split is replaced by **FIDELITY / BEHAVIOR / SYSTEM** in `eval/runner.py`, `scripts/run_eval.py`, `docs/methodology/METHODOLOGY.md`, and `docs/architecture/SYSTEM_DESIGN.md`.
+**Executive verdict:** **Phases 1–3 are complete** in code, core documentation, and tests. Phases 1–2 replaced the offline/online split with **FIDELITY / BEHAVIOR / SYSTEM**; Phase 3 adds unified **COST** accounting per compression plug-in.
 
 | Phase / section | Status | Primary evidence |
 | --------------- | ------ | ---------------- |
@@ -10,6 +10,7 @@
 | §2 Fidelity evaluation | ✅ Done | `eval/fidelity/{representation,attention,memory,recurrent}.py` |
 | §3 Behavioral evaluation | ✅ Done | PPL + retrieval + instruction following default; reasoning opt-in |
 | §4 System evaluation | ✅ Done | TTFT/ITL/tok-s default; VRAM/bandwidth/kernel/GPU opt-in |
+| §Phase 3 Cost accounting | ✅ Done | `eval/cost/accounting.py`, `EvaluationResult.cost`, compressor hooks |
 
 **Tests:** `tests/test_eval_runner.py` (default-branch smoke + probe/manifest); `tests/test_regression_validation.py` (WP5 identity + Phase-5 baseline drift); `tests/test_online_inference.py` (throughput + PPL); `tests/test_behavior_modules.py` and `tests/test_system_modules.py` (unit + module-isolation for every BEHAVIOR/SYSTEM sub-metric); per-model `tests/test_*_reference.py` (full integration).
 

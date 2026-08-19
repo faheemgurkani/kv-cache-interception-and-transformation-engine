@@ -70,6 +70,18 @@ class ResultReporter:
             "memory_bandwidth_gbps",
             "compress_decompress_time_ms",
             "online_compressed_kv",
+            # COST (Phase 3)
+            "theoretical_compression_ratio",
+            "actual_memory_reduction_bytes",
+            "calibration_required",
+            "calibration_dataset",
+            "calibration_tokens",
+            "calibration_time_ms",
+            "calibration_memory_bytes",
+            "cost_compression_time_ms",
+            "cost_decompression_time_ms",
+            "cost_attention_ms",
+            "cost_end_to_end_decode_ms",
         ]
         with path.open("w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -78,6 +90,7 @@ class ResultReporter:
                 fidelity = result.fidelity
                 behavior = result.behavior
                 system = result.system
+                cost = result.cost
                 throughput = system.throughput if system else None
                 writer.writerow(
                     {
@@ -138,6 +151,21 @@ class ResultReporter:
                             else None
                         ),
                         "online_compressed_kv": throughput.online_compressed_kv if throughput else None,
+                        "theoretical_compression_ratio": (
+                            cost.compression.theoretical_compression_ratio if cost else None
+                        ),
+                        "actual_memory_reduction_bytes": (
+                            cost.compression.actual_memory_reduction_bytes if cost else None
+                        ),
+                        "calibration_required": cost.offline.calibration_required if cost else None,
+                        "calibration_dataset": cost.offline.calibration_dataset if cost else None,
+                        "calibration_tokens": cost.offline.calibration_tokens if cost else None,
+                        "calibration_time_ms": cost.offline.calibration_time_ms if cost else None,
+                        "calibration_memory_bytes": cost.offline.calibration_memory_bytes if cost else None,
+                        "cost_compression_time_ms": cost.online.compression_time_ms if cost else None,
+                        "cost_decompression_time_ms": cost.online.decompression_time_ms if cost else None,
+                        "cost_attention_ms": cost.online.attention_cost_ms if cost else None,
+                        "cost_end_to_end_decode_ms": cost.online.end_to_end_decode_cost_ms if cost else None,
                     }
                 )
         return path
@@ -171,4 +199,13 @@ class ResultReporter:
                 parts.append(f"tok/s={system.throughput.tokens_per_second:.2f}")
                 if system.throughput.ttft_ms is not None:
                     parts.append(f"ttft={system.throughput.ttft_ms:.1f}ms")
+            if result.cost is not None:
+                offline = result.cost.offline
+                if offline.calibration_required:
+                    parts.append(f"calib={offline.calibration_dataset or 'yes'}")
+                parts.append(
+                    f"theory_ratio={result.cost.compression.theoretical_compression_ratio:.2f}x"
+                    if result.cost.compression.theoretical_compression_ratio is not None
+                    else "theory_ratio=n/a"
+                )
             print(" ".join(parts))

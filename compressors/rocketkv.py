@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import torch
 
-from compressors.base import CompressedKV, KVCompressor
+from compressors.base import CompressedKV, KVCompressor, OfflineCostMetadata
 from quantizers.rocketkv import HybridSparseAttention, RocketKVLayerPayload, TokenSelector
 
 
@@ -56,6 +56,15 @@ class RocketKVCompressor(KVCompressor):
 
     def reset_state(self) -> None:
         self._layer_state.clear()
+
+    def theoretical_compression_ratio(self, *, context_length: int | None = None) -> float | None:
+        if context_length is None or context_length <= 0:
+            return None
+        retained = min(self.token_budget, context_length)
+        return context_length / retained if retained > 0 else 1.0
+
+    def offline_cost_metadata(self) -> OfflineCostMetadata:
+        return OfflineCostMetadata(calibration_required=False)
 
     def _state(self, layer: int) -> RocketKVLayerState:
         return self._layer_state.setdefault(layer, RocketKVLayerState())

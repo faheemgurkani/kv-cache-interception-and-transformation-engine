@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import torch
 
-from compressors.base import KVCompressor
+from compressors.base import KVCompressor, OfflineCostMetadata
 from quantizers.turboquant_pipeline import TurboQuantPipeline, TurboQuantStage, TurboQuantTensorPayload
 
 
@@ -43,6 +43,35 @@ class TurboQuantCompressor(KVCompressor):
         """Shared Lloyd-Max centroid table (one copy per compressor, not per layer)."""
         centroids = self.pipeline.centroids
         return centroids.numel() * centroids.element_size()
+
+    def theoretical_compression_ratio(self, *, context_length: int | None = None) -> float | None:
+        if self.stage.value == "wht_only":
+            return 1.0
+        if self.stage.value == "full":
+            # K at bitwidth + V with Lloyd-Max + QJL residual (approximate lower bound).
+            return max(16.0 / float(self.bitwidth), 2.0)
+        return 16.0 / float(self.bitwidth)
+
+    def offline_cost_metadata(self) -> OfflineCostMetadata:
+        from quantizers.lloyd_max import last_centroid_calibration
+
+        if self.stage.value == "wht_only":
+            return OfflineCostMetadata(calibration_required=False)
+
+        stats = last_centroid_calibration()
+        if stats is None or stats.num_bits != self.bitwidth:
+            return OfflineCostMetadata(
+                calibration_required=True,
+                calibration_dataset="gaussian_synthetic",
+                calibration_tokens=1_000_000,
+            )
+        return OfflineCostMetadata(
+            calibration_required=True,
+            calibration_dataset=stats.dataset,
+            calibration_tokens=stats.calibration_tokens,
+            calibration_time_ms=stats.calibration_time_ms,
+            calibration_memory_bytes=stats.calibration_memory_bytes,
+        )
 
     def reconstruction_error(
         self,

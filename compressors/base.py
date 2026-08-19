@@ -20,6 +20,20 @@ class CompressedKV:
     layer: int = 0
 
 
+@dataclass
+class OfflineCostMetadata:
+    """Static offline preparation cost declared by a compression plug-in."""
+
+    calibration_required: bool
+    calibration_dataset: str | None = None
+    calibration_tokens: int | None = None
+    calibration_time_ms: float | None = None
+    calibration_memory_bytes: int | None = None
+
+    def to_dict(self) -> dict:
+        return self.__dict__.copy()
+
+
 class KVCompressor(ABC):
     """Paper-independent interface for KV-cache compression plug-ins."""
 
@@ -86,3 +100,13 @@ class KVCompressor(ABC):
         if compressed.nbytes == 0:
             return 1.0
         return original_bytes / compressed.nbytes
+
+    def theoretical_compression_ratio(self, *, context_length: int | None = None) -> float | None:
+        """Analytical compression ratio from method parameters (not measured storage)."""
+        if self.bitwidth >= 16:
+            return 1.0
+        return 16.0 / float(self.bitwidth)
+
+    def offline_cost_metadata(self) -> OfflineCostMetadata:
+        """Offline preparation cost profile (calibration, codebooks, etc.)."""
+        return OfflineCostMetadata(calibration_required=False)

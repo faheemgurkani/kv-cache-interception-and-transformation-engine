@@ -54,6 +54,7 @@ def main() -> None:
     parser.add_argument("--memory-bandwidth", action="store_true", help="Run SYSTEM/memory_bandwidth.")
     parser.add_argument("--kernel-cost", action="store_true", help="Run SYSTEM/kernel_cost (compress/decompress time).")
     parser.add_argument("--gpu-utilization", action="store_true", help="Run SYSTEM/gpu_utilization (CUDA + pynvml only).")
+    parser.add_argument("--skip-cost", action="store_true", help="Skip COST accounting block (Phase 3).")
     parser.add_argument("--include-baselines", action="store_true", help="Also run uncompressed baseline PPL/throughput.")
     parser.add_argument("--output", default="eval_results", help="Output filename stem.")
     args = parser.parse_args()
@@ -77,6 +78,7 @@ def main() -> None:
         "run_memory_bandwidth": args.memory_bandwidth,
         "run_kernel_cost": args.kernel_cost,
         "run_gpu_utilization": args.gpu_utilization,
+        "run_cost": not args.skip_cost,
         "include_baselines": args.include_baselines,
     }
 

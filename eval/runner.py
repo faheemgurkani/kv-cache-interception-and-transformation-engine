@@ -29,6 +29,7 @@ from compressors.base import KVCompressor
 from compressors.registry import get_compressor
 from data.loader import build_long_context_ids, load_wikitext2
 from eval.behavior import BehaviorMetrics, evaluate_behavior
+from eval.cost import CostMetrics, evaluate_cost
 from eval.fidelity import FidelityMetrics, evaluate_fidelity
 from eval.system import SystemMetrics, evaluate_system
 from framework.config import load_eval_config, load_model_config
@@ -50,6 +51,7 @@ class EvaluationResult:
     fidelity: FidelityMetrics | None
     behavior: BehaviorMetrics | None
     system: SystemMetrics | None
+    cost: CostMetrics | None = None
     stage: str | None = None
     model_capabilities: ModelCapabilities | None = field(default=None, repr=False)
     model_metadata: dict[str, object] | None = field(default=None, repr=False)
@@ -84,6 +86,7 @@ class EvaluationResult:
             "fidelity": None if self.fidelity is None else self.fidelity.to_dict(),
             "behavior": None if self.behavior is None else self.behavior.to_dict(),
             "system": None if self.system is None else self.system.to_dict(),
+            "cost": None if self.cost is None else self.cost.to_dict(),
         }
 
 
@@ -134,6 +137,7 @@ class EvaluationRunner:
         run_memory_bandwidth: bool = False,
         run_kernel_cost: bool = False,
         run_gpu_utilization: bool = False,
+        run_cost: bool = True,
         include_baselines: bool = False,
         perplexity_stride: int | None = None,
         generated_tokens: int | None = None,
@@ -194,6 +198,15 @@ class EvaluationRunner:
                 actual_kv_memory_bytes=compressed_bytes,
             )
 
+        cost: CostMetrics | None = None
+        if run_cost:
+            cost = evaluate_cost(
+                self.compressor,
+                context_length=context_length,
+                fidelity=fidelity,
+                system=system,
+            )
+
         return EvaluationResult(
             compressor=self.compressor.name,
             bitwidth=getattr(self.compressor, "bitwidth", None),
@@ -201,6 +214,7 @@ class EvaluationRunner:
             fidelity=fidelity,
             behavior=behavior,
             system=system,
+            cost=cost,
             stage=_compressor_stage(self.compressor),
             model_capabilities=probe.capabilities,
             model_metadata=probe.metadata,

@@ -51,3 +51,7 @@ def test_evaluation_runner_identity_smoke():
     assert payload["compatibility_gates"] is not None
     assert payload["compatibility_manifest"] is not None
     assert payload["fidelity"]["recurrent"]["applicable"] is False
+    assert payload["cost"] is not None
+    assert payload["cost"]["compression"]["theoretical_compression_ratio"] == 1.0
+    assert payload["cost"]["offline"]["calibration_required"] is False
+    assert payload["cost"]["online"]["end_to_end_decode_cost_ms"] is not None

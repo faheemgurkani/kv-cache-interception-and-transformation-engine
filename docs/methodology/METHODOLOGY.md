@@ -276,6 +276,20 @@ Also runs through `KVCacheEngine`. Answers whether compression actually helps in
 
 Identity baseline (`identity_baseline`) runs once under Modal preset `baseline`. Method jobs report `perplexity_baseline` per job (should match shared baseline within noise).
 
+### 6.5 COST (`eval/cost/`)
+
+Every evaluation run produces a unified **cost** block (Phase 3) aggregating compression storage, offline calibration, and online inference timing. Enabled by default; disable with `--skip-cost`.
+
+| Block | Fields | Source |
+|---|---|---|
+| Compression | `theoretical_compression_ratio`, `actual_compression_ratio`, `actual_memory_reduction_bytes`, `metadata_overhead_bytes` | Compressor hooks + FIDELITY/memory |
+| Offline cost | `calibration_required`, `calibration_dataset`, `calibration_tokens`, `calibration_time_ms`, `calibration_memory_bytes` | `compressor.offline_cost_metadata()` |
+| Online cost | `compression_time_ms`, `decompression_time_ms`, `attention_cost_ms`, `end_to_end_decode_cost_ms` | SYSTEM/kernel_cost (opt-in) + SYSTEM/latency_throughput |
+
+**Offline calibration:** TurboQuant reports Lloyd-Max centroid build time (Gaussian synthetic, 1M samples) measured at compressor init. QJL and RocketKV declare calibration-free (fixed-seed projections / online token selection). Identity has no offline cost.
+
+**Online detail:** Compress/decompress/attention breakdown requires `--kernel-cost`; end-to-end decode cost comes from default throughput metrics.
+
 ---
 
 ## 7. Phase 5 sweep design

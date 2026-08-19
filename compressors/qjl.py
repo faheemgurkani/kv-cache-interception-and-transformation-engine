@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import torch
 
-from compressors.base import CompressedKV, KVCompressor
+from compressors.base import CompressedKV, KVCompressor, OfflineCostMetadata
 from quantizers.qjl_pipeline import QJLPipeline, QJLTensorPayload
 
 
@@ -117,3 +117,13 @@ class QJLCompressor(KVCompressor):
         for projection in self.pipeline._projections.values():
             total += projection.numel() * projection.element_size()
         return total
+
+    def theoretical_compression_ratio(self, *, context_length: int | None = None) -> float | None:
+        # Keys at ~1 bit/sign (+ norms); values stored at FP16.
+        return (16.0 + 16.0) / (1.0 + 16.0)
+
+    def offline_cost_metadata(self) -> OfflineCostMetadata:
+        return OfflineCostMetadata(
+            calibration_required=False,
+            calibration_dataset="fixed_seed_projection",
+        )

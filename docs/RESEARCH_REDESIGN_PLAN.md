@@ -4,7 +4,7 @@
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phases 15–21** are **paper-only** (framing through Related Work restructure and Intro narrative). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, and **14** are **complete in the engine and documentation**. **Phases 15–22** are **paper-only** (framing through contribution rewrite). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -28,6 +28,7 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **19** Domain positioning | — | 📝 Spec only | 📝 Pending | LLM inference-systems / KV eval infrastructure — Phase 19 |
 | **20** Related Work restructure | — | 📝 Spec only | 📝 Pending | Four-section Related Work + eval gap — Phase 20 |
 | **21** Introduction narrative | — | 📝 Spec only | 📝 Pending | Seven-paragraph Intro story — Phase 21 |
+| **22** Contributions rewrite | — | 📝 Spec only | 📝 Pending | Five-contribution taxonomy + Intro packaging — Phase 22 |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 | **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
@@ -81,6 +82,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | Novelty | Implicit “shared yardstick” | Controlled env + three branches under matched conditions (**Phase 17**) | Do not claim “first benchmark” |
 | What KVBench is | “Benchmarking framework” / “harness” | Evaluation layer at KV boundary; not serving engine (**Phase 18**) | Define once; contrast vLLM/SGLang in one sentence |
 | Domain / venue | Implicit SLM compression comparison | **LLM inference-systems** paper; KV eval infrastructure (**Phase 19**) | Keywords + Intro ladder; scope Conclusion to SLM inference engineering |
+| Introduction narrative | Bottleneck + method dump + Section A/B + horse-race contributions (**Phase 21**) | Seven-paragraph methodology story; FIDELITY/BEHAVIOR/SYSTEM; instrument framing | Rewrite L52–60 per Phase 21 before Related Work |
+| Contributions block | (1) dual Section A/B engine; (2) 27-job study co-primary; (3) offline≠online (**Phase 22**) | Protocol-first: engine + protocol + controlled export; demonstrations second; safe scope | Rewrite L60 per Phase 22 taxonomy; mirror Abstract + Conclusion |
+| Related Work structure | Algorithm-family subsections + standalone Positioning (**Phase 20**) | Four sections: Eviction / Representation / Arch-Serving / **Evaluation** + *What is still missing?* | Restructure L62–81; add Oaken/SCOPE/CacheBlend/Cache-in-the-Wild bibs |
 | Quality under compression | Section B = PPL + throughput only | BEHAVIOR: PPL + retrieval + instruction following (+ reasoning opt-in) | BEHAVIOR subsection; PPL in results; task probes in methodology (+ optional appendix numbers) |
 | Runtime efficiency | Throughput under Section B | SYSTEM: TTFT, ITL, tok/s, latency (+ VRAM/bandwidth opt-in) | Separate **SYSTEM** subsection; tok/s tables move under SYSTEM |
 | Cost | Not mentioned | `EvaluationResult.cost` (compression / offline / online) | New **Cost accounting** subsection |
@@ -125,9 +129,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | --- | --- |
 | **Current** | L58 “What: Section A … Section B”; L60 contributions (1) dual Section A/B protocol |
 | **Codebase** | L58 already says “interception-and-transformation engine” — good. “What” axis is outdated. |
-| **Change** | **Phase 21 seven-paragraph outline** (see [Phase 21](#phase-21-rewrite-the-introduction-around-this-story--paper-only)). Merge L54–58 into ¶1–4; KVBench ¶6; contributions ¶7 (Phase 15 reorder). **Phase 16** gap in ¶3–5. **Phase 18** boundary one sentence in ¶6. |
+| **Change** | **Phase 21** seven-paragraph outline + **Phase 22** contribution bullets (see [Phase 22](#phase-22-rewrite-the-contributions--paper-only)). Merge L54–58 into ¶1–4; KVBench ¶6; contributions ¶7 = Phase 22 **minimal (3)** or **full (4–5)** packaging. **Phase 16** gap in ¶3–5. **Phase 18** boundary one sentence in ¶6. |
 | **Needs new results?** | Framing no; empirical paragraph yes if models/methods change |
-| **Phase** | 1, 2, 6, 15, 16, 18, 19, 21 |
+| **Phase** | 1, 2, 6, 15, 16, 18, 19, 21, 22 |
 
 #### Related Work (L62–81)
 
@@ -339,10 +343,10 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 
 | Tier | When | Scope |
 | ---- | ---- | ----- |
-| **Minimal** | Re-sweep done; tight page limit | Terminology pass + controlled conditions table + **Phases 15–21 prose** (framing, Related Work restructure, Intro narrative); regenerate Pareto (Phase 9) |
+| **Minimal** | Re-sweep done; tight page limit | Terminology pass + controlled conditions table + **Phases 15–22 prose** (framing, Intro, Related Work, **contributions**); regenerate Pareto (Phase 9) |
 | **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) + optional **problem-cascade figure** (Phase 16) + reproducibility subsection (Phase 14) |
 
-### Phases 15–21 — recommended `.tex` rewrite order
+### Phases 15–22 — recommended `.tex` rewrite order
 
 Apply in **one framing pass** before editing result numbers (can precede re-sweep):
 
@@ -354,9 +358,10 @@ Apply in **one framing pass** before editing result numbers (can precede re-swee
 | 4 | **18** | Abstract, Intro L58, Methodology opening L83–86, `\label{subsec:engine}` L106, pipeline caption |
 | 5 | **19** | Intro opening L54, Keywords, Related Work framing, Experiments opening, Conclusion scope |
 | 6 | **21** | **Rewrite `\label{sec:introduction}`** (L52–60) as seven-paragraph story **before** finalizing Related Work cross-refs |
-| 7 | **20** | **Restructure `\label{sec:related}`** (L62–81) into four subsections; merge/remove old `\subsection{Positioning}` into §4 closing |
+| 7 | **22** | **Finalize `\textbf{Contributions.}` block** (L60) using five-contribution taxonomy; mirror in Abstract + Conclusion L627–629 |
+| 8 | **20** | **Restructure `\label{sec:related}`** (L62–81) into four subsections; merge/remove old `\subsection{Positioning}` into §4 closing |
 
-**No new GPU jobs** for steps 1–7. Step **21 before 20** so Intro sets up the Related Work gap narrative; step **20 last** in Related Work so §4 “What is still missing?” closes into KVBench.
+**No new GPU jobs** for steps 1–8. Step **21 before 22** (Intro narrative before contribution bullets); step **22 before 20** (contributions locked before Related Work positioning). Step **20 last** so §4 *What is still missing?* closes into KVBench.
 
 Cross-link [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) for line-level detail.
 
@@ -1550,133 +1555,246 @@ with a specific focus on **KV-cache optimization and evaluation**.
 
 ---
 
-# Phase 20: Completely Restructure Related Work
+# Phase 20: Completely Restructure Related Work 📝 **Paper only**
 
-I recommend four sections.
+> **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. The `.tex` Related Work (L62–81) already surveys many methods but uses **algorithm-family subsections** (Quantization / Low-rank / Eviction / Benchmarking / Positioning) and buries the **evaluation gap → KVBench** narrative in a short positioning paragraph. Phase 20 restructures into **four thematic sections** ending with *What is still missing?* so Related Work mirrors the problem cascade (Phases 16, 21) and domain positioning (Phase 19).
 
-## 1. KV-Cache Eviction
+### Current vs target structure (`conference_101719.tex` L62–81)
 
-Discuss:
+| Current `\subsection` (L) | Target section | Action |
+| ------------------------- | -------------- | ------ |
+| **KV Cache Compression** (L65–66) | — (opening only) | Replace with **1–2 sentence systems framing** (Phase 19); drop generic catch-all |
+| **Quantization-based Methods** (L68–69) | **§2 KV Representation Compression** | Move + merge with low-rank |
+| **Low-rank and Projection-based Methods** (L71–72) | **§2 KV Representation Compression** | Merge with quantization |
+| **Eviction-based Methods** (L74–75) | **§1 KV-Cache Eviction** | Keep core content; add Scissorhands/MiniCache/Ada-KV if not already cited |
+| **Benchmarking and Evaluation Frameworks** (L77–78) | **§4 KV-Cache Evaluation and Benchmarking** | Expand — this becomes the **critical** section |
+| **Positioning of KVBench** (L80–81) | **§4 closing** (*What is still missing?*) | **Delete standalone subsection**; fold into §4 closing + Phase 17 canonical novelty |
 
-* H2O
-* Scissorhands
-* StreamingLLM
-* SnapKV
-* PyramidKV
-* Ada-KV
+### Target four sections (content map)
 
----
+#### §1. KV-Cache Eviction
 
-## 2. KV Representation Compression
+**Purpose:** Token-budget policies — what is retained vs dropped.
 
-Discuss:
+| Paper | Role in narrative | In `.tex` today? |
+| ----- | ----------------- | ---------------- |
+| H2O~\cite{zhang2023h2o} | Heavy-hitter retention baseline | ✅ L74–75 |
+| Scissorhands~\cite{liu2023scissorhands} | Importance persistence at test time | ✅ cited in L81; add prose in §1 |
+| StreamingLLM~\cite{xiao2024streamingllm} | Attention-sink + sliding window | ✅ L74 |
+| SnapKV~\cite{li2024snapkv} | Observation-window selection | ✅ L74; plug-in exists, no results |
+| PyramidKV~\cite{cai2024pyramidkv} | Layer-wise pyramid budgets | ✅ L74 |
+| Ada-KV~\cite{feng2024adakv} | Adaptive budget allocation | ✅ L75 (via MiniCache line) |
 
-* MiniCache
-* QJL
-* Palu
-* Outlier Tokens
-* KVSink
-* AsymKV
-* XQuant
-* TurboQuant
+**Closing sentence for §1:** eviction reduces memory by **dropping tokens**, not by changing representation — motivates separate evaluation from §2.
 
----
+#### §2. KV Representation Compression
 
-## 3. Architecture- and Serving-Aware KV Optimization
+**Purpose:** Low-bit / sketch / projection methods that **transform** cached tensors.
 
-Discuss:
+| Paper | Role | In `.tex` today? |
+| ----- | ---- | ---------------- |
+| MiniCache~\cite{liu2024minicache} | Depth-dimension compression | ✅ L75 |
+| QJL~\cite{zandieh2025qjl,qjlcs2025} | 1-bit JL sketching | ✅ L71–72; case study |
+| Palu~\cite{chang2025palu} | Low-rank projection | ✅ L71–72; plug-in, no results |
+| Outlier Tokens~\cite{su2025outlier} | Heavy-tail handling | ✅ L69 |
+| KVSink~\cite{su2025kvsink} | Evolving attention sinks | ✅ L69 |
+| AsymKV~\cite{tao2025asymkv} | Asymmetric K/V bit allocation | ✅ L69 |
+| XQuant~\cite{yang2025xquant} | Cross-layer ultra-low-bit | ✅ L69 |
+| TurboQuant~\cite{zandieh2026turboquant,hu2026patternkv} | Rotation + Lloyd–Max (+ PatternKV) | ✅ L69; case study |
 
-* MHA → GQA
-* PagedEviction
-* HqeKV
-* RocketKV
-* HybridKV
-* potentially CompressKV
+**Closing sentence for §2:** representation methods optimize **tensor fidelity** — but fidelity alone does not guarantee behavioral or system benefit (bridge to §4).
 
----
+#### §3. Architecture- and Serving-Aware KV Optimization
 
-## 4. KV-Cache Evaluation and Benchmarking
+**Purpose:** Layout, paging, and hybrid policies that tie compression to **inference structure**.
 
-This is the **new critical section**.
+| Paper | Role | In `.tex` today? |
+| ----- | ---- | ---------------- |
+| MHA → GQA~\cite{jin2025mha2gqa,costoptgqa2025} | Head alignment / cost under GQA | ✅ L75–76 |
+| PagedEviction~\cite{wang2026pagedeviction} | Block-wise eviction for paged memory | ✅ L75 |
+| HqeKV~\cite{wang2026hqekv} | Hybrid quant + eviction | ✅ L75 |
+| RocketKV~\cite{rocketkv} | Two-stage sparse attention | ✅ L75–76; case study |
+| HybridKV | Heterogeneous adaptive compression | 📝 **Add bib entry**; cite in §3 |
+| CompressKV~\cite{compresskv2026} | GQA-aware semantic retrieval heads | ✅ L75–76 |
 
-Discuss:
+**Closing sentence for §3:** architecture and serving constraints change **which tokens/heads matter** — rankings are not portable without controlled replication (motivates KVBench GQA vs MHA split).
 
-* Oaken
-* SCOPE
-* The Pitfalls of KV Cache Compression
-* Benchmarking KV-Cache Optimizations...
-* relevant serving/workload studies
-* CacheBlend
-* KVCache Cache in the Wild
+#### §4. KV-Cache Evaluation and Benchmarking *(new critical section)*
 
-Then end the section with:
+**Purpose:** Survey **how** KV methods are evaluated — then expose the gap KVBench fills.
 
-> **What is still missing?**
+| Paper | Role in narrative | In `.tex` today? |
+| ----- | ----------------- | ---------------- |
+| **The Pitfalls of KV Cache Compression**~\cite{chen2026pitfalls} | Offline prefix proxies ≠ decode behavior | ✅ L56, L77 |
+| **Benchmarking KV-Cache Optimizations…**~\cite{kvbench2026serving} | Closest serving benchmark — **must discuss explicitly** (Phase 30) | ✅ L54, L77–78 |
+| **Oaken** (ISCA 2025) | Offline prep vs online inference **cost** | 📝 **Add bib**; cross-ref Phase 3 cost, Phase 26 |
+| **SCOPE** (ACL 2025) | Prefill/decode split; long-context generation eval | 📝 **Add bib** |
+| **CacheBlend** (EuroSys 2025) | Serving / RAG workload effects | 📝 **Add bib** |
+| **KVCache Cache in the Wild** (USENIX ATC 2025) | Real workload non-uniformity | 📝 **Add bib**; cross-ref Phase 11 (deferred) |
+| **yuan2026shortrl** | Reasoning rollouts intensify cache pressure | ✅ L54, L78 |
 
-And introduce KVBench.
+**§4 closing — *What is still missing?* (replace L80–81):**
 
-This creates the logical chain:
+> Prior work introduces diverse compressors and increasingly sophisticated **evaluation analyses**, yet no shared environment fixes model, incremental decode loop, and multidimensional metrics while swapping plug-ins under matched conditions. Serving benchmarks~\cite{kvbench2026serving} optimize deployment stacks; method papers optimize algorithms — **controlled pre-deployment factorial evaluation** on SLMs remains underspecified.
+
+Then introduce KVBench with Phase 17 canonical novelty sentence.
+
+### Logical chain (use in §4 prose or optional figure)
 
 ```text
-Many compression techniques
+Many compression techniques          (§1–§3)
           ↓
-Fragmented evaluation
+Fragmented evaluation                (§4 opening)
           ↓
-Behavioral failures discovered
+Behavioral failures discovered       (chen2026pitfalls, SCOPE)
           ↓
-Serving/runtime effects discovered
+Serving/runtime effects discovered   (Oaken, kvbench2026serving, Cache in the Wild)
           ↓
-Need controlled evaluation
+Need controlled evaluation           (Phase 16 cascade)
           ↓
-KVBench
+KVBench                              (instrument — Phase 15)
 ```
 
+### Bibliography work (`.bib` / `reference`)
 
+Add before rewrite if not already in `reference.bib`:
+
+| Key (suggested) | Paper | Priority |
+| --------------- | ----- | -------- |
+| `oaken2025` | Oaken — ISCA 2025 | High (cost narrative) |
+| `scope2025` | SCOPE — ACL 2025 | High (decode eval) |
+| `cacheblend2025` | CacheBlend — EuroSys 2025 | Medium (workload) |
+| `kvcachewild2025` | KVCache Cache in the Wild — USENIX ATC 2025 | Medium (workload realism) |
+| `hybridkv2026` | HybridKV — ACL 2026 | Low (§3 coverage) |
+
+**Already cited — redistribute only:** `chen2026pitfalls`, `kvbench2026serving`, `yuan2026shortrl`, `jin2025mha2gqa`, `compresskv2026`.
+
+### When to apply
+
+| Timing | Rationale |
+| ------ | --------- |
+| **Rewrite pass 1, after Phase 21 Intro draft** | Intro ¶4–5 should foreshadow §4 evaluation gap |
+| **Same pass as Phases 15–19** | Terminology (FIDELITY/BEHAVIOR/SYSTEM), novelty, domain framing must align |
+| **Before result-table edits** | Related Work restructure is prose-only; no new GPU jobs |
+| **Page budget** | Four subsections may exceed current length — trim §2 method descriptions to 1–2 sentences each; keep §4 at full width |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section (label, lines) | Why | What to change |
+| ---- | ------------------------ | --- | -------------- |
+| **Rewrite pass 1** | **§Related Work opening** (before L65) | L65–66 is algorithm catch-all | **New opening (2 sentences):** LLM inference-systems survey of KV optimization — eviction (§1), representation compression (§2), architecture/serving-aware hybrids (§3), evaluation methodology (§4). Cross-ref Phase 19. |
+| **Rewrite pass 1** | **DELETE** `\subsection{KV Cache Compression}` (L65–66) | Absorbed into four-section structure | Remove; content moves to §1–§3 openings |
+| **Rewrite pass 1** | **NEW** `\subsection{KV-Cache Eviction}` | Phase 20 §1 | Migrate L74–76 eviction prose; ensure H2O, Scissorhands, StreamingLLM, SnapKV, PyramidKV, Ada-KV cited. Mention RocketKV as hybrid — pointer to §3. |
+| **Rewrite pass 1** | **NEW** `\subsection{KV Representation Compression}` | Phase 20 §2 | Merge L68–72 (quantization + low-rank). Cover MiniCache, QJL, Palu, Outlier, KVSink, AsymKV, XQuant, TurboQuant. End with fidelity ≠ behavior bridge. |
+| **Rewrite pass 1** | **NEW** `\subsection{Architecture- and Serving-Aware KV Optimization}` | Phase 20 §3 | Migrate GQA/MHA, PagedEviction, HqeKV, CompressKV, RocketKV from L74–76. Add HybridKV if bib ready. Tie to Qwen3 vs OLMo~2 replication. |
+| **Rewrite pass 1** | **REPLACE** `\subsection{Benchmarking and Evaluation Frameworks}` (L77–78) | Becomes §4 — expanded | Retitle `\subsection{KV-Cache Evaluation and Benchmarking}`. Add Oaken, SCOPE, CacheBlend, Cache in the Wild (with new cites). Structure: (i) behavioral pitfalls, (ii) serving/system benchmarks, (iii) workload realism, (iv) offline/online cost separation. Use FIDELITY/BEHAVIOR/SYSTEM names. |
+| **Rewrite pass 1** | **DELETE** `\subsection{Positioning of KVBench}` (L80–81) | Fold into §4 | Replace with **`\paragraph{What is still missing?}`** + Phase 17 canonical novelty + explicit contrast with `kvbench2026serving` (Phase 30 substance): *controlled interception layer vs serving-stack benchmark*. |
+| **Rewrite pass 1** | **§Introduction** forward refs (L60) | Section list outdated after restructure | Update roadmap sentence: *“Section~\ref{sec:related} reviews KV optimization and evaluation methodology; …”* |
+| **Do not** | Methodology / Results | Unchanged scope | Do not claim SnapKV/Palu **results** unless re-swept; Related Work may cite them as implemented plug-ins |
+| **Do not** | Dismiss `kvbench2026serving` | Reviewer trap | Acknowledge as complementary — Phase 30 explicit contrast |
+
+### Cross-references
+
+| Phase | Link |
+| ----- | ---- |
+| **15** | KVBench = instrument answering *how* to evaluate |
+| **16** | §4 closing = problem cascade terminus |
+| **17** | Canonical novelty in *What is still missing?* |
+| **18** | §4 distinguishes evaluation layer vs serving engine |
+| **19** | Related Work opening = inference-systems lens |
+| **21** | Intro ¶2–4 foreshadow §1–§4; Intro ¶6 points to Methodology |
+| **30** | Explicit `kvbench2026serving` contrast paragraph in §4 |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | — | Taxonomy A–E and plug-ins already cover §1–§3 methods; no code changes. |
+| **Documentation** | ✅ Done | This section; [Related Work in paper alignment guide](#related-work-l6281); Phase 29 bib priority list. |
+| **Paper** | 📝 Pending | Restructure L62–81 into four subsections + §4 gap closing. **Add 4–5 bib entries.** Apply after Phase 21 Intro draft. **No new GPU jobs.** |
 
 ---
 
-# Phase 21: Rewrite the Introduction Around This Story
+# Phase 21: Rewrite the Introduction Around This Story 📝 **Paper only**
 
-The Introduction should no longer primarily say:
+> **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. The current Intro (L52–60) already contains strong material (KV bottleneck L54, fragmentation L56, SLM testbed L58, contributions L60) but reads as **“compression is useful → we built a comparator.”** Phase 21 reorders into a **seven-paragraph methodology/systems narrative** so the paper opens as an **inference evaluation** contribution, not a compressor horse-race.
 
-> KV cache is large → compression is useful → we implemented several methods.
+### Narrative shift
 
-Instead:
+| | Current paper (L52–60) | Target paper (seven paragraphs) |
+| --- | ---------------------- | -------------------------------- |
+| **Opening hook** | KV cache grows; long-context serving pressure | Same — **¶1 bottleneck** |
+| **Literature** | One dense citation paragraph listing methods | **¶2** many approaches exist (brief, by category) |
+| **Gap** | Fragmentation + offline/online mismatch | **¶3** compression ratio ≠ inference benefit; **¶4** recent evidence of decoupling |
+| **Solution** | KVBench as comparator with Section A/B | **¶5** need controlled multidimensional environment; **¶6** KVBench as instrument |
+| **Contributions** | Engine + 27-job study + offline≠online | **¶7** protocol-first contributions (Phase 15 reorder) |
 
-### Paragraph 1
+This makes the paper read as a **research methodology / LLM inference-systems** paper (Phase 19), not “another KV compression comparison.”
 
-KV cache is a major LLM inference bottleneck.
+### Seven-paragraph outline → `.tex` mapping
 
-### Paragraph 2
+| ¶ | Content | Source / action on current `.tex` |
+| --- | ------- | ----------------------------------- |
+| **1** | KV cache is a major LLM **inference bottleneck** (memory, bandwidth, serving pressure) | Keep L54 opening; trim method citations to footnote or defer to Related Work |
+| **2** | Many compression/transformation approaches now exist (eviction, quant, sketch, hybrid) | Split citation list from L54 — high-level categories only; detail → Related Work §1–§3 |
+| **3** | However, **compression ratio is not equivalent to inference benefit** | **New** — Phase 16 metric decoupling: ratio ≠ memory ≠ speed ≠ fidelity ≠ behavior |
+| **4** | Recent work demonstrates: behavioral degradation; workload dependence; hardware/runtime effects; serving-specific effects | Expand L56 with cites: `chen2026pitfalls`, `kvbench2026serving`, Oaken, Cache in the Wild (add bibs); bullet list OK in prose |
+| **5** | Therefore, evaluating KV transformations requires a **controlled, multidimensional inference environment** | Merge L56–57 gap + Phase 15 question: *how* to evaluate under incremental decode |
+| **6** | Introduce **KVBench** — interception engine, FIDELITY/BEHAVIOR/SYSTEM, plug-in API, SLM testbed | Refactor L58: keep Where/What/How but replace Section A/B with three branches; Phase 18 one-sentence serving boundary; **one** empirical preview sentence (rankings flip) — details → Experiments |
+| **7** | State **contributions** (protocol first, case studies second) | Rewrite L60 per Phase 15 contribution reorder + Phase 17 safe novelty |
 
-Many compression/transformation approaches now exist.
+### Retire vs adopt (Intro-specific)
 
-### Paragraph 3
+| Retire | Adopt |
+| ------ | ----- |
+| Opening paragraph = method bibliography dump | ¶1–2 separate **problem** from **landscape** |
+| “Comparing KV compressors” as implicit goal | “Evaluating KV transformations under matched conditions” |
+| Section A / Section B naming | FIDELITY / BEHAVIOR / SYSTEM |
+| Full empirical results in Intro (L58 second half) | One-sentence preview; tables/figures in Experiments |
+| Contribution (2) = “27-job study” as co-equal headline | (2) = **demonstrations** of branch divergence |
 
-However, **compression ratio is not equivalent to inference benefit**.
+### When to apply
 
-### Paragraph 4
+| Timing | Rationale |
+| ------ | --------- |
+| **Rewrite pass 1, step 6** (before Phase 20 Related Work) | Intro sets up evaluation-gap story that §4 closes |
+| **Same pass as Phases 15–19** | Question (15), problem (16), novelty (17), definition (18), domain (19) all touch Intro |
+| **No new experiments** | Prose restructure only; keep numeric preview until re-sweep |
+| **After Abstract draft** | Abstract and Intro must agree on instrument framing |
 
-Recent work demonstrates:
+### Paper change log — section by section (`conference_101719.tex`)
 
-* behavioral degradation
-* workload dependence
-* hardware/runtime effects
-* serving-specific effects
+| When | Section (label, lines) | Why | What to change |
+| ---- | ------------------------ | --- | -------------- |
+| **Rewrite pass 1** | **¶1 Bottleneck** (replace L54 first sentence block) | Current L54 mixes bottleneck + method survey | 3–4 sentences: autoregressive KV growth; decode-time memory/bandwidth dominance; long-context serving + reasoning rollouts~\cite{yuan2026shortrl,kvbench2026serving}. **Phase 19:** inference-systems hook. |
+| **Rewrite pass 1** | **¶2 Landscape** (new, after ¶1) | Methods belong after problem | 2–3 sentences: eviction, representation compression, hybrids — “many transformations, heterogeneous eval.” Minimal cites or “see §Related Work.” |
+| **Rewrite pass 1** | **¶3 Decoupling** (new) | Missing explicit thesis | 2–3 sentences: compression ratio ≠ memory savings ≠ throughput ≠ tensor fidelity ≠ task quality. **Phase 16** cascade in prose. |
+| **Rewrite pass 1** | **¶4 Recent evidence** (extend/replace L56) | L56 good start but narrow | Add bullets as prose: behavioral failures~\cite{chen2026pitfalls}; serving benchmarks~\cite{kvbench2026serving}; offline/online cost (Oaken); workload realism (Cache in the Wild); GQA layout effects~\cite{jin2025mha2gqa,compresskv2026}. |
+| **Rewrite pass 1** | **¶5 Need** (merge L56–57) | Bridge to solution | Explicit research question (Phase 15): *how should KV transformations be evaluated under controlled incremental decode?* |
+| **Rewrite pass 1** | **¶6 KVBench** (refactor L58) | L58 too long + Section A/B | Define KVBench once (Phase 18 descriptor). Three axes: Where / What (FIDELITY, BEHAVIOR, SYSTEM) / How (plug-in). SLM testbed sentence. **One** preview result. Serving-boundary sentence. Case-study families = coverage, not novelty. |
+| **Rewrite pass 1** | **¶7 Contributions** (rewrite L60) | Horse-race ordering | Phase 15 reorder: (1) engine + three-branch protocol + reproducibility export; (2) empirical demonstrations on Qwen3 + OLMo~2; (3) architecture-aware replication evidence. Section roadmap sentence. |
+| **Rewrite pass 1** | **Abstract** (L44–46) | Must match Intro story | Apply same narrative arc in compressed form — see Phase 15 Abstract row. |
+| **Optional** | **Fig. domain taxonomy** | Visual anchor | Same ladder as Phase 19 optional figure — only if page budget |
+| **Do not** | Experiments / Results | Scope unchanged | Do not move tables into Intro |
 
-### Paragraph 5
+### Cross-references
 
-Therefore, evaluating KV transformations requires a **controlled, multidimensional inference environment**.
+| Phase | Link |
+| ----- | ---- |
+| **15** | ¶5 research question; ¶7 contribution reorder |
+| **16** | ¶3–4 problem cascade |
+| **17** | ¶6–7 safe novelty; no “first benchmark” |
+| **18** | ¶6 KVBench definition + serving boundary |
+| **19** | ¶1 inference-systems hook; ¶6 SLM testbed scope |
+| **20** | ¶2 points to Related Work; ¶4 foreshadows §4 gap |
 
-### Paragraph 6
+### Completeness record
 
-Introduce KVBench.
-
-### Paragraph 7
-
-State contributions.
-
-This would make the paper feel much more like a **research methodology/system paper**.
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | — | Intro describes existing engine; no code changes. |
+| **Documentation** | ✅ Done | This section; [Introduction in paper alignment guide](#introduction-l5260); rewrite-order step 6. |
+| **Paper** | 📝 Pending | Restructure L52–60 into seven paragraphs. Apply **before** Phase 20 Related Work restructure. **No new GPU jobs.** |
 
 ---
 

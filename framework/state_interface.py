@@ -117,6 +117,11 @@ def iter_layer_states(
         )
 
 
+def recurrent_state_bytes(past_key_values) -> int:
+    """Bytes for recurrent/Mamba components only (total visible minus attention K/V)."""
+    return visible_state_bytes(past_key_values) - attention_kv_bytes(past_key_values)
+
+
 def attention_kv_bytes(past_key_values) -> int:
     """Bytes for attention K/V only (same scope as ``get_cache_size_bytes``)."""
     total = 0

@@ -45,6 +45,8 @@ def test_falcon_h1_capabilities():
     assert caps.rope_mode == "global"
     assert caps.per_layer_attention_type is False
     assert caps.qk_norm_layout == "none"
+    assert caps.adapter_registered is True
+    assert caps.supports_gate(CompatibilityGate.ATTENTION)
     assert caps.supports_gate(CompatibilityGate.STATE_SEMANTICS)
 
 

@@ -195,13 +195,35 @@ def trim_compressed_cache(
     return CompressedCache(layers=trimmed_layers)
 
 
+def merge_decompressed_kv_into_cache(
+    template_cache,
+    layer_pairs: list[tuple[torch.Tensor, torch.Tensor]],
+) -> object:
+    """Replace attention K/V in *template_cache*; preserve recurrent/Mamba state (§22)."""
+    if hasattr(template_cache, "layers"):
+        for layer_idx, (key, value) in enumerate(layer_pairs):
+            layer = template_cache.layers[layer_idx]
+            layer.keys = key
+            layer.values = value
+        return template_cache
+    if hasattr(template_cache, "key_cache"):
+        for layer_idx, (key, value) in enumerate(layer_pairs):
+            template_cache.key_cache[layer_idx] = key
+            template_cache.value_cache[layer_idx] = value
+        return template_cache
+    raise TypeError("template_cache must expose .layers or .key_cache/.value_cache for hybrid merge")
+
+
 def decompress_to_legacy_cache(
     compressed_layers: list[CompressedKV],
     compressor: KVCompressor,
     model_config,
     device: torch.device | None = None,
+    template_cache=None,
 ):
     """Rebuild past_key_values from compressed layers for the next forward pass."""
+    from framework.state_interface import hybrid_layer_detected
+
     layer_pairs = []
     for item in compressed_layers:
         key, value = decompress_compressed_layer(item, compressor)
@@ -209,6 +231,10 @@ def decompress_to_legacy_cache(
             key = key.to(device)
             value = value.to(device)
         layer_pairs.append((key, value))
+
+    if template_cache is not None and hybrid_layer_detected(template_cache):
+        return merge_decompressed_kv_into_cache(template_cache, layer_pairs)
+
     legacy = tuple(layer_pairs)
     try:
         from transformers.cache_utils import DynamicCache

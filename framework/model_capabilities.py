@@ -131,7 +131,7 @@ CAPABILITIES_BY_MODEL_TYPE: dict[str, ModelCapabilities] = {
         native_latent_cache=False,
         per_layer_attention_type=False,
         state_type=StateType.HYBRID,
-        adapter_registered=False,
+        adapter_registered=True,
         state_semantics_complete=True,
         expanded_kv_disclosure=(
             "Every layer is hybrid (attention GQA + Mamba2). Memory accounting counts "
@@ -249,4 +249,8 @@ def get_model_eval_metadata(config, *, local_path: str | None = None) -> dict[st
         metadata["qk_head_dim"] = getattr(config, "qk_head_dim", None)
         if caps.expanded_kv_disclosure:
             metadata["expanded_kv_disclosure"] = caps.expanded_kv_disclosure
+    if caps.state_type == StateType.HYBRID:
+        metadata["compression_policy"] = {"attention": "compressible", "recurrent": "passthrough"}
+        if caps.expanded_kv_disclosure:
+            metadata["hybrid_state_disclosure"] = caps.expanded_kv_disclosure
     return metadata

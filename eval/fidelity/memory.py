@@ -13,6 +13,7 @@ from framework.model_capabilities import resolve_model_capabilities
 from framework.state_interface import (
     attention_kv_bytes,
     count_visible_state_elements,
+    recurrent_state_bytes,
     visible_state_bytes,
 )
 from framework.storage_accounting import effective_bits_per_element
@@ -29,6 +30,9 @@ class MemoryMetrics:
     effective_bits_per_kv_element: float
     process_memory_mb: float
     attention_kv_bytes: int | None = None
+    recurrent_state_bytes: int | None = None
+    compressed_kv_bytes: int | None = None
+    kv_compression_ratio: float | None = None
     total_visible_state_bytes: int | None = None
 
 
@@ -84,25 +88,31 @@ def evaluate_memory_from_cache(
 ) -> MemoryMetrics:
     caps = resolve_model_capabilities(model_layer.config)
     attn_bytes = attention_kv_bytes(past_key_values)
+    recurrent_bytes = recurrent_state_bytes(past_key_values)
     visible_bytes = visible_state_bytes(past_key_values)
     num_elements = count_visible_state_elements(past_key_values)
 
     compressed_layers = apply_compressor(past_key_values, compressor)
     payload_bytes = compressed_size_bytes(compressed_layers, compressor)
     shared_metadata_bytes = compressor.shared_storage_bytes()
-    compressed_bytes = payload_bytes + shared_metadata_bytes
-    ratio = visible_bytes / compressed_bytes if compressed_bytes > 0 else 1.0
-    effective_bits = effective_bits_per_element(compressed_bytes * 8, num_elements)
+    compressed_kv_bytes = payload_bytes + shared_metadata_bytes
+    compressed_total_bytes = compressed_kv_bytes + recurrent_bytes
+    ratio = visible_bytes / compressed_total_bytes if compressed_total_bytes > 0 else 1.0
+    kv_ratio = attn_bytes / compressed_kv_bytes if compressed_kv_bytes > 0 else 1.0
+    effective_bits = effective_bits_per_element(compressed_total_bytes * 8, num_elements)
 
     return MemoryMetrics(
         context_length=input_ids.size(1),
         num_kv_elements=num_elements,
         uncompressed_bytes=visible_bytes,
-        compressed_bytes=compressed_bytes,
+        compressed_bytes=compressed_total_bytes,
         shared_metadata_bytes=shared_metadata_bytes,
         compression_ratio=ratio,
         effective_bits_per_kv_element=effective_bits,
         process_memory_mb=process_memory_mb(),
         attention_kv_bytes=attn_bytes,
+        recurrent_state_bytes=recurrent_bytes if caps.has_recurrent_state else None,
+        compressed_kv_bytes=compressed_kv_bytes,
+        kv_compression_ratio=kv_ratio if caps.has_recurrent_state else None,
         total_visible_state_bytes=visible_bytes,
     )

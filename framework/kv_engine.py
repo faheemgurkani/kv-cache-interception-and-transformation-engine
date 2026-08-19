@@ -45,6 +45,7 @@ class KVCacheEngine:
         self.model = model
         self.compressor = compressor
         self.compressed_cache: CompressedCache | None = None
+        self._last_full_cache = None
         if getattr(compressor, "name", "") == "rocketkv":
             from framework.rocketkv_online import enable_rocketkv_online
 
@@ -122,7 +123,11 @@ class KVCacheEngine:
             elif getattr(self.compressor, "name", "") == "qjl":
                 self.compressor.sync_key_payloads_from_cache(cache.layers)  # type: ignore[attr-defined]
             past_kv = decompress_to_legacy_cache(
-                cache.layers, self.compressor, self.model.config, device=input_ids.device
+                cache.layers,
+                self.compressor,
+                self.model.config,
+                device=input_ids.device,
+                template_cache=self._last_full_cache,
             )
         elif getattr(self.compressor, "name", "") == "qjl" and hasattr(self.compressor, "reset_state"):
             self.compressor.reset_state()  # type: ignore[attr-defined]
@@ -164,11 +169,13 @@ class KVCacheEngine:
                 )
             new_cache = CompressedCache(layers=new_layers)
             self.compressed_cache = new_cache
+            self._last_full_cache = outputs.past_key_values
             return outputs.logits, new_cache
 
         new_layers = self._compress_new_tokens(outputs.past_key_values, prev_seq, prior_layers)
         new_cache = CompressedCache(layers=new_layers)
         self.compressed_cache = new_cache
+        self._last_full_cache = outputs.past_key_values
         return outputs.logits, new_cache
 
     @torch.no_grad()

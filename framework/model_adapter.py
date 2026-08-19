@@ -124,6 +124,24 @@ def _build_gemma3_ops(model_type: str) -> AttentionOps:
     )
 
 
+def _build_falcon_h1_ops(model_type: str) -> AttentionOps:
+    from transformers.models.falcon_h1.modeling_falcon_h1 import (
+        ALL_ATTENTION_FUNCTIONS,
+        apply_rotary_pos_emb,
+        eager_attention_forward,
+    )
+
+    return AttentionOps(
+        model_type=model_type,
+        apply_rotary_pos_emb=apply_rotary_pos_emb,
+        eager_attention_forward=eager_attention_forward,
+        all_attention_functions=ALL_ATTENTION_FUNCTIONS,
+        qk_norm_layout="none",
+        has_input_layernorm=True,
+        passes_sliding_window=False,
+    )
+
+
 def _build_deepseek_v3_ops(model_type: str) -> AttentionOps:
     from transformers.models.deepseek_v3.modeling_deepseek_v3 import (
         ALL_ATTENTION_FUNCTIONS,
@@ -148,6 +166,7 @@ ATTENTION_ADAPTER_REGISTRY: dict[str, AttentionAdapterBuilder] = {
     "olmo2": _build_olmo2_ops,
     "gemma3_text": _build_gemma3_ops,
     "deepseek_v3": _build_deepseek_v3_ops,
+    "falcon_h1": _build_falcon_h1_ops,
 }
 
 

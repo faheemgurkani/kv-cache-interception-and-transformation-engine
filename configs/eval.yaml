@@ -24,6 +24,8 @@ metrics:
   - instruction_following
   # SYSTEM (latency_throughput on by default; the rest are opt-in flags)
   - throughput
+  # COST (Phase 3 — on by default; online detail via --kernel-cost)
+  - cost
 
 batch_size: 1
 max_samples: null

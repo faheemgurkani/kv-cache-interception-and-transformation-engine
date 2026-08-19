@@ -17,9 +17,10 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **5** Adaptive plugin API | ⏸ Not planned | ⏸ Flagged | — | Do not implement or follow up |
 | **6** Interception as contribution | ✅ Done | ✅ Done | 📝 Pending | `eval/controlled_conditions.py` (Phase 6 principle) |
 | **7** Controlled experimental axes | ✅ Done | ✅ Done | 📝 Pending | `controlled_conditions` Phase 7 export (`phase: "7"`) |
+| **9** Pareto analysis | ✅ Done | ✅ Done | 📝 Pending | `eval/pareto/`, `scripts/analyze_pareto.py` |
 | **8** Unified budget curves | ⏸ Not planned | ⏸ Flagged | — | Existing per-method sweeps sufficient |
 
-**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
+**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
 
 **Paper rewrite hub:** [`conference_101719.tex`](research_paper_writeup/conference_101719.tex) — full section-by-section spec in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below.
 
@@ -721,7 +722,9 @@ This allows you to compare **compression-quality curves**, rather than isolated 
 
 ---
 
-# Phase 9: Add Pareto Analysis
+# Phase 9: Add Pareto Analysis ✅ **Done**
+
+> **Status (2026-08-19):** **Implementation complete** — `eval/pareto/analysis.py` computes 2D (paper-style) and 3D (quality/memory/speed) Pareto frontiers from `EvaluationResult`, `to_dict()`, or legacy Phase-5 bundle JSON. CLI: `scripts/analyze_pareto.py`. Reporting: `ResultReporter.save_pareto()` / `reporting/pareto_report.py`. Tests: `tests/test_pareto_analysis.py`. Paper figure can be regenerated from bundles; `.tex` update deferred.
 
 This is another strong improvement.
 
@@ -755,7 +758,15 @@ Identify **Pareto-optimal methods** across:
 
 This makes your results much more analytical.
 
+**Code:** `eval/pareto/analysis.py` · `eval/pareto/plot.py` · **CLI:** `python scripts/analyze_pareto.py results/phase5_modal_*/*.json --context-length 512` · **Reporter:** `ResultReporter.save_pareto()` · **Tests:** `tests/test_pareto_analysis.py`
 
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | 2D front (max compression ratio, min log₁₀ PPL ratio) + 3D front (+ tok/s). Loads new `to_dict()` and legacy bundle JSON. |
+| **Documentation** | ✅ Done | This section + `METHODOLOGY.md` §6.6. |
+| **Paper** | 📝 Documented | Regenerate `plot_pareto.pdf` via CLI from sweep bundles; cite `pareto_ctx512.json` for optimal set. [Figures: offline-vs-online, Pareto](#figures-offline-vs-online-pareto-l475-l608615). |
 
 ---
 

@@ -170,6 +170,28 @@ class ResultReporter:
                 )
         return path
 
+    def save_pareto(
+        self,
+        results: list[EvaluationResult],
+        name: str = "pareto",
+        *,
+        context_length: int | None = 512,
+        exclude_identity: bool = False,
+        write_plot: bool = True,
+    ) -> Path:
+        """Write Pareto JSON (+ optional PDF) under ``output_dir``."""
+        from reporting.pareto_report import save_pareto_analysis
+
+        _, json_path = save_pareto_analysis(
+            results,
+            self.output_dir,
+            context_length=context_length,
+            exclude_identity=exclude_identity,
+            write_plot=write_plot,
+            name_prefix=name,
+        )
+        return json_path
+
     @staticmethod
     def print_summary(results: list[EvaluationResult]) -> None:
         for result in results:

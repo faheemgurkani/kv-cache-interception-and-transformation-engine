@@ -80,6 +80,7 @@ def test_evaluate_cost_aggregates_fidelity_and_system():
     throughput = ThroughputMetrics(
         context_length=128,
         generated_tokens=8,
+        elapsed_seconds=0.4,
         ttft_ms=10.0,
         itl_ms_mean=5.0,
         itl_ms_p50=5.0,

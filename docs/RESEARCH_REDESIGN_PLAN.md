@@ -1461,7 +1461,9 @@ Secondary acceptable (Title/subtitle):
 
 ---
 
-# Phase 19: Reframe the Domain Positioning
+# Phase 19: Reframe the Domain Positioning 📝 **Paper only**
+
+> **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. Positions KVBench within **LLM inference systems / inference-engineering**, not generic ML benchmarking or algorithm-only KV compression. The paper already touches this (L54 serving pressure, L58 SLM testbed, SYSTEM metrics) but does not state the **domain ladder** explicitly.
 
 Your research belongs under:
 
@@ -1484,6 +1486,59 @@ So the paper is legitimately an:
 > **LLM inference-systems / inference-engineering paper**
 
 with a specific focus on **KV-cache optimization and evaluation**.
+
+### What this is / is not (reviewer-facing)
+
+| Position as | Not as |
+| ----------- | ------ |
+| Inference-systems contribution (controlled eval at KV boundary) | Pure quantization / algorithms paper |
+| SLM-scale inference-engineering study (${\approx}$1B, Modal A10G, decode metrics) | Large-model SOTA compression claim |
+| Evaluation infrastructure for KV transformations | Production serving system (vLLM/SGLang — Phase 13) |
+| Complements serving benchmarks~\cite{kvbench2026serving} | Replacement for deployment-stack evaluation |
+
+### When to apply
+
+| Timing | Rationale |
+| ------ | --------- |
+| **Rewrite pass 1, after Phases 15–18** | Domain positioning synthesizes question + problem + novelty + terminology |
+| **Before venue submission cover letter** | Same ladder can appear in 2–3 sentences for editors/reviewers |
+| **No new experiments** | Positioning is prose (+ optional figure) only |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section (label, lines) | Why | What to change |
+| ---- | ------------------------ | --- | -------------- |
+| **Rewrite pass 1** | **Abstract** (L45) | Abstract reads as generic “benchmarking framework” | One clause anchoring domain: *“…for **inference-time KV-cache optimization** on SLMs within an LLM **systems** evaluation setting.”* Mention decode-time memory/bandwidth pressure (L54 theme). |
+| **Rewrite pass 1** | **Keywords** (L48–50) | Missing systems/inference-engineering tags | Add: `LLM inference systems`, `KV-cache optimization`, `inference engineering` (keep existing method names). Consider demoting standalone `benchmarking` or pair with `evaluation infrastructure`. |
+| **Rewrite pass 1** | **§Introduction** opening (L54–55) | Strong systems hook already (“long-context serving”, KV footprint) | Extend L54 with explicit ladder sentence: *“We situate KVBench at the intersection of KV-cache optimization and **inference evaluation infrastructure** for resource-constrained SLM deployment.”* Keep citation to `kvbench2026serving`, `yuan2026shortrl`. |
+| **Rewrite pass 1** | **§Introduction** SLM paragraph (L58) | SLM testbed rationale exists | Tie to domain: *“Exhaustive method$\times$context factorial on single-GPU SLMs is an **inference-engineering** testbed, not a claim about 70B-scale deployment.”* |
+| **Rewrite pass 1** | **NEW optional figure** (Intro or Methodology, after `\label{subsec:design}`) | Visual helps reviewers place contribution | Small taxonomy figure (TikZ) — same tree as ASCII block above. Caption: *“Domain positioning: KVBench is inference evaluation infrastructure for KV-cache compression/transformation, not a serving engine.”* Skip if page-limited. |
+| **Rewrite pass 1** | **§Related Work opening** (L65–66) | Currently algorithm-family survey first | Opening sentence: *“We review KV-cache optimization from an **LLM inference systems** perspective: eviction, representation compression, and evaluation methodology.”* Then existing subsections. |
+| **Rewrite pass 1** | **§Related Work → Benchmarking** (L77–78) | Distinguish systems sub-community | Explicit: KVBench = **pre-deployment controlled factorial** on SLMs; serving benchmarks = **post-integration** quality+system under realistic stacks. Both are “systems” papers but different layers. |
+| **Rewrite pass 1** | **§Experiments opening** (L215–218) | “Experiments and Results” sounds pure ML | Subtitle or first sentence: *“Case-study demonstrations of the evaluation instrument (inference-engineering evidence on two SLM architectures).”* |
+| **Rewrite pass 1** | **§Discussion → Implications** (L623) | Practitioner list is systems-oriented | Reframe bullets as **inference-engineering checklist** (report FIDELITY+BEHAVIOR+SYSTEM, incremental decode, multi-architecture replication). |
+| **Rewrite pass 1** | **§Conclusion** (L629) | “resource-constrained models” is close but vague | Final scope sentence: *“We scope claims to **SLM inference engineering**: controlled KV transformation evaluation before deployment, not datacenter-scale serving optimization.”* |
+| **Optional** | **Cover letter / submission metadata** | Venues differ (systems vs ML) | Lead with: inference-systems + evaluation infrastructure + SLM KV-cache; case studies as evidence. |
+| **Do not** | Algorithm Related Work subsections | Content stays | Do not shrink method survey — only add **framing** sentences at section boundaries |
+
+### Cross-references
+
+| Phase | Link |
+| ----- | ---- |
+| **15** | Research question — *how* to evaluate (instrument) |
+| **16** | Problem cascade — why inference-systems evaluation matters |
+| **17** | Novelty — controlled env, not “first benchmark” |
+| **18** | Boundary — evaluation layer vs serving engine |
+| **10** | SYSTEM + A10G evidence supports inference-engineering claims |
+| **13** | Serving validation explicitly out of scope |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Aligned | SYSTEM branch, Modal CUDA path, SLM configs match inference-engineering scope. |
+| **Documentation** | ✅ Done | This section; `SYSTEM_DESIGN.md` deployment context; Phase 13 serving out of scope. |
+| **Paper** | 📝 Pending | Intro/Keywords/Related Work framing + optional domain figure + Conclusion scope. Apply after Phases 15–18. |
 
 ---
 

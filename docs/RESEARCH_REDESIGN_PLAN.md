@@ -1,10 +1,35 @@
 # KVBench: Complete Research Improvement Roadmap
 
+## Implementation status — Phases 1–2 (§1–139, verified 2026-08-19)
+
+**Executive verdict:** **Phases 1–2 are complete** in code, core documentation, and tests. The old offline/online split is replaced by **FIDELITY / BEHAVIOR / SYSTEM** in `eval/runner.py`, `scripts/run_eval.py`, `docs/methodology/METHODOLOGY.md`, and `docs/architecture/SYSTEM_DESIGN.md`.
+
+| Phase / section | Status | Primary evidence |
+| --------------- | ------ | ---------------- |
+| §1 Three-branch redesign | ✅ Done | `eval/{fidelity,behavior,system}/`, `EvaluationRunner.run()` |
+| §2 Fidelity evaluation | ✅ Done | `eval/fidelity/{representation,attention,memory,recurrent}.py` |
+| §3 Behavioral evaluation | ✅ Done | PPL default; retrieval + instruction + reasoning opt-in |
+| §4 System evaluation | ✅ Done | TTFT/ITL/tok-s default; VRAM/bandwidth/kernel/GPU opt-in |
+
+**Tests:** `tests/test_eval_runner.py` (default-branch smoke + probe/manifest); `tests/test_regression_validation.py` (WP5 identity + Phase-5 baseline drift); `tests/test_online_inference.py` (throughput); per-model `tests/test_*_reference.py` (full FIDELITY+BEHAVIOR+SYSTEM with all opt-in flags for identity/TurboQuant/QJL/RocketKV).
+
+**Intentional gaps vs this section's aspirational text:**
+
+- BEHAVIOR task metrics beyond PPL are **opt-in** (CLI: `--retrieval`, `--instruction-following`, `--reasoning`) — matches plan recommendation but not the default `run_eval.py` invocation.
+- SYSTEM metrics beyond latency/throughput are **opt-in** (`--peak-memory`, `--memory-bandwidth`, `--kernel-cost`, `--gpu-utilization`).
+- Peak VRAM / GPU utilization report unavailable on MPS/CPU (CUDA-only); documented in `docs/methodology/CURRENT_STATE.md`.
+- BEHAVIOR retrieval/instruction/reasoning are **synthetic in-repo generators**, not LongBench/RULER-scale benchmarks (documented limitation).
+- **Extension beyond §2 diagram:** hybrid models also get FIDELITY/`recurrent` (Mamba `R'_t = R_t` preservation, `eval/fidelity/recurrent.py`).
+
+Authoritative metric definitions: [`docs/methodology/METHODOLOGY.md`](methodology/METHODOLOGY.md) §6.
+
+---
+
 ## Phase 1: Redesign the Core Evaluation Framework
 
-### 1. Move away from the simple "Offline vs Online" split
+### 1. Move away from the simple "Offline vs Online" split ✅ **Done**
 
-Your current conceptual structure is roughly:
+**Previous (pre-redesign) conceptual structure:**
 
 ```text
 KVBench
@@ -19,9 +44,7 @@ KVBench
       └── Decode
 ```
 
-This is useful, but **too coarse**.
-
-Redesign it around **three primary evaluation dimensions**:
+That split was **too coarse**. The engine now uses **three primary evaluation dimensions**:
 
 ```text
                          KVBench
@@ -30,110 +53,103 @@ Redesign it around **three primary evaluation dimensions**:
           │                 │                 │
        FIDELITY           BEHAVIOR          SYSTEM
           │                 │                 │
-    Representation      Task Quality       Latency
-    Attention           PPL                Throughput
-    Reconstruction      Retrieval          Peak VRAM
-    Memory              Reasoning          Memory BW
-                        Instruction        Kernel Cost
-                        Following
+    Representation      Task Quality       Latency / TTFT
+    Attention           PPL (default)      Throughput / ITL
+    Memory              Retrieval*         Peak VRAM*
+    Recurrent†          Reasoning*         Memory BW*
+                        Instruction*       Kernel Cost*
+                        Following*         GPU Util*
+
+    * opt-in sub-metrics (CLI flags on scripts/run_eval.py)
+    † hybrid models only (Falcon-H1); eval/fidelity/recurrent.py
 ```
 
-This turns KVBench from a **compression test harness** into a **multi-dimensional inference benchmark**. 
+This turns KVBench from a **compression test harness** into a **multi-dimensional inference benchmark**.
+
+**Code:** `eval/runner.py` · **CLI:** `scripts/run_eval.py` · **Docs:** `METHODOLOGY.md` §6, `SYSTEM_DESIGN.md` §Evaluation.
 
 ---
 
 # Phase 2: Create Three Explicit Evaluation Branches
 
-## 2. Fidelity Evaluation
+## 2. Fidelity Evaluation ✅ **Done**
 
 Answer:
 
 > **Did the transformation preserve the KV representation and attention behavior?**
 
-Measure:
+Measure (all implemented in `eval/fidelity/`):
 
-* KV reconstruction RMSE
-* relative reconstruction error
-* cosine similarity
-* attention-output RMSE
-* attention distribution divergence
-* compression ratio
-* actual memory reduction
-* metadata/storage overhead
+| Planned metric | Module | Status |
+| -------------- | ------ | ------ |
+| KV reconstruction RMSE | `representation.py` | ✅ |
+| Relative reconstruction error | `representation.py` | ✅ |
+| Cosine similarity | `representation.py` | ✅ |
+| Attention-output RMSE | `attention.py` | ✅ |
+| Attention distribution divergence (KL) | `attention.py` | ✅ |
+| Compression ratio | `memory.py` | ✅ |
+| Actual memory reduction | `memory.py` | ✅ |
+| Metadata/storage overhead | `memory.py` (`shared_metadata_bytes`) | ✅ |
+| Hybrid recurrent preservation (extension) | `recurrent.py` | ✅ |
 
-This is your existing offline evaluation, but make it explicitly called **Fidelity Evaluation**.
+Runs on a **single offline forward pass** by default (`run_fidelity=True`). Explicitly named **Fidelity Evaluation** in code and docs (replaces legacy "offline" branch).
+
+**Tests:** FIDELITY sub-metrics asserted in `tests/test_*_reference.py`, `tests/test_regression_validation.py`, `tests/test_eval_runner.py`.
 
 ---
 
-## 3. Behavioral Evaluation
+## 3. Behavioral Evaluation ✅ **Done** (PPL default; task metrics opt-in)
 
 Answer:
 
 > **Does the model still behave correctly after KV transformation?**
 
-Keep:
+| Planned capability | Module | Default | Status |
+| ------------------ | ------ | ------- | ------ |
+| Perplexity | `behavior/task_quality.py` | **on** | ✅ |
+| Long-context retrieval | `behavior/retrieval.py` | opt-in | ✅ |
+| Instruction following | `behavior/instruction_following.py` | opt-in | ✅ |
+| Reasoning (Option C — bonus) | `behavior/reasoning.py` | opt-in | ✅ |
 
-* Perplexity
+Plan recommendation was **PPL + long-context retrieval + instruction following**. All three exist; default runs include **PPL only** because each extra task adds a full `KVCacheEngine` generate pass. Enable the full recommendation via:
 
-But add at least **one realistic task-level evaluation**.
+```bash
+python scripts/run_eval.py --retrieval --instruction-following ...
+```
 
-Good candidates:
+All BEHAVIOR metrics run through **`KVCacheEngine`** (compressed KV drives real decode), not a single forward pass.
 
-### Option A: Long-context retrieval
+**Tests:** Full recommendation stack exercised in `tests/test_{olmo2,qwen3,gemma3,tinydeepseek,falcon_h1}_reference.py` (`test_*_all_eval_branches` with all BEHAVIOR flags). Default-path PPL only in `tests/test_eval_runner.py` and WP5 regression.
 
-Tests whether compressed KV still preserves information buried in long contexts.
-
-### Option B: Instruction following
-
-Inspired directly by *The Pitfalls of KV Cache Compression*.
-
-### Option C: Reasoning
-
-Useful because recent work shows reasoning workloads can change KV-compression behavior.
-
-You don't need all three.
-
-**My recommendation:**
-
-> PPL + Long-context retrieval + instruction following
-
-That is probably the best balance.
-
-Recent work shows that average benchmark scores can remain acceptable while specific behaviors degrade. 
+**Caveat:** Synthetic in-repo task generators — legible failure modes, not external benchmark scale (`CURRENT_STATE.md`).
 
 ---
 
-# 4. System Evaluation
+## 4. System Evaluation ✅ **Done** (latency default; rest opt-in)
 
 Answer:
 
 > **Does the compression actually make inference better?**
 
-Measure:
+| Planned metric | Module | Default | Status |
+| -------------- | ------ | ------- | ------ |
+| TTFT | `system/latency_throughput.py` | **on** | ✅ |
+| Inter-token latency (ITL mean/p50/p99) | `system/latency_throughput.py` | **on** | ✅ |
+| Decode latency | `system/latency_throughput.py` | **on** | ✅ |
+| Tokens/sec | `system/latency_throughput.py` | **on** | ✅ |
+| End-to-end latency | `system/latency_throughput.py` | **on** | ✅ |
+| Peak VRAM | `system/vram.py` | opt-in (`--peak-memory`) | ✅ (CUDA only) |
+| Actual KV memory | `eval/runner.py` → `SystemMetrics.actual_kv_memory_bytes` | on when SYSTEM runs | ✅ |
+| Compression/decompression time | `system/kernel_cost.py` | opt-in | ✅ |
+| Attention execution time (proxy) | `system/kernel_cost.py` | opt-in | ✅ |
+| GPU utilization | `system/gpu_utilization.py` | opt-in | ✅ (CUDA + pynvml) |
+| Memory bandwidth | `system/memory_bandwidth.py` | opt-in | ✅ |
 
-* TTFT
-* inter-token latency / ITL
-* decode latency
-* tokens/sec
-* end-to-end latency
-* peak VRAM
-* actual KV memory
-* compression/decompression time
-* attention execution time
-* GPU utilization if possible
-* memory bandwidth if possible
+The **4× compression vs 3× with lower overhead** tradeoff is exactly why SYSTEM is separate from FIDELITY — documented in `eval/system/__init__.py`, `METHODOLOGY.md` §6.3, and empirical Phase-5 results.
 
-This is extremely important.
+**Tests:** Throughput in `tests/test_online_inference.py`; full SYSTEM stack in reference tests; default TTFT/ITL/tok-s in smoke/regression.
 
-A method that achieves:
-
-> 4× compression
-
-but adds significant computation may be worse than:
-
-> 3× compression with almost zero runtime overhead.
-
-That distinction is central to modern inference engineering. 
+**Caveats:** RocketKV bypasses timed `compress_kv` wrapper in `kernel_cost` (reads as attention time). VRAM/GPU util unavailable on MPS/CPU.
 
 ---
 

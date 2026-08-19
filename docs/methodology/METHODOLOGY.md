@@ -224,7 +224,8 @@ Single forward pass with `use_cache=True`, `output_hidden_states=True`:
 | Attention MSE/RMSE/cosine/max error | `eval/fidelity/attention.py` | Compare \(QK^\top/\sqrt{d}\) before vs after compression |
 | Attention-output RMSE | `eval/fidelity/attention.py` | RMSE between \(\mathrm{softmax}(\text{scores})V\) computed from FP scores vs. quantized scores (same reconstructed V both sides) — what actually reaches the next layer, not just the raw score error |
 | Attention-distribution KL divergence | `eval/fidelity/attention.py` | \( \mathrm{KL}(\mathrm{softmax}(\text{scores}_{fp}) \Vert \mathrm{softmax}(\text{scores}_{quant})) \), row-mean over query positions |
-| Compression ratio / actual memory reduction / metadata overhead | `eval/fidelity/memory.py` | Uncompressed vs compressed bytes, ratio, eff. bits/KV, `shared_metadata_bytes` |
+| Compression ratio / actual memory reduction / metadata overhead | `eval/fidelity/memory.py` | Uncompressed vs compressed bytes, ratio, eff. bits/KV, `shared_metadata_bytes`; hybrid models also report `kv_compression_ratio` + `recurrent_state_bytes` via `compress_state()` |
+| Recurrent state preservation (hybrid only) | `eval/fidelity/recurrent.py` | Exact Mamba state preservation \(R'_t = R_t\) after K/V compress round-trip; `applicable=False` on conventional models |
 
 **Attention fidelity window:** Last `attention_fidelity_tokens` (512) query/key positions to limit \(O(n^2)\) memory.
 

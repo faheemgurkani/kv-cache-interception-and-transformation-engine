@@ -85,7 +85,7 @@ Stub in `compressors/kivi.py` — not implemented.
 
 Three branches instead of an offline/online split — `eval/runner.py` (`EvaluationRunner.run()`) always runs FIDELITY; BEHAVIOR and SYSTEM sub-metrics are opt-in flags.
 
-**FIDELITY** (`eval/fidelity/`, single offline forward pass): tensor RMSE/relative-error/cosine similarity (`representation.py`), QK^T score MSE/RMSE/cosine/max-error + attention-output RMSE + attention-distribution KL divergence (`attention.py`), compression ratio + actual bytes + metadata overhead (`memory.py`).
+**FIDELITY** (`eval/fidelity/`, single offline forward pass): tensor RMSE/relative-error/cosine similarity (`representation.py`), QK^T score MSE/RMSE/cosine/max-error + attention-output RMSE + attention-distribution KL divergence (`attention.py`), compression ratio + actual bytes + metadata overhead (`memory.py`), hybrid recurrent exact-preservation (`recurrent.py`).
 
 **BEHAVIOR** (`eval/behavior/`, through `KVCacheEngine`): sliding-window perplexity (`task_quality.py`, on by default), needle-in-haystack retrieval (`retrieval.py`, opt-in), instruction-following format compliance (`instruction_following.py`, opt-in), synthetic arithmetic reasoning (`reasoning.py`, opt-in).
 

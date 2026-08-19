@@ -37,6 +37,7 @@ from data.loader import build_long_context_ids, load_wikitext2
 from eval.behavior import BehaviorMetrics, evaluate_behavior
 from eval.controlled_conditions import ControlledInterceptionContract, build_controlled_conditions
 from eval.cost import CostMetrics, evaluate_cost
+from eval.hardware import HardwareProfile, collect_hardware_profile, hardware_metrics_enabled
 from eval.fidelity import FidelityMetrics, evaluate_fidelity
 from eval.system import SystemMetrics, evaluate_system
 from framework.config import load_eval_config, load_model_config
@@ -64,6 +65,7 @@ class EvaluationResult:
     model_metadata: dict[str, object] | None = field(default=None, repr=False)
     compatibility_probe: CompatibilityProbe | None = field(default=None, repr=False)
     controlled_conditions: ControlledInterceptionContract | None = field(default=None, repr=False)
+    hardware: HardwareProfile | None = field(default=None, repr=False)
 
     # --- back-compat accessors (previous Section A/B field names) ---
     @property
@@ -108,6 +110,7 @@ class EvaluationResult:
             "controlled_conditions": (
                 None if self.controlled_conditions is None else self.controlled_conditions.to_dict()
             ),
+            "hardware": None if self.hardware is None else self.hardware.to_dict(),
         }
 
 
@@ -159,6 +162,7 @@ class EvaluationRunner:
         run_kernel_cost: bool = False,
         run_gpu_utilization: bool = False,
         run_cost: bool = True,
+        collect_hardware_metrics: bool | None = None,
         include_baselines: bool = False,
         perplexity_stride: int | None = None,
         generated_tokens: int | None = None,
@@ -166,6 +170,13 @@ class EvaluationRunner:
         input_ids = self.build_context(context_length)
         stride = perplexity_stride or self.eval_config.get("perplexity_stride", 512)
         num_new_tokens = generated_tokens or self.eval_config.get("generated_tokens", 64)
+
+        hw_metrics = hardware_metrics_enabled() if collect_hardware_metrics is None else collect_hardware_metrics
+        if hw_metrics:
+            run_peak_memory = True
+            run_gpu_utilization = True
+
+        hardware = collect_hardware_profile(self.model_layer.device)
 
         probe = run_compatibility_probe(
             self.model_layer,
@@ -266,6 +277,7 @@ class EvaluationRunner:
             model_metadata=probe.metadata,
             compatibility_probe=probe,
             controlled_conditions=controlled,
+            hardware=hardware,
         )
 
     def run_all_context_lengths(

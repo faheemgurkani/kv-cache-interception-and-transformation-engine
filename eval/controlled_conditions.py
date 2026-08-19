@@ -11,7 +11,6 @@ compression budget, hardware, batch size, decoding configuration, and metrics.
 from __future__ import annotations
 
 import os
-import platform
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -61,35 +60,18 @@ DEFAULT_DECODING_CONFIGURATION: dict[str, Any] = {
 
 
 def detect_hardware(device: torch.device | None = None) -> dict[str, Any]:
-    """Best-effort hardware profile for the current eval runtime."""
-    dev = device or torch.device("cpu")
-    profile: dict[str, Any] = {
-        "device_type": dev.type,
-        "device_index": dev.index,
-        "platform_system": platform.system(),
-        "platform_machine": platform.machine(),
-        "kv_eval_device_env": os.environ.get("KV_EVAL_DEVICE") or None,
-        "hardware_profile_env": os.environ.get("KV_HARDWARE_PROFILE") or None,
-    }
+    """Best-effort hardware block for controlled-conditions export (Phase 7/10)."""
+    from eval.hardware.profile import collect_hardware_profile
 
-    if dev.type == "cuda" and torch.cuda.is_available():
-        idx = dev.index if dev.index is not None else torch.cuda.current_device()
-        profile["device_name"] = torch.cuda.get_device_name(idx)
-        props = torch.cuda.get_device_properties(idx)
-        profile["total_memory_bytes"] = props.total_memory
-        profile["compute_capability"] = f"{props.major}.{props.minor}"
-    elif dev.type == "mps" and torch.backends.mps.is_available():
-        profile["device_name"] = "Apple MPS"
-    else:
-        profile["device_name"] = "CPU"
-
-    # Reference sweeps document Modal A10G; allow explicit override without probing cloud.
-    if profile["hardware_profile_env"]:
-        profile["documented_reference_gpu"] = profile["hardware_profile_env"]
-    else:
-        profile["documented_reference_gpu"] = "NVIDIA A10G (Modal reference sweeps)"
-
-    return profile
+    profile = collect_hardware_profile(device)
+    payload = profile.to_dict()
+    payload["hardware_profile_env"] = os.environ.get("KV_HARDWARE_PROFILE") or None
+    payload["documented_reference_gpu"] = (
+        payload["configured_gpu"]
+        or payload["hardware_profile_env"]
+        or "NVIDIA A10G (Modal single-GPU reference sweeps)"
+    )
+    return payload
 
 
 def build_tokenizer_metadata(

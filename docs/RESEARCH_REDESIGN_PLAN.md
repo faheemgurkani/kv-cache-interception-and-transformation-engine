@@ -78,6 +78,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | Problem statement | Fragmentation mentioned in Intro | Metric decoupling cascade (**Phase 16**) | Explicit problem paragraph + optional figure |
 | Novelty | Implicit “shared yardstick” | Controlled env + three branches under matched conditions (**Phase 17**) | Do not claim “first benchmark” |
 | What KVBench is | “Benchmarking framework” / “harness” | Evaluation layer at KV boundary; not serving engine (**Phase 18**) | Define once; contrast vLLM/SGLang in one sentence |
+| Domain / venue | Implicit SLM compression comparison | **LLM inference-systems** paper; KV eval infrastructure (**Phase 19**) | Keywords + Intro ladder; scope Conclusion to SLM inference engineering |
 | Quality under compression | Section B = PPL + throughput only | BEHAVIOR: PPL + retrieval + instruction following (+ reasoning opt-in) | BEHAVIOR subsection; PPL in results; task probes in methodology (+ optional appendix numbers) |
 | Runtime efficiency | Throughput under Section B | SYSTEM: TTFT, ITL, tok/s, latency (+ VRAM/bandwidth opt-in) | Separate **SYSTEM** subsection; tok/s tables move under SYSTEM |
 | Cost | Not mentioned | `EvaluationResult.cost` (compression / offline / online) | New **Cost accounting** subsection |
@@ -112,9 +113,9 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | | |
 | --- | --- |
 | **Current** | `offline fidelity, online inference` |
-| **Change** | Add: `KV interception, fidelity evaluation, system metrics` (optional: `cost accounting`) |
+| **Change** | Add: `LLM inference systems`, `KV-cache optimization`, `inference engineering` (Phase 19). Also: `KV interception`, `fidelity evaluation`, `system metrics` (optional: `cost accounting`) |
 | **Needs new results?** | No |
-| **Phase** | 1 |
+| **Phase** | 1, 19 |
 
 #### Introduction (L52–60)
 

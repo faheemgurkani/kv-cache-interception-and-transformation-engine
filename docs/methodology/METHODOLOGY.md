@@ -24,20 +24,22 @@ Equations: [MATHEMATICS_AND_ALGORITHMS.md](MATHEMATICS_AND_ALGORITHMS.md) · Res
 
 Context construction: WikiText-2 test split is tokenized and concatenated to exactly `context_length` tokens via `data/loader.py` (`build_long_context_ids`).
 
-### 1.1 Controlled interception contract (Phase 6)
+### 1.1 Controlled experimental conditions (Phases 6–7)
 
-KVBench’s methodological contribution is the **controlled interception environment**, not any single compressor. Every evaluation run holds these axes fixed and varies **only the KV transformation**:
+KVBench’s methodological contribution is the **controlled interception environment**, not any single compressor. Every evaluation run holds these axes fixed and varies **only the KV transformation** (compressor plug-in + its compression budget):
 
 ```text
                     SAME MODEL
                         │
-                    SAME INPUT
+                    SAME INPUT / TOKENIZER
                         │
                  SAME DECODE LOOP  (KVCacheEngine, incremental, no re-compression)
                         │
+                 SAME HARDWARE PROFILE
+                        │
                 ┌───────┴───────┐
                 │               │
-          Method A          Method B   ← only compressor plug-in changes
+          Method A          Method B   ← only compressor + budget change
                 │               │
                 └───────┬───────┘
                         ↓
@@ -48,17 +50,21 @@ KVBench’s methodological contribution is the **controlled interception environ
                  FAIR COMPARISON
 ```
 
-**Principle:** different KV transformations execute through the same inference path under matched conditions.
+**Principle (Phase 7):** same model + same input + same decode loop + same hardware + different KV transformation.
 
-**Code:** `eval/controlled_conditions.py` builds a `ControlledInterceptionContract` per run; `EvaluationRunner.run()` attaches it to `EvaluationResult.controlled_conditions` and exports it in JSON as `controlled_conditions` (`fixed` vs `variable` axes).
+**Code:** `eval/controlled_conditions.py` builds a validated `ControlledInterceptionContract` per run; `EvaluationRunner.run()` attaches it to `EvaluationResult.controlled_conditions` and exports it in JSON as `controlled_conditions`.
 
-| Held fixed | May vary |
+| Held fixed (`fixed`) | May vary (`variable`) |
 |---|---|
-| Model, tokenizer, precision, eager attention | Compressor plug-in (`compressors/`) |
-| Dataset, context length, batch size | Bitwidth, stage, method-specific budget |
-| Incremental decode loop (`framework/kv_engine.py`) | Taxonomy category (metadata) |
-| FIDELITY / BEHAVIOR / SYSTEM metric definitions | — |
-| PPL stride, throughput token count, attention window | — |
+| Model metadata, tokenizer id/vocab | Compressor name |
+| Dataset (WikiText-2 test), context length | Compression budget (bitwidth, stage, token budget, …) |
+| Input construction (WikiText concat; synthetic retrieval/instruction prompts) | — |
+| Batch size, generation length, PPL stride | — |
+| Decode loop + greedy decoding config (`argmax`, no sampling) | — |
+| Hardware profile (runtime device + reference GPU label) | — |
+| FIDELITY / BEHAVIOR / SYSTEM metric definitions enabled for the run | — |
+
+**Environment overrides:** set `KV_EVAL_DEVICE=cuda|mps|cpu` for device selection; set `KV_HARDWARE_PROFILE=NVIDIA A10G` (or any label) to stamp reference-sweep hardware in exported JSON when running locally.
 
 Legacy paper writeup (`docs/research_paper_writeup/`) still labels branches Section A/B; code and docs use FIDELITY / BEHAVIOR / SYSTEM. Paper narrative update is deferred.
 

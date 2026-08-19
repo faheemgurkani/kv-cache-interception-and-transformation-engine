@@ -20,7 +20,7 @@ This is a **controlled interception environment**, not a single-algorithm reprod
              FIDELITY / BEHAVIOR / SYSTEM
 ```
 
-Every run records the contract in `EvaluationResult.controlled_conditions` (`eval/controlled_conditions.py`): which axes are fixed vs. which vary. Export via `to_dict()["controlled_conditions"]`.
+Every run records the contract in `EvaluationResult.controlled_conditions` (`eval/controlled_conditions.py`): fixed axes (model, tokenizer, dataset, input construction, context/generation length, batch size, decode loop, greedy decoding config, hardware profile, enabled metrics) vs. variable axes (compressor + compression budget). Export via `to_dict()["controlled_conditions"]`. Override reference GPU label with `KV_HARDWARE_PROFILE`.
 
 ## Architecture
 

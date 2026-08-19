@@ -16,7 +16,12 @@ from eval.fidelity import (
     evaluate_representation,
 )
 from eval.fidelity.memory import evaluate_memory, kv_cache_bytes, process_memory_mb
-from eval.controlled_conditions import ControlledInterceptionContract, PHASE6_PRINCIPLE, build_controlled_conditions
+from eval.controlled_conditions import (
+    ControlledInterceptionContract,
+    PHASE6_PRINCIPLE,
+    PHASE7_PRINCIPLE,
+    build_controlled_conditions,
+)
 from eval.runner import EvaluationResult, EvaluationRunner
 from eval.system import (
     GPUUtilizationMetrics,
@@ -48,6 +53,7 @@ __all__ = [
     "MemoryBandwidthMetrics",
     "MemoryMetrics",
     "PHASE6_PRINCIPLE",
+    "PHASE7_PRINCIPLE",
     "PeakMemoryMetrics",
     "ReasoningMetrics",
     "RepresentationMetrics",

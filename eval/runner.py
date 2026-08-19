@@ -1,9 +1,9 @@
 """Paper-independent evaluation orchestrator.
 
-Phase 6: every run executes under a controlled interception contract — same
-model, same input construction, same incremental decode loop, same metric
-definitions; only the KV compressor plug-in varies. See
-``eval/controlled_conditions.py``.
+Phase 6–7: every run executes under a controlled interception contract — same
+model, tokenizer, input construction, decode loop, hardware, and metric
+definitions; only the KV compressor plug-in (and its compression budget) varies.
+See ``eval/controlled_conditions.py``.
 
 Every run produces three independent branches instead of the old offline/online
 split:
@@ -232,9 +232,25 @@ class EvaluationRunner:
             model_metadata=probe.metadata,
             eval_config=self.eval_config,
             context_length=context_length,
-            compressor_name=self.compressor.name,
-            bitwidth=getattr(self.compressor, "bitwidth", None),
-            stage=_compressor_stage(self.compressor),
+            compressor=self.compressor,
+            tokenizer=self.model_layer.tokenizer,
+            model_path=self.model_layer.model_path,
+            device=self.model_layer.device,
+            perplexity_stride=stride,
+            generation_length=num_new_tokens,
+            run_fidelity=run_fidelity,
+            run_behavior=run_behavior,
+            run_perplexity=run_perplexity,
+            run_retrieval=run_retrieval,
+            run_reasoning=run_reasoning,
+            run_instruction_following=run_instruction_following,
+            run_system=run_system,
+            run_throughput=run_throughput,
+            run_peak_memory=run_peak_memory,
+            run_memory_bandwidth=run_memory_bandwidth,
+            run_kernel_cost=run_kernel_cost,
+            run_gpu_utilization=run_gpu_utilization,
+            run_cost=run_cost,
         )
 
         return EvaluationResult(

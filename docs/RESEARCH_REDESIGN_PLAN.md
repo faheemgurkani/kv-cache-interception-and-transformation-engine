@@ -1,32 +1,50 @@
 # KVBench: Complete Research Improvement Roadmap
 
-## Implementation status — Phases 1–4 (§1–230, verified 2026-08-19)
+## Completeness record — Phases 1–7 (verified 2026-08-19)
 
-**Executive verdict:** **Phases 1–4 are complete** in code, core documentation, and tests. Phase 4 adds compression **taxonomy** (A–E) plus **SnapKV** (eviction) and **Palu** (projection) plug-ins. **Phase 5 (heterogeneous/adaptive plugin API) is not planned for implementation** — retained below as design reference only. **Phase 6 (controlled interception as central contribution) is done in code + docs**; **paper narrative update is deferred** (`docs/research_paper_writeup/` still uses Section A/B framing).
+Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5** and **8** are flagged **not planned** — design reference only.
 
-| Phase / section | Status | Primary evidence |
-| --------------- | ------ | ---------------- |
-| §1 Three-branch redesign | ✅ Done | `eval/{fidelity,behavior,system}/`, `EvaluationRunner.run()` |
-| §2 Fidelity evaluation | ✅ Done | `eval/fidelity/{representation,attention,memory,recurrent}.py` |
-| §3 Behavioral evaluation | ✅ Done | PPL + retrieval + instruction following default; reasoning opt-in |
-| §4 System evaluation | ✅ Done | TTFT/ITL/tok-s default; VRAM/bandwidth/kernel/GPU opt-in |
-| §Phase 3 Cost accounting | ✅ Done | `eval/cost/accounting.py`, `EvaluationResult.cost`, compressor hooks |
-| §Phase 4 Taxonomy + SnapKV/Palu | ✅ Done | `compressors/taxonomy.py`, `snapkv`, `palu` plug-ins |
-| §Phase 5 Plugin architecture upgrade | ⏸ Not planned | Aspirational only — do not implement or follow up |
-| §Phase 6 Controlled interception | ✅ Code/docs done · 📝 Paper later | `eval/controlled_conditions.py`, `EvaluationResult.controlled_conditions` |
-| §Phase 8 Multiple compression budgets | ⏸ Not planned | Existing sweeps sufficient; do not implement or follow up |
+**Executive verdict:** Phases **1–4**, **6** (code/docs), and **7** are **complete in the engine and documentation**. The paper still reflects the **pre-redesign** framing (Section A/B, three case-study methods, no cost/taxonomy/controlled-conditions export). Paper updates for Phases 1–7 are **deferred as one coordinated rewrite** — see per-phase **Paper** rows below for exact locations.
 
-**Tests:** `tests/test_eval_runner.py` (default-branch smoke + probe/manifest); `tests/test_regression_validation.py` (WP5 identity + Phase-5 baseline drift); `tests/test_online_inference.py` (throughput + PPL); `tests/test_behavior_modules.py` and `tests/test_system_modules.py` (unit + module-isolation for every BEHAVIOR/SYSTEM sub-metric); per-model `tests/test_*_reference.py` (full integration).
+| Phase | Engine | Docs | Paper | Primary evidence |
+| ----- | ------ | ---- | ----- | ---------------- |
+| **1** Three-branch framework | ✅ Done | ✅ Done | 📝 Pending | `eval/runner.py`, `eval/{fidelity,behavior,system}/` |
+| **2** FIDELITY branch | ✅ Done | ✅ Done | 📝 Pending | `eval/fidelity/{representation,attention,memory,recurrent}.py` |
+| **2** BEHAVIOR branch | ✅ Done | ✅ Done | 📝 Pending | `eval/behavior/{task_quality,retrieval,instruction_following,reasoning}.py` |
+| **2** SYSTEM branch | ✅ Done | ✅ Done | 📝 Pending | `eval/system/{latency_throughput,vram,kernel_cost,...}.py` |
+| **3** Cost accounting | ✅ Done | ✅ Done | 📝 Pending | `eval/cost/accounting.py`, `EvaluationResult.cost` |
+| **4** Taxonomy + SnapKV/Palu | ✅ Done | ✅ Done | 📝 Pending | `compressors/taxonomy.py`, `snapkv`, `palu` |
+| **5** Adaptive plugin API | ⏸ Not planned | ⏸ Flagged | — | Do not implement or follow up |
+| **6** Interception as contribution | ✅ Done | ✅ Done | 📝 Pending | `eval/controlled_conditions.py` (Phase 6 principle) |
+| **7** Controlled experimental axes | ✅ Done | ✅ Done | 📝 Pending | `controlled_conditions` Phase 7 export (`phase: "7"`) |
+| **8** Unified budget curves | ⏸ Not planned | ⏸ Flagged | — | Existing per-method sweeps sufficient |
 
-**Intentional gaps vs this section's aspirational text:**
+**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
 
-- BEHAVIOR default stack is **PPL + retrieval + instruction following** (plan recommendation). Reasoning remains opt-in (`--reasoning`). Skip flags: `--skip-retrieval`, `--skip-instruction-following`.
-- SYSTEM metrics beyond latency/throughput are **opt-in** (`--peak-memory`, `--memory-bandwidth`, `--kernel-cost`, `--gpu-utilization`).
-- Peak VRAM / GPU utilization report unavailable on MPS/CPU (CUDA-only); documented in `docs/methodology/CURRENT_STATE.md`.
-- BEHAVIOR retrieval/instruction/reasoning are **synthetic in-repo generators**, not LongBench/RULER-scale benchmarks (documented limitation).
-- **Extension beyond §2 diagram:** hybrid models also get FIDELITY/`recurrent` (Mamba `R'_t = R_t` preservation, `eval/fidelity/recurrent.py`).
+**Paper rewrite hub:** all pending paper work targets [`docs/research_paper_writeup/conference_101719.tex`](research_paper_writeup/conference_101719.tex). Export live contracts from any job JSON: `result.to_dict()["controlled_conditions"]`.
 
-Authoritative metric definitions: [`docs/methodology/METHODOLOGY.md`](methodology/METHODOLOGY.md) §6.
+**Intentional engine gaps (documented, not paper blockers):**
+
+- BEHAVIOR retrieval/instruction/reasoning use **synthetic in-repo generators**, not LongBench/RULER (`CURRENT_STATE.md`).
+- SYSTEM peak VRAM / GPU util require CUDA (`--peak-memory`, `--gpu-utilization`).
+- Reasoning is opt-in (`--reasoning`); skip flags: `--skip-retrieval`, `--skip-instruction-following`.
+- Hybrid FIDELITY/`recurrent` extension: `eval/fidelity/recurrent.py` (Falcon-H1).
+
+Authoritative metric definitions: [`docs/methodology/METHODOLOGY.md`](methodology/METHODOLOGY.md) §1.1, §6.
+
+### Paper rewrite checklist (Phases 1–7, coordinated pass)
+
+When updating [`conference_101719.tex`](research_paper_writeup/conference_101719.tex), apply in this order:
+
+1. **Global rename:** Section A → **FIDELITY**; Section B → split into **BEHAVIOR** (quality/tasks) and **SYSTEM** (latency/throughput/memory).
+2. **Abstract + Introduction** (L45–60): three-branch protocol; controlled interception framing (Phases 1, 6).
+3. **Methodology — Design Principles + Fig. pipeline** (L86–102): three branches; interception diagram (Phase 6).
+4. **Methodology — Evaluation Protocol** (L255–315): three subsubsections FIDELITY / BEHAVIOR / SYSTEM; add Cost subsection (Phase 3); add Controlled conditions table (Phase 7).
+5. **Methodology — Taxonomy** (new, after plug-ins): categories A–E table (Phase 4); case studies remain TQ/QJL/RocketKV unless new sweeps added.
+6. **Results tables** (L321+): column/ caption renames only unless re-running eval.
+7. **Discussion + Conclusion** (L598+, L627+): fidelity–behavior gap; SYSTEM tradeoffs; engine-as-contribution wording.
+
+Phases **5** and **8** require **no paper changes**.
 
 ---
 
@@ -73,6 +91,14 @@ This turns KVBench from a **compression test harness** into a **multi-dimensiona
 
 **Code:** `eval/runner.py` · **CLI:** `scripts/run_eval.py` · **Docs:** `METHODOLOGY.md` §6, `SYSTEM_DESIGN.md` §Evaluation.
 
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | Three-branch orchestrator; legacy Section A/B accessors retained on `EvaluationResult` for back-compat only. |
+| **Documentation** | ✅ Done | `README.md`, `SYSTEM_DESIGN.md`, `METHODOLOGY.md` §6, `CLAUDE.md`. |
+| **Paper** | 📝 Pending | **Abstract** (L45): replace “dual Section A/B” with **FIDELITY / BEHAVIOR / SYSTEM**. **Introduction** (L58–60): three axes under “What”. **§Design Principles** (L90–96): bullet “Dual evaluation” → three-branch contract. **Fig. pipeline caption** (L101): rename Section A/B in caption. **§Evaluation Protocol** (L255–257): restructure as three subsubsections. **Discussion/Conclusion** (L598+, L627+): “offline–online” → “fidelity–behavior gap”; SYSTEM as third lens. |
+
 ---
 
 # Phase 2: Create Three Explicit Evaluation Branches
@@ -101,6 +127,14 @@ Runs on a **single offline forward pass** by default (`run_fidelity=True`). Expl
 
 **Tests:** FIDELITY sub-metrics asserted in `tests/test_*_reference.py`, `tests/test_regression_validation.py`, `tests/test_eval_runner.py`.
 
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | All planned metrics + hybrid `recurrent.py` extension. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §6.1; `MATHEMATICS_AND_ALGORITHMS.md`. |
+| **Paper** | 📝 Pending | **§Section A: Offline Fidelity** (L267–274) → **§FIDELITY**. Add: relative reconstruction error, attention-output RMSE, attention-distribution KL (already in code). Table headers “Section A” → “FIDELITY” throughout Results (e.g. L347, L417). Optional footnote: recurrent sub-metric for hybrid models only. |
+
 ---
 
 ## 3. Behavioral Evaluation ✅ **Done** (PPL default; task metrics opt-in)
@@ -123,6 +157,14 @@ All BEHAVIOR metrics run through **`KVCacheEngine`** (compressed KV drives real 
 **Tests:** Full recommendation stack exercised in `tests/test_{olmo2,qwen3,gemma3,tinydeepseek,falcon_h1}_reference.py` (`test_*_all_eval_branches` with all BEHAVIOR flags). Default-path PPL only in `tests/test_eval_runner.py` and WP5 regression.
 
 **Caveat:** Synthetic in-repo task generators — legible failure modes, not external benchmark scale (`CURRENT_STATE.md`).
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | PPL + retrieval + instruction following default; reasoning opt-in. All via `KVCacheEngine`. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §6.2; module docstrings in `eval/behavior/`. |
+| **Paper** | 📝 Pending | **§Section B: Online Inference** (L276–284) → split: **BEHAVIOR** (PPL + task probes) vs legacy “online” wording. Paper currently reports **PPL only** in results tables — add short paragraph on synthetic retrieval/instruction-following protocol (or defer to appendix with “future work: LongBench/RULER”). Rename table captions “Section B PPL” → “BEHAVIOR / perplexity”. |
 
 ---
 
@@ -151,6 +193,14 @@ The **4× compression vs 3× with lower overhead** tradeoff is exactly why SYSTE
 **Tests:** Throughput in `tests/test_online_inference.py`; full SYSTEM stack in reference tests; default TTFT/ITL/tok-s in smoke/regression.
 
 **Caveats:** RocketKV bypasses timed `compress_kv` wrapper in `kernel_cost` (reads as attention time). VRAM/GPU util unavailable on MPS/CPU.
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | TTFT/ITL/tok-s/end-to-end default; VRAM, bandwidth, kernel cost, GPU util opt-in. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §6.3; `eval/system/__init__.py` rationale. |
+| **Paper** | 📝 Pending | Throughput appears under Section B (L284, results tables L375+). Add **§SYSTEM** subsection: TTFT, ITL, decode latency — not just tok/s. Discussion (L608+): cite TurboQuant ~0.08 tok/s as SYSTEM–FIDELITY tradeoff. Optional appendix table for `--peak-memory` / `--kernel-cost` CUDA runs. |
 
 ---
 
@@ -184,7 +234,15 @@ METHOD
 
 **Tests:** `tests/test_cost_accounting.py`; cost block asserted in `tests/test_eval_runner.py`.
 
-Recent work such as Oaken explicitly separates offline preparation from online inference cost, while calibration-free methods show that calibration requirements themselves are an important methodological variable.  
+Recent work such as Oaken explicitly separates offline preparation from online inference cost, while calibration-free methods show that calibration requirements themselves are an important methodological variable.
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | `eval/cost/accounting.py`; hooks on `compressors/base.py`; `--skip-cost`; `--kernel-cost` for online breakdown. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §6.5; cost fields in CSV/JSON export. |
+| **Paper** | 📝 Pending | **Not in paper today.** Add **§Cost accounting** under Methodology (after Evaluation Protocol, ~L315): compression / offline / online cost tree (mirror plan diagram above). One summary table column or appendix row: calibration required?, theoretical ratio, decode ms/token. Cite TurboQuant Lloyd-Max calibration vs identity/QJL calibration-free. |
 
 ---
 
@@ -230,6 +288,14 @@ Some methods don't merely compress the cache. They also change how attention ope
 This distinction is particularly important for methods such as RocketKV and Palu (RoPE path).
 
 **Code:** `compressors/taxonomy.py` · **New plug-ins:** `snapkv`, `palu` · **Tests:** `tests/test_taxonomy.py`, `tests/test_snapkv.py`, `tests/test_palu.py`
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | Categories A–E; `EvaluationResult.taxonomy`; SnapKV + Palu plug-ins registered. KIVI remains stub. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §5a/5b; `SYSTEM_DESIGN.md`; `CURRENT_STATE.md`. |
+| **Paper** | 📝 Pending | **§Case-Study Methods** (L165–167): still **three** families (TQ, QJL, RocketKV). Related Work cites Palu/SnapKV (L72, L75) but no results. Options: (a) add taxonomy table (A–E) in Methodology; (b) list SnapKV/Palu as **engine extensions** in Conclusion future work (L629+) without new result tables; (c) optional appendix plug-in inventory. Do **not** claim SnapKV/Palu empirical results unless new sweeps are run. |
 
 ---
 
@@ -283,6 +349,14 @@ This is important because recent methods increasingly use heterogeneous and adap
 
 **Partial overlap today (no Phase 5 work required):** token-level eviction (RocketKV, SnapKV), per-head voting (SnapKV), stateful online paths (RocketKV, QJL), and layer-wise storage in the engine are handled **inside individual plug-ins**, not via a general policy API.
 
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ⏸ Not planned | One plug-in / one global config remains the contract. |
+| **Documentation** | ⏸ Flagged | This section retained as **design reference only**. |
+| **Paper** | — | No paper update required. |
+
 ---
 
 # Phase 6: Make the Interception Engine the Central Methodological Contribution ✅ **Code/docs done · 📝 Paper deferred**
@@ -327,9 +401,19 @@ That controlled environment is much more important than simply saying "we benchm
 
 **Code:** `eval/controlled_conditions.py` · **Runner field:** `EvaluationResult.controlled_conditions` · **Export:** `to_dict()["controlled_conditions"]` · **Tests:** `tests/test_controlled_conditions.py`
 
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | Principle + diagram semantics enforced in runner/engine docstrings. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §1.1; `SYSTEM_DESIGN.md` Phase 6 block; `README.md` lead paragraph. |
+| **Paper** | 📝 Pending | Reframe contribution — **not** “another benchmark.” **Title/Abstract** (L31, L45): “controlled interception-and-transformation engine” over “benchmarking framework.” **Contributions** (L60): item (1) → interception engine + three-branch protocol. **§Design Principles** (L90–95): lead with plug-in isolation + controlled path. **Fig. pipeline** (L98–102): caption → FIDELITY/BEHAVIOR/SYSTEM + interception diagram (Phase 6 ASCII). **Discussion** (L598): “benchmarking study” → “controlled experimentation framework.” |
+
 ---
 
-# Phase 7: Introduce Controlled Experimental Conditions
+# Phase 7: Introduce Controlled Experimental Conditions ✅ **Done**
+
+> **Status (2026-08-19):** **Implementation complete** — every controlled axis is exported in `eval/controlled_conditions.py` (`REQUIRED_FIXED_AXES` checklist, hardware/tokenizer/input/decoding/metrics profiles, method-specific `compression_budget`). Validated by `tests/test_controlled_conditions.py`. Paper controlled-conditions table deferred with Phase 6 narrative update.
 
 Make the benchmark explicitly control:
 
@@ -354,6 +438,16 @@ This makes causal comparison much stronger.
 Your methodology can explicitly say:
 
 > Same model + same input + same decode loop + same hardware + different KV transformation.
+
+**Code:** extends Phase 6 — `detect_hardware()`, `build_tokenizer_metadata()`, `build_input_construction()`, `build_decoding_configuration()`, `build_evaluation_metrics_profile()`, `extract_compression_budget()`, `validate_controlled_contract()` · **Export:** `controlled_conditions.phase == "7"` in every job JSON.
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | `REQUIRED_FIXED_AXES` validated per run; hardware, tokenizer, input construction, decoding, metrics, compression budget exported. Env: `KV_EVAL_DEVICE`, `KV_HARDWARE_PROFILE`. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §1.1 (full axis table); `CURRENT_STATE.md`; `tests/test_controlled_conditions.py` (12 tests). |
+| **Paper** | 📝 Pending | **§Experimental setup** (L218–229): add **Controlled conditions** table — model, tokenizer, WikiText-2, ctx 128/256/512, batch 1, greedy decode, A10G, generation 64, PPL stride 512; state explicitly that **only compressor + budget vary**. Reference reproducibility: “per-job JSON includes `controlled_conditions`.” Can paste a sanitized example from `results/*/jobs/*.json`. Align with Phase 6 narrative rewrite. |
 
 ---
 
@@ -380,6 +474,14 @@ Then show:
 > How does quality degrade as compression increases?
 
 This allows you to compare **compression-quality curves**, rather than isolated numbers.
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ⏸ Not planned | Per-method budget grids (TurboQuant bitwidth/stages, RocketKV r256/r512/r1024) already exist. |
+| **Documentation** | ⏸ Flagged | This section retained as **design reference only**. |
+| **Paper** | — | Existing Phase-5 sweep tables already show multiple budgets per method; no unified cross-method curve framework needed. |
 
 ---
 

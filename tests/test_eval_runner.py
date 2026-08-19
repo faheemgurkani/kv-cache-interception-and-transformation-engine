@@ -56,5 +56,8 @@ def test_evaluation_runner_identity_smoke():
     assert payload["cost"]["offline"]["calibration_required"] is False
     assert payload["cost"]["online"]["end_to_end_decode_cost_ms"] is not None
     assert payload["controlled_conditions"] is not None
+    assert payload["controlled_conditions"]["phase"] == "7"
     assert payload["controlled_conditions"]["variable"]["compressor"] == "identity"
     assert payload["controlled_conditions"]["fixed"]["context_length"] == 128
+    assert payload["controlled_conditions"]["fixed"]["decoding_configuration"]["strategy"] == "greedy"
+    assert payload["controlled_conditions"]["fixed"]["hardware"]["device_type"] in {"cpu", "mps", "cuda"}

@@ -75,9 +75,11 @@ def enable_snapkv_online(model, compressor: SnapKVCompressor) -> None:
                         window_size=compressor.window_size,
                         max_capacity_prompt=compressor.max_capacity_prompt,
                         kernel_size=compressor.kernel_size,
-                        attention_mask=attention_mask,
                     )
                     _write_cache_kv(past_key_values, layer_index, key_states, value_states)
+                    if attention_mask is not None and attention_mask.dim() == 4:
+                        k_len = key_states.shape[2]
+                        attention_mask = attention_mask[..., -q_len:, -k_len:]
 
                 attention_interface = resolve_attention_interface(
                     attn_module, model.config, attn_ops

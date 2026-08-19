@@ -55,6 +55,21 @@ def main() -> None:
     parser.add_argument("--kernel-cost", action="store_true", help="Run SYSTEM/kernel_cost (compress/decompress time).")
     parser.add_argument("--gpu-utilization", action="store_true", help="Run SYSTEM/gpu_utilization (CUDA + pynvml only).")
     parser.add_argument("--skip-cost", action="store_true", help="Skip COST accounting block (Phase 3).")
+    parser.add_argument(
+        "--max-capacity-prompt",
+        type=int,
+        default=None,
+        help="SnapKV total KV budget including observation window.",
+    )
+    parser.add_argument("--window-size", type=int, default=None, help="SnapKV observation window size.")
+    parser.add_argument("--kernel-size", type=int, default=None, help="SnapKV pooling kernel size.")
+    parser.add_argument(
+        "--compression-rate",
+        type=float,
+        default=None,
+        help="Palu target compression rate (G-LRD, default 0.5).",
+    )
+    parser.add_argument("--group-size", type=int, default=None, help="Palu G-LRD group size (default 4).")
     parser.add_argument("--include-baselines", action="store_true", help="Also run uncompressed baseline PPL/throughput.")
     parser.add_argument("--output", default="eval_results", help="Output filename stem.")
     args = parser.parse_args()
@@ -64,6 +79,16 @@ def main() -> None:
         kwargs["bitwidth"] = args.bitwidth
     if args.stage is not None:
         kwargs["stage"] = args.stage
+    if args.max_capacity_prompt is not None:
+        kwargs["max_capacity_prompt"] = args.max_capacity_prompt
+    if args.window_size is not None:
+        kwargs["window_size"] = args.window_size
+    if args.kernel_size is not None:
+        kwargs["kernel_size"] = args.kernel_size
+    if args.compression_rate is not None:
+        kwargs["compression_rate"] = args.compression_rate
+    if args.group_size is not None:
+        kwargs["group_size"] = args.group_size
     compressor = get_compressor(args.compressor, **kwargs)
     runner = EvaluationRunner(compressor=compressor)
 

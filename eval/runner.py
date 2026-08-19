@@ -27,6 +27,7 @@ import torch
 
 from compressors.base import KVCompressor
 from compressors.registry import get_compressor
+from compressors.taxonomy import get_method_taxonomy
 from data.loader import build_long_context_ids, load_wikitext2
 from eval.behavior import BehaviorMetrics, evaluate_behavior
 from eval.cost import CostMetrics, evaluate_cost
@@ -87,6 +88,11 @@ class EvaluationResult:
             "behavior": None if self.behavior is None else self.behavior.to_dict(),
             "system": None if self.system is None else self.system.to_dict(),
             "cost": None if self.cost is None else self.cost.to_dict(),
+            "taxonomy": (
+                None
+                if get_method_taxonomy(self.compressor) is None
+                else get_method_taxonomy(self.compressor).to_dict()  # type: ignore[union-attr]
+            ),
         }
 
 

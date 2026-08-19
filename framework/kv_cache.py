@@ -65,8 +65,13 @@ def incremental_seq_length(compressed_layers: list[CompressedKV]) -> int:
     if is_incremental_compressed(first):
         return len(first.keys)  # type: ignore[arg-type]
     payload = first.keys
+    if hasattr(payload, "original_seq_len"):
+        if hasattr(payload, "keys") and isinstance(getattr(payload, "keys", None), torch.Tensor):
+            return int(payload.keys.shape[2])
+        if hasattr(payload, "h_key") and isinstance(getattr(payload, "h_key", None), torch.Tensor):
+            return int(payload.h_key.shape[1])
     if hasattr(payload, "keys") and isinstance(getattr(payload, "keys", None), torch.Tensor):
-        return int(payload.keys.shape[2])  # RocketKVLayerPayload
+        return int(payload.keys.shape[2])  # RocketKVLayerPayload / SnapKVLayerPayload
     return first.original_shape[2]
 
 

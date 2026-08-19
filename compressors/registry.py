@@ -5,8 +5,10 @@ from __future__ import annotations
 from compressors.base import KVCompressor
 from compressors.identity import IdentityCompressor
 from compressors.kivi import KIVICompressor
+from compressors.palu import PaluCompressor
 from compressors.qjl import QJLCompressor
 from compressors.rocketkv import RocketKVCompressor
+from compressors.snapkv import SnapKVCompressor
 from compressors.turboquant import TurboQuantCompressor
 
 COMPRESSORS: dict[str, type[KVCompressor]] = {
@@ -15,6 +17,8 @@ COMPRESSORS: dict[str, type[KVCompressor]] = {
     "kivi": KIVICompressor,
     "qjl": QJLCompressor,
     "rocketkv": RocketKVCompressor,
+    "snapkv": SnapKVCompressor,
+    "palu": PaluCompressor,
 }
 
 

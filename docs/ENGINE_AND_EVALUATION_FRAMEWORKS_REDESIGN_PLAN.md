@@ -8,7 +8,7 @@ The five-model target matrix is:
 | **Qwen3-0.6B**        | GQA, 16Q/8KV                 | ✅ Fully supported (all three gates pass)                                      | Compatibility validation only                              |
 | **Gemma3-270M**       | MQA + sliding/full attention | ✅ Fully supported (`gemma3_text` adapter + per-layer RoPE; 86th commit)       | Compatibility validation only                              |
 | **TinyDeepSeek-0.5B** | MLA                          | ⚠️ Gate B pass; Gate C fails (expanded KV, not native latent)                  | Native-latent refinement; validation only for expanded path  |
-| **Falcon-H1-0.5B**    | Attention + Mamba2 hybrid    | ⚠️ Loads, hybrid state visible + counted (Gate C pass); Gate B fails         | `falcon_h1` adapter (`qk_norm_layout="none"`)              |
+| **Falcon-H1-0.5B**    | Attention + Mamba2 hybrid    | ✅ Fully supported (hybrid state + adapter; all three gates pass)              | Compatibility validation only                              |
 
 The key architectural principle should be:
 
@@ -66,7 +66,7 @@ Eval runner integrates capabilities on every run (`eval/runner.py` → `model_ca
 | Qwen3-0.6B | PASS | PASS | PASS |
 | Gemma3-270M | PASS | PASS | PASS |
 | TinyDeepSeek-0.5B | PASS | PASS | FAIL |
-| Falcon-H1-0.5B | PASS | FAIL | PASS |
+| Falcon-H1-0.5B | PASS | PASS | PASS |
 
 Falcon empirical proof: `visible_bytes=14,708,736` vs `attn_bytes=36,864` — Mamba state visible and counted; `hybrid=True`.
 
@@ -94,12 +94,12 @@ Falcon empirical proof: `visible_bytes=14,708,736` vs `attn_bytes=36,864` — Ma
 5. Gemma3 adapter + per-layer RoPE — `gemma3_text` in registry; `build_rope_context().get_rope(layer_idx)` in FIDELITY/attention.
 6. TinyDeepSeek MLA adapter — `deepseek_v3` in registry; `project_attention_states()` / `project_mla_qkv()` for split nope/RoPE; asymmetric K/V memory; full eval branches verified (`tests/test_tinydeepseek_reference.py`, commits 92–94).
 7. TinyDeepSeek native-latent disclosure — flagged in capabilities + Gate C message (`cache_representation="expanded_kv"`).
-8. `--skip-fidelity` — documented in `eval/runner.py` for models blocked at Gate B.
+8. Falcon-H1 hybrid adapter — `falcon_h1` in registry (`qk_norm_layout="none"`); dual-state memory (`kv_compression_ratio` + total); Mamba passthrough in online decode (`merge_decompressed_kv_into_cache`).
+9. `--skip-fidelity` — documented in `eval/runner.py` for models blocked at Gate B.
 
 **Flagged, intentionally open (matches plan intent):**
 
 - **TinyDeepSeek:** Gate C only (expanded cache ≠ native latent; expanded-path eval fully supported).
-- **Falcon-H1:** Gate B only (no `falcon_h1` adapter; `qk_norm_layout="none"` scaffold in `project_qkv`, builder not registered).
 
 ### Verified work in place (nothing lost)
 
@@ -110,13 +110,7 @@ Falcon empirical proof: `visible_bytes=14,708,736` vs `attn_bytes=36,864` — Ma
 | Qwen3 parameterized conformance | Done | `tests/test_qwen3_reference.py` (85th commit); Gates PASS |
 | Gemma3 adapter + RoPE + eval metadata | Done | 86th commit; `tests/test_gemma3_reference.py`; Gates PASS; all compressors |
 | TinyDeepSeek MLA adapter + eval | Done | 94th commit; `tests/test_tinydeepseek_reference.py`; Gate B PASS; Gate C FAIL (expanded KV); identity/TurboQuant/QJL/RocketKV verified |
-| All work committed | Done | Working tree clean; `1964d3f` |
-
-### Bottom line (three criteria)
-
-1. **System ready for §1–2 narrative?** **Yes.** Registry, capabilities, gates, state interface, RoPE abstraction, eval metadata, configs in place.
-2. **Grounded in reality?** **Yes** (code and docs synced 2026-08-19). Live gates match opening table above.
-3. **Anomalies fixed/flagged?** **Yes in implementation.** Model 4 (TinyDeepSeek, §14–18) complete on expanded-cache path. Remaining work is §19+ (Falcon-H1 adapter) and optional MLA-native latent interception.
+| Falcon-H1 hybrid adapter + eval | Done | `tests/test_falcon_h1_reference.py`; Gates A/B/C PASS; identity/TurboQuant/QJL/RocketKV verified |
 
 ---
 
@@ -1799,7 +1793,7 @@ Before declaring the five-model benchmark ready, I would require this exact prog
 | Qwen3-0.6B   |    ✅ |       ✅ |           ✅ |         ✅ |        ✅ |          ✅ |   ✅ |        ✅ |              ✅ |
 | Gemma3       |    ✅ |       ✅ |           ✅ |         ✅ |        ✅ |          ✅ |   ✅ |        ✅ |              ✅ |
 | TinyDeepSeek |    ✅ |       ✅ |          ✅* |         ✅ |        ✅ |          ✅ |   ✅ |        ✅ |             ✅* |
-| Falcon-H1    |    ✅ |       ✅ |           ✅ |         ❌ |        ❌ |          ❌ |   ❌ |        ❌ |              ✅ |
+| Falcon-H1    |    ✅ |       ✅ |           ✅ |         ✅ |        ✅ |          ✅ |   ✅ |        ✅ |              ✅ |
 
 `*` **TinyDeepSeek — cache/state and memory:** Gate A passes (`iter_layer_kv` succeeds). Gate C fails because the visible cache is HF's expanded per-head K/V, not the native `kv_lora_rank` latent. "Correct memory" means **correct accounting of the exposed/expanded cache** until MLA-native interception lands.
 

@@ -24,10 +24,10 @@ Which models this engine has been pointed at, what their KV-cache architecture a
 | 1 | `olmo2_1b` | MHA (16Q/16KV) | ✅ fully supported (all three gates pass) |
 | 2 | `qwen3_0.6b` | GQA (16Q/8KV) | ✅ fully supported (all three gates pass) |
 | 3 | `gemma3_270m` | MQA (4Q/1KV) + alternating local/global attention | ✅ fully supported (`gemma3_text` adapter + per-layer RoPE; 86th commit) |
-| 4 | `falcon_h1_0.5b` | Hybrid: attention (8Q/2KV GQA) + Mamba2, combined per layer | ⚠️ Gate B fails — hybrid state accounted (Gate C pass); adapter needed |
+| 4 | `falcon_h1_0.5b` | Hybrid: attention (8Q/2KV GQA) + Mamba2, combined per layer | ✅ fully supported (`falcon_h1` adapter + hybrid memory; all gates pass) |
 | 5 | `tinydeepseek_0.5b` | MLA (native `deepseek_v3`, `kv_lora_rank=256`) | ⚠️ Gate B pass; Gate C fails (expanded KV, not native latent; 94th commit) |
 
-All four eval-ready models (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`, `tinydeepseek_0.5b`) were confirmed end to end via reference tests and live gate evaluation (2026-08-19). TinyDeepSeek reports `cache_representation="expanded_kv"`. The initial 2026-08-21 `run_eval.py` smoke runs for OLMo2/Qwen3 remain valid; see the eval-framework correspondence doc for numbers.
+All five shortlist models were confirmed end to end via reference tests and live gate evaluation (2026-08-19).
 
 ## Why OLMo2 (and OLMo-1) work with zero adapter changes — implementation history
 
@@ -70,7 +70,7 @@ Also touched: `configs/modal.yaml` (volumes `kv-engine-olmo2`/`kv-engine-results
 
 Full technical detail per item: `ENGINE_INTERNALS.md §8` (code-level proposals) and `models/ARCHITECTURE_REPORT.md` (live evidence per model). Summary, ranked by how much of the shortlist each change unblocks:
 
-1. **`load_attention_ops` branches for `falcon_h1`.** ✅ **Done for `gemma3_text`** (86th commit) **and `deepseek_v3`** (94th commit). Falcon-H1 still fails Gate B (needs registering `qk_norm_layout="none"` scaffold in `project_qkv`).
+1. **`load_attention_ops` branches.** ✅ **Done for all five families** (`gemma3_text`, `deepseek_v3`, `falcon_h1`).
 2. **Per-layer RoPE selection** — ✅ **done for Gemma3** (`framework/rope.py::build_rope_context().get_rope(layer_idx)` in FIDELITY/attention).
 3. **Hybrid state interface** — ✅ **done (WP1):** `iter_layer_states()` + `visible_state_bytes()`. Falcon Gate C passes; Mamba compression remains passthrough by policy.
 4. **Latent-KV (MLA) state type** — still open for TinyDeepSeek (Gate C fails until native `kv_lora_rank` interception).

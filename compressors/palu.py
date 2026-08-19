@@ -70,11 +70,14 @@ class PaluCompressor(KVCompressor):
     def layer_factors(self, layer: int) -> PaluLayerFactors | None:
         return self._layer_factors.get(layer)
 
-    def effective_rank(self, layer: int = 0) -> int:
+    def effective_rank(self, layer: int = 0, *, seq_len: int | None = None, head_dim: int | None = None) -> int:
         factors = self._layer_factors.get(layer)
         if factors and factors.groups:
             return factors.groups[0].rank
-        return max(1, int(128 * self.compression_rate))
+        base = max(1, int((head_dim or 128) * self.compression_rate))
+        if seq_len is not None:
+            return max(1, min(base, seq_len))
+        return base
 
     def theoretical_compression_ratio(self, *, context_length: int | None = None) -> float | None:
         if self.compression_rate <= 0:
@@ -118,7 +121,7 @@ class PaluCompressor(KVCompressor):
         value: torch.Tensor,
         layer: int = 0,
     ) -> CompressedKV:
-        rank = self.effective_rank(layer)
+        rank = self.effective_rank(layer, seq_len=key.shape[2], head_dim=key.shape[3])
         payload = compress_kv_lowrank(key, value, rank=rank)
         return CompressedKV(
             keys=payload,

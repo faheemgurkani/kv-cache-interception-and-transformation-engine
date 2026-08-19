@@ -211,13 +211,13 @@ def compress_kv_lowrank(
     flat_v = value.transpose(1, 2).reshape(batch, seq_len, num_heads * head_dim).float()
     u_k, s_k, vh_k = torch.linalg.svd(flat_k, full_matrices=False)
     u_v, s_v, vh_v = torch.linalg.svd(flat_v, full_matrices=False)
-    r = max(1, min(rank, s_k.numel(), s_v.numel()))
-    sqrt_sk = torch.sqrt(s_k[:r])
-    sqrt_sv = torch.sqrt(s_v[:r])
-    h_key = (u_k[:, :, :r] * sqrt_sk).to(key.dtype)
-    h_value = (u_v[:, :, :r] * sqrt_sv).to(value.dtype)
-    b_key = (sqrt_sk.unsqueeze(1) * vh_k[:r, :]).to(key.dtype)
-    b_value = (sqrt_sv.unsqueeze(1) * vh_v[:r, :]).to(value.dtype)
+    r = max(1, min(rank, s_k.shape[-1], seq_len, flat_k.shape[-1]))
+    sqrt_sk = torch.sqrt(s_k[:, :r])
+    sqrt_sv = torch.sqrt(s_v[:, :r])
+    h_key = (u_k[:, :, :r] * sqrt_sk.unsqueeze(1)).to(key.dtype)
+    h_value = (u_v[:, :, :r] * sqrt_sv.unsqueeze(1)).to(value.dtype)
+    b_key = (sqrt_sk.unsqueeze(2) * vh_k[:, :r, :]).to(key.dtype)
+    b_value = (sqrt_sv.unsqueeze(2) * vh_v[:, :r, :]).to(value.dtype)
     return PaluLatentPayload(
         h_key=h_key.detach().cpu(),
         h_value=h_value.detach().cpu(),
@@ -239,7 +239,7 @@ def decompress_kv_lowrank(payload: PaluLatentPayload) -> tuple[torch.Tensor, tor
     flat_v = torch.matmul(h_value, payload.b_value)
     batch = flat_k.shape[0]
     seq_len = flat_k.shape[1]
-    out_dim = payload.b_key.shape[1]
+    out_dim = payload.b_key.shape[2]
     num_heads = payload.group_size
     head_dim = out_dim // max(num_heads, 1)
     key = flat_k.view(batch, seq_len, num_heads, head_dim).transpose(1, 2)

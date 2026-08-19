@@ -83,13 +83,14 @@ def snap_kv(
     )
     vote = attn_weights[..., :, :prefix_len].sum(dim=-2)
 
-    pooled = vote.unsqueeze(1)
+    bsz, num_heads, prefix_len = vote.shape
+    pooled = vote.reshape(bsz * num_heads, 1, prefix_len)
     pool_vote = F.max_pool1d(
         pooled,
         kernel_size=kernel_size,
         stride=1,
         padding=kernel_size // 2,
-    ).squeeze(1)
+    ).reshape(bsz, num_heads, prefix_len)
 
     num_keep = min(prefix_budget, prefix_len)
     _, indices = pool_vote.topk(num_keep, dim=-1)

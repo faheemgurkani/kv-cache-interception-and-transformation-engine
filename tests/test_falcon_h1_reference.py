@@ -120,8 +120,8 @@ def test_falcon_h1_adapter_conformance(falcon_model: ModelLayer):
     layer = model_layer.model.model.layers[0]
     hidden = pre_attention_hidden(layer, outputs.hidden_states[0], ops)
     cos, sin = rope_ctx.get_rope(0)
-    query, _, _ = project_qkv(layer.self_attn, hidden, ops)
-    query, _ = ops.apply_rotary_pos_emb(query, _, cos, sin)
+    query, key, _ = project_qkv(layer.self_attn, hidden, ops)
+    query, _ = ops.apply_rotary_pos_emb(query, key, cos, sin)
     assert query.shape[1] == spec["num_q_heads"]
     assert query.shape[3] == spec["head_dim"]
 

@@ -15,6 +15,7 @@ from framework.kv_cache import (
     iter_layer_kv,
 )
 from quantizers.rocketkv import RocketKVLayerPayload
+from quantizers.snapkv import SnapKVLayerPayload
 
 
 @dataclass
@@ -50,10 +51,18 @@ class KVCacheEngine:
             from framework.rocketkv_online import enable_rocketkv_online
 
             enable_rocketkv_online(model, compressor)
+        elif getattr(compressor, "name", "") == "snapkv":
+            from framework.snapkv_online import enable_snapkv_online
+
+            enable_snapkv_online(model, compressor)
         elif getattr(compressor, "name", "") == "qjl":
             from framework.qjl_online import enable_qjl_online
 
             enable_qjl_online(model, compressor)
+        elif getattr(compressor, "name", "") == "palu":
+            from framework.palu_online import enable_palu_online
+
+            enable_palu_online(model, compressor)
 
     def _compress_new_tokens(
         self,
@@ -167,6 +176,36 @@ class KVCacheEngine:
                         prior_payload=prior_payload,
                     )
                 )
+            new_cache = CompressedCache(layers=new_layers)
+            self.compressed_cache = new_cache
+            self._last_full_cache = outputs.past_key_values
+            return outputs.logits, new_cache
+
+        if getattr(self.compressor, "name", "") == "snapkv":
+            new_layers: list[CompressedKV] = []
+            for layer_idx, (key, value) in enumerate(iter_layer_kv(outputs.past_key_values)):
+                orig_len = key.shape[2]
+                if prior_layers is not None:
+                    prior = prior_layers[layer_idx].keys
+                    if isinstance(prior, SnapKVLayerPayload):
+                        orig_len = max(orig_len, prior.original_seq_len)
+                new_layers.append(
+                    self.compressor.wrap_layer_from_kv(  # type: ignore[attr-defined]
+                        key,
+                        value,
+                        layer_idx,
+                        original_seq_len=orig_len,
+                    )
+                )
+            new_cache = CompressedCache(layers=new_layers)
+            self.compressed_cache = new_cache
+            self._last_full_cache = outputs.past_key_values
+            return outputs.logits, new_cache
+
+        if getattr(self.compressor, "name", "") == "palu":
+            new_layers: list[CompressedKV] = []
+            for layer_idx, (key, value) in enumerate(iter_layer_kv(outputs.past_key_values)):
+                new_layers.append(self.compressor.compress(key, value, layer=layer_idx))
             new_cache = CompressedCache(layers=new_layers)
             self.compressed_cache = new_cache
             self._last_full_cache = outputs.past_key_values

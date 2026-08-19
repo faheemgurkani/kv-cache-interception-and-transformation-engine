@@ -4,7 +4,7 @@
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5** and **8** are flagged **not planned** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6** (code/docs), and **7** are **complete in the engine and documentation**. The paper still reflects the **pre-redesign** framing (Section A/B, three case-study methods, no cost/taxonomy/controlled-conditions export). Paper updates for Phases 1–7 are **deferred as one coordinated rewrite** — see per-phase **Paper** rows below for exact locations.
+**Executive verdict:** Phases **1–4**, **6**, and **7** are **complete in the engine and documentation**. The paper still reflects the **pre-redesign** framing. **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below — apply when revised experimental results are ready. Phases **5** and **8** are **not planned**.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -21,7 +21,7 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 
 **Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
 
-**Paper rewrite hub:** all pending paper work targets [`docs/research_paper_writeup/conference_101719.tex`](research_paper_writeup/conference_101719.tex). Export live contracts from any job JSON: `result.to_dict()["controlled_conditions"]`.
+**Paper rewrite hub:** [`conference_101719.tex`](research_paper_writeup/conference_101719.tex) — full section-by-section spec in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below.
 
 **Intentional engine gaps (documented, not paper blockers):**
 
@@ -32,19 +32,255 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 
 Authoritative metric definitions: [`docs/methodology/METHODOLOGY.md`](methodology/METHODOLOGY.md) §1.1, §6.
 
-### Paper rewrite checklist (Phases 1–7, coordinated pass)
+---
 
-When updating [`conference_101719.tex`](research_paper_writeup/conference_101719.tex), apply in this order:
+## Paper alignment guide — codebase ↔ `conference_101719.tex`
 
-1. **Global rename:** Section A → **FIDELITY**; Section B → split into **BEHAVIOR** (quality/tasks) and **SYSTEM** (latency/throughput/memory).
-2. **Abstract + Introduction** (L45–60): three-branch protocol; controlled interception framing (Phases 1, 6).
-3. **Methodology — Design Principles + Fig. pipeline** (L86–102): three branches; interception diagram (Phase 6).
-4. **Methodology — Evaluation Protocol** (L255–315): three subsubsections FIDELITY / BEHAVIOR / SYSTEM; add Cost subsection (Phase 3); add Controlled conditions table (Phase 7).
-5. **Methodology — Taxonomy** (new, after plug-ins): categories A–E table (Phase 4); case studies remain TQ/QJL/RocketKV unless new sweeps added.
-6. **Results tables** (L321+): column/ caption renames only unless re-running eval.
-7. **Discussion + Conclusion** (L598+, L627+): fidelity–behavior gap; SYSTEM tradeoffs; engine-as-contribution wording.
+**Purpose:** Document exactly what the paper still says vs. what the engine/docs now implement, so a later rewrite stays aligned. **Do not edit the `.tex` file until revised experimental results are ready** — this section is the specification for that pass.
 
-Phases **5** and **8** require **no paper changes**.
+**When to apply:** After the next evaluation sweep completes (new job JSON/CSV bundles under `results/`). Order of work: (1) run experiments → (2) update result tables/figures from bundles → (3) apply framing/terminology changes below → (4) compile PDF.
+
+**Paper file:** [`docs/research_paper_writeup/conference_101719.tex`](research_paper_writeup/conference_101719.tex)  
+**Code truth sources:** `eval/runner.py`, `eval/controlled_conditions.py`, `eval/{fidelity,behavior,system,cost}/`, `compressors/taxonomy.py`, `docs/methodology/METHODOLOGY.md`
+
+Phases **5** and **8:** no paper changes (flagged not planned).
+
+### Global terminology map
+
+| Concept | Paper today | Codebase today | Paper should say |
+| ------- | ----------- | -------------- | ---------------- |
+| Evaluation split | Section A (offline) + Section B (online) | **FIDELITY** / **BEHAVIOR** / **SYSTEM** | Three independent branches; retire “Section A/B” except in a one-line legacy note if needed |
+| Primary contribution | “Benchmarking framework” / “dual metrics” | Controlled **interception-and-transformation engine** | Engine + protocol as contribution; methods are case studies |
+| Quality under compression | Section B = PPL + throughput only | BEHAVIOR: PPL + retrieval + instruction following (+ reasoning opt-in) | BEHAVIOR subsection; PPL in results; task probes in methodology (+ optional appendix numbers) |
+| Runtime efficiency | Throughput under Section B | SYSTEM: TTFT, ITL, tok/s, latency (+ VRAM/bandwidth opt-in) | Separate **SYSTEM** subsection; tok/s tables move under SYSTEM |
+| Cost | Not mentioned | `EvaluationResult.cost` (compression / offline / online) | New **Cost accounting** subsection |
+| Method taxonomy | Three families in prose | A–E taxonomy + SnapKV/Palu plug-ins | Taxonomy table in Methodology; empirical results still TQ/QJL/RocketKV unless re-swept |
+| Controlled comparison | “Identical conditions” in prose | `controlled_conditions` JSON per job (Phase 7) | Explicit **Controlled conditions** table + reproducibility sentence |
+| Sweep name | “Phase-5 grid”, “27 jobs” | Same historical bundles; engine now richer | Keep job counts if bundles unchanged; rename to “evaluation grid” or keep Phase-5 label with footnote |
+
+### Section-by-section change log
+
+#### Title (L31)
+
+| | |
+| --- | --- |
+| **Current** | `KVBench: Bridging Offline Fidelity and Online Inference Evaluation…` |
+| **Codebase** | Three-branch eval; interception engine naming in `README.md` |
+| **Change** | Consider: *KVBench: A Controlled KV Interception Engine for Fidelity, Behavior, and System Evaluation of Cache Compression in SLMs* (or keep “Bridging…” with subtitle mentioning three branches) |
+| **Needs new results?** | No — framing only |
+| **Phase** | 1, 6 |
+
+#### Abstract (L44–46)
+
+| | |
+| --- | --- |
+| **Current** | “benchmarking framework”; “dual metrics: Section A … Section B”; offline does not predict online |
+| **Codebase** | FIDELITY/BEHAVIOR/SYSTEM; controlled interception; cost + taxonomy exist in code |
+| **Change** | Replace “dual Section A/B” with three-branch names. Lead with “controlled interception engine.” Keep empirical claims (TQ/QJL/RocketKV, Qwen3/OLMo2) until re-sweep replaces numbers. Add one clause: “only the compressor plug-in varies under matched conditions.” |
+| **Needs new results?** | Numbers: yes when re-sweeping; framing: no |
+| **Phase** | 1, 6, 7 |
+
+#### Keywords (L48–50)
+
+| | |
+| --- | --- |
+| **Current** | `offline fidelity, online inference` |
+| **Change** | Add: `KV interception, fidelity evaluation, system metrics` (optional: `cost accounting`) |
+| **Needs new results?** | No |
+| **Phase** | 1 |
+
+#### Introduction (L52–60)
+
+| | |
+| --- | --- |
+| **Current** | L58 “What: Section A … Section B”; L60 contributions (1) dual Section A/B protocol |
+| **Codebase** | L58 already says “interception-and-transformation engine” — good. “What” axis is outdated. |
+| **Change** | **L58 *What* bullet:** FIDELITY (representation/attention/memory) + BEHAVIOR (PPL, retrieval, instruction following) + SYSTEM (latency/throughput). **L60 contribution (1):** “three-branch evaluation protocol” not “dual Section A/B”. **Contribution (3):** “FIDELITY does not predict BEHAVIOR” (not offline→online). |
+| **Needs new results?** | Framing no; empirical paragraph yes if models/methods change |
+| **Phase** | 1, 2, 6 |
+
+#### Related Work (L62–81)
+
+| | |
+| --- | --- |
+| **Current** | “offline fidelity and online quality always reported together”; cites Palu/SnapKV in eviction/sketching subsections |
+| **Codebase** | Palu/SnapKV implemented as plug-ins; not in paper results |
+| **Change** | L66, L78, L81: replace “offline/online” with “fidelity/behavior/system”. **Do not** claim SnapKV/Palu empirical results unless sweeps are run. Optional sentence: “The engine also hosts SnapKV and Palu plug-ins (taxonomy categories A and C) for future sweeps.” |
+| **Needs new results?** | SnapKV/Palu claims: yes if included in results |
+| **Phase** | 1, 4 |
+
+#### §Methodology opening (L83–86, `\label{sec:methodology}`)
+
+| | |
+| --- | --- |
+| **Current** | “benchmarking harness”; “dual offline/online evaluation contract” |
+| **Change** | “controlled interception-and-transformation environment”; “three-branch FIDELITY / BEHAVIOR / SYSTEM contract” |
+| **Needs new results?** | No |
+| **Phase** | 1, 6 |
+
+#### §Design Principles (L88–96, `\label{subsec:design}`)
+
+| | |
+| --- | --- |
+| **Current** | Bullet “Dual evaluation. Section A … Section B …” |
+| **Codebase** | Three branches; plug-in isolation matches |
+| **Change** | Replace dual bullet with: **Three-branch evaluation.** FIDELITY, BEHAVIOR, and SYSTEM are always reported together (with BEHAVIOR/SYSTEM sub-metrics configurable). Add bullet or sentence: **Controlled comparison.** Same model, input, decode loop, hardware; only compressor varies (`controlled_conditions` in export JSON). |
+| **Needs new results?** | No |
+| **Phase** | 1, 6, 7 |
+
+#### Fig. pipeline caption (L98–102, `\label{fig:pipeline}`)
+
+| | |
+| --- | --- |
+| **Current** | “Section A offline fidelity and Section B online quality” |
+| **Change** | Caption lists FIDELITY / BEHAVIOR / SYSTEM; mention cost block if figure updated. Regenerate figure asset if diagram still shows two boxes. |
+| **Needs new results?** | Figure asset: optional; caption text: no |
+| **Phase** | 1, 3, 6 |
+
+#### §Plug-in Interface (L153–155, `\label{subsec:plugins}`)
+
+| | |
+| --- | --- |
+| **Current** | Lists hooks; three methods only |
+| **Codebase** | `offline_cost_metadata`, `theoretical_compression_ratio`, taxonomy on `EvaluationResult` |
+| **Change** | Add cost hooks and taxonomy metadata to hook list. Mention `controlled_conditions` export. |
+| **Needs new results?** | No |
+| **Phase** | 3, 4, 7 |
+
+#### **NEW** §Compression taxonomy (insert after `\label{subsec:plugins}`, before Case-Study Methods)
+
+| | |
+| --- | --- |
+| **Current** | Not present |
+| **Codebase** | `compressors/taxonomy.py` categories A–E |
+| **Change** | Add table mapping category → mechanism → case-study plug-in (TQ=B, QJL=B+E, RocketKV=D+E, SnapKV=A, Palu=C+E). State empirical evaluation covers TQ/QJL/RocketKV only. |
+| **Needs new results?** | No for taxonomy table; yes to add SnapKV/Palu result rows |
+| **Phase** | 4 |
+
+#### §Case-Study Methods (L165–167, `\label{subsec:methods}`)
+
+| | |
+| --- | --- |
+| **Current** | “three published families” |
+| **Change** | Keep three for **results** unless re-sweep adds methods. Cross-reference taxonomy table. |
+| **Needs new results?** | Yes to expand beyond three |
+| **Phase** | 4 |
+
+#### §Experiments opening + setup (L216–229)
+
+| | |
+| --- | --- |
+| **Current** | “dual Section A/B”; lists model, WikiText, batch 1, A10G; “Each run records Section A and Section B metrics” |
+| **Codebase** | Phase 7 exports full axis checklist in JSON |
+| **Change** | Add **Table: Controlled experimental conditions** (model, tokenizer, dataset/split, ctx lengths, batch, gen length 64, PPL stride 512, greedy decode, A10G, metrics enabled). Replace “Section A and Section B” with three branches + cost. Add: “Per-job JSON includes `controlled_conditions` (fixed vs. variable axes).” |
+| **Needs new results?** | Table structure: no; row values yes if setup changes |
+| **Phase** | 7 |
+
+#### §Evaluation Protocol (L255–285, `\label{subsec:eval_protocol}`)
+
+| | |
+| --- | --- |
+| **Current** | Two subsubsections: **Section A: Offline Fidelity** (L267–274), **Section B: Online Inference** (L276–284) |
+| **Codebase** | See `METHODOLOGY.md` §6.1–6.3, §6.5 |
+| **Change** | **Rename & split into four subsubsections:** |
+
+**→ FIDELITY** (replace L267–274):
+
+| Paper has | Codebase also has | Action |
+| --------- | ----------------- | ------ |
+| Tensor RMSE | Relative recon error, cosine | Add to item list |
+| Attention MSE/RMSE/cosine/max | Attention-output RMSE, KL divergence | Add to item list |
+| Memory ratio, eff. bits | Metadata overhead, shared bytes | Add metadata bullet |
+| — | `recurrent` (hybrid) | Footnote: Falcon-H1 only |
+
+**→ BEHAVIOR** (replace L276–282 PPL-only scope):
+
+| Paper has | Codebase also has | Action |
+| --------- | ----------------- | ------ |
+| Sliding-window PPL | Same | Keep Algorithm 2 (`\label{alg:ppl}`) |
+| — | Needle-in-haystack retrieval | Add short protocol paragraph (synthetic; `eval/behavior/retrieval.py`) |
+| — | Instruction-following compliance | Add short protocol paragraph |
+| — | Reasoning (opt-in) | Mention as optional / future |
+
+**→ SYSTEM** (split from old Section B throughput, L284):
+
+| Paper has | Codebase also has | Action |
+| --------- | ----------------- | ------ |
+| tok/s, ms/token | TTFT, ITL p50/p99, end-to-end latency | Add definitions |
+| — | Peak VRAM, kernel cost, bandwidth | Appendix or “CUDA extended metrics” |
+
+**→ COST** (new, after SYSTEM):
+
+| Paper has | Codebase has | Action |
+| --------- | ------------ | ------ |
+| — | compression / offline / online tree | Add subsection mirroring Phase 3 diagram in this doc; cite TurboQuant calibration vs QJL/RocketKV calibration-free |
+
+| **Needs new results?** | PPL/tok/s numbers yes; protocol structure no |
+| **Phase** | 1, 2, 3 |
+
+#### §Online Evaluation Procedure (L286–315, `\label{subsec:online_proc}`)
+
+| | |
+| --- | --- |
+| **Current** | Algorithm 2 for PPL; implementation notes for TQ/QJL/RocketKV |
+| **Change** | Keep for BEHAVIOR/PPL. Add pointer: SYSTEM throughput uses same `KVCacheEngine.generate` greedy loop (64 tokens). L274 “reset before Section B” → “reset compressor state before BEHAVIOR/SYSTEM passes.” |
+| **Needs new results?** | No |
+| **Phase** | 2 |
+
+#### Results §Qwen3 / §OLMo2 (L319+, `\label{sec:qwen3}`, `\label{sec:olmo2}`)
+
+| | |
+| --- | --- |
+| **Current** | Table captions “Section A fidelity”, “Section B online metrics/PPL” |
+| **Change** | Rename captions: **FIDELITY**, **BEHAVIOR (perplexity)**, **SYSTEM (throughput/latency)**. Split combined tables if BEHAVIOR and SYSTEM were merged. **Replace numeric cells only from new sweep bundles** — do not hand-edit. |
+| **Needs new results?** | **Yes** for all numeric cells |
+| **Phase** | 1, 2 |
+
+#### Figures: offline-vs-online, Pareto (L475+, L608–615)
+
+| | |
+| --- | --- |
+| **Current** | Axis labels “Section A” vs “Section B”; filename `plot_offline_vs_online.pdf` |
+| **Change** | Regenerate with FIDELITY vs BEHAVIOR labels (e.g. attention RMSE vs log PPL ratio). Pareto figure: keep memory vs quality vs tok/s — aligns with SYSTEM. |
+| **Needs new results?** | **Yes** — replot from new JSON |
+| **Phase** | 1, 2 |
+
+#### §Discussion (L595–623, `\label{sec:discussion}`)
+
+| | |
+| --- | --- |
+| **Current** | L598 “benchmarking and evaluation study”; L608 “Offline fidelity does not predict online quality”; L617 TurboQuant throughput as mechanism story |
+| **Change** | L598: “controlled experimentation framework” — contribution is matched interception, not ranking winners. L608: **FIDELITY does not predict BEHAVIOR**; SYSTEM explains TurboQuant speed penalty separately. L623 implications: report all three branches + cost + controlled conditions. |
+| **Needs new results?** | Empirical paragraphs yes; framing no |
+| **Phase** | 1, 2, 3, 6 |
+
+#### §Conclusion (L625–629, `\label{sec:conclusion}`)
+
+| | |
+| --- | --- |
+| **Current** | “benchmarking framework”; “dual Section A/Section B metrics” |
+| **Change** | List: (i) interception engine, (ii) plug-in API, (iii) FIDELITY/BEHAVIOR/SYSTEM/Cost, (iv) controlled conditions export, (v) case-study findings. Future work: SnapKV/Palu sweeps, LongBench/RULER, longer contexts. |
+| **Needs new results?** | Findings bullet yes; structure no |
+| **Phase** | 1–7 |
+
+### What to pull from codebase when writing
+
+| Paper element | Source in repo |
+| ------------- | -------------- |
+| Controlled conditions table | Any `result.to_dict()["controlled_conditions"]["fixed"]` from a reference job |
+| FIDELITY metric definitions | `docs/methodology/METHODOLOGY.md` §6.1 |
+| BEHAVIOR protocols | §6.2 + `eval/behavior/*.py` docstrings |
+| SYSTEM metrics | §6.3 |
+| Cost tree | §6.5 + `eval/cost/accounting.py` |
+| Taxonomy table | `compressors/taxonomy.py` `METHOD_TAXONOMY` |
+| Result numbers | `results/phase5_modal_*`, `results/olmo2_phase5_*` (or post-rewrite bundles) |
+
+### Minimal vs full paper update (choose at rewrite time)
+
+| Tier | When | Scope |
+| ---- | ---- | ----- |
+| **Minimal** | Re-sweep done; tight page limit | Terminology pass (Section A/B → three branches) + controlled conditions table + caption renames; keep 3 methods |
+| **Full** | Re-sweep + appendix space | Above + BEHAVIOR task protocols + SYSTEM TTFT/ITL + Cost subsection + taxonomy table + regenerated figures |
 
 ---
 
@@ -97,7 +333,7 @@ This turns KVBench from a **compression test harness** into a **multi-dimensiona
 | ----- | ------ | ------ |
 | **Engine** | ✅ Done | Three-branch orchestrator; legacy Section A/B accessors retained on `EvaluationResult` for back-compat only. |
 | **Documentation** | ✅ Done | `README.md`, `SYSTEM_DESIGN.md`, `METHODOLOGY.md` §6, `CLAUDE.md`. |
-| **Paper** | 📝 Pending | **Abstract** (L45): replace “dual Section A/B” with **FIDELITY / BEHAVIOR / SYSTEM**. **Introduction** (L58–60): three axes under “What”. **§Design Principles** (L90–96): bullet “Dual evaluation” → three-branch contract. **Fig. pipeline caption** (L101): rename Section A/B in caption. **§Evaluation Protocol** (L255–257): restructure as three subsubsections. **Discussion/Conclusion** (L598+, L627+): “offline–online” → “fidelity–behavior gap”; SYSTEM as third lens. |
+| **Paper** | 📝 Documented | See [Paper alignment guide — Title, Abstract, Introduction](#paper-alignment-guide--codebase--conference_101719tex). Apply after re-sweep. |
 
 ---
 

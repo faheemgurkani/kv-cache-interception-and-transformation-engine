@@ -2,9 +2,9 @@
 
 ## Completeness record — Phases 1–10 (verified 2026-08-19)
 
-Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, and **12** are flagged **not planned / future extension** — design reference only.
+Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, and **10** are **complete in the engine and documentation**. The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, and **12** require **no paper or engine work** for the current case-study scope.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, and **10** are **complete in the engine and documentation**. The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto (Phase 9) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -22,6 +22,7 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **10** Hardware-aware eval (single GPU) | ✅ Done | ✅ Done | 📝 Pending | `eval/hardware/`, Modal A10G path |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
+| **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
 
 **Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_hardware_profile.py`, `tests/test_modal_merge_hardware.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
 
@@ -31,6 +32,7 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 
 - BEHAVIOR retrieval/instruction/reasoning use **synthetic in-repo generators**, not LongBench/RULER (`CURRENT_STATE.md`) — **Phase 11 deferred**; do not expand workloads for the current paper.
 - Context lengths capped at **128 / 256 / 512**, batch **1**, **64** generated tokens — **Phase 12 deferred**; sufficient for controlled SLM case study.
+- No vLLM/SGLang serving validation — **Phase 13 not planned**; controlled `KVCacheEngine` path is the systems scope.
 - SYSTEM peak VRAM / GPU util collected on Modal CUDA reference path (Phase 10); optional locally via `--hardware-metrics`.
 - Reasoning is opt-in (`--reasoning`); skip flags: `--skip-retrieval`, `--skip-instruction-following`.
 - Hybrid FIDELITY/`recurrent` extension: `eval/fidelity/recurrent.py` (Falcon-H1).
@@ -48,7 +50,7 @@ Authoritative metric definitions: [`docs/methodology/METHODOLOGY.md`](methodolog
 **Paper file:** [`docs/research_paper_writeup/conference_101719.tex`](research_paper_writeup/conference_101719.tex)  
 **Code truth sources:** `eval/runner.py`, `eval/controlled_conditions.py`, `eval/{fidelity,behavior,system,cost}/`, `compressors/taxonomy.py`, `docs/methodology/METHODOLOGY.md`
 
-Phases **5**, **8**, **11**, and **12:** no paper changes (flagged not planned / future extension).
+Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not planned / future extension).
 
 ### Phases 9–12 — feasibility vs paper (2026-08-19)
 
@@ -1027,7 +1029,9 @@ Even a small matrix would demonstrate:
 
 ---
 
-# Phase 13: Add a Serving-Engine Validation Path
+# Phase 13: Add a Serving-Engine Validation Path ⏸ **Not planned**
+
+> **Status (2026-08-20):** **Out of scope.** Do **not** implement vLLM, SGLang, or other serving-engine integrations for this paper. KVBench's controlled interception environment (`KVCacheEngine`, plug-in compressors, three-branch eval) is the systems contribution — validating inside a production serving stack is **future work only**, not required for current claims or paper framing.
 
 You don't need to turn KVBench into vLLM.
 
@@ -1036,9 +1040,9 @@ Instead:
 ```text
 KVBench
    │
-   ├── Controlled research environment
+   ├── Controlled research environment   ← current scope (sufficient)
    │
-   └── Optional serving integration
+   └── Optional serving integration      ← NOT planned (Phase 13)
            │
            ├── vLLM
            └── SGLang
@@ -1048,9 +1052,29 @@ The idea is:
 
 > First establish controlled results inside KVBench, then validate selected findings inside a real serving engine.
 
-This would make your systems claim much stronger.
+That validation path would strengthen a **future** systems claim; it is **not** a blocker for the current submission.
 
-The recent literature increasingly connects compression to actual serving systems and memory-management architectures. 
+The recent literature increasingly connects compression to actual serving systems and memory-management architectures.
+
+### What stays as-is (no action)
+
+- **Engine:** No vLLM/SGLang adapters, no serving endpoints — `modal_app/worker.py` one-shot eval jobs remain the CUDA reference path.
+- **Paper:** Do not claim serving-engine validation; controlled KVBench results are the empirical basis.
+
+### Paper change log
+
+| When | Why | What |
+| ---- | --- | ---- |
+| **Current submission** | Phase 13 deferred | **No paper changes** |
+| **Conclusion future work only** | Acknowledge optional extension | One sentence: selected findings could be validated in vLLM/SGLang in future work |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ⏸ Not planned | No serving integration; controlled eval path complete (Phases 1–10). |
+| **Documentation** | ⏸ Flagged | This section retained as **design reference only**. |
+| **Paper** | — | No serving-engine claims; mention only in future work if at all. |
 
 ---
 

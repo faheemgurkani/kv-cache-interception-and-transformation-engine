@@ -340,7 +340,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | **Minimal** | Re-sweep done; tight page limit | Terminology pass (Section A/B → three branches) + controlled conditions table + caption renames; keep 3 methods; **regenerate Pareto from CLI** (Phase 9); **Phases 15–19 prose** (question, problem, novelty, definition, domain positioning) |
 | **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) + optional **problem-cascade figure** (Phase 16) + reproducibility subsection (Phase 14) |
 
-### Phases 15–18 — recommended `.tex` rewrite order
+### Phases 15–19 — recommended `.tex` rewrite order
 
 Apply in **one framing pass** before editing result numbers (can precede re-sweep):
 
@@ -350,8 +350,9 @@ Apply in **one framing pass** before editing result numbers (can precede re-swee
 | 2 | **16** | Intro gap (L56–57), optional `\S Problem`, Design Principles, Discussion bridge |
 | 3 | **17** | Abstract, Intro, Related Work L66/L78/L81, Case-Study disclaimer L167, Conclusion |
 | 4 | **18** | Abstract, Intro L58, Methodology opening L83–86, `\label{subsec:engine}` L106, pipeline caption |
+| 5 | **19** | Intro opening L54, Keywords, Related Work framing, Experiments opening, Conclusion scope |
 
-**No new GPU jobs** for steps 1–4. Cross-link [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) for line-level detail per section.
+**No new GPU jobs** for steps 1–5. Cross-link [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) for line-level detail per section.
 
 ---
 

@@ -85,6 +85,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | Domain / venue | Implicit SLM compression comparison | **LLM inference-systems** paper; KV eval infrastructure (**Phase 19**) | Keywords + Intro ladder; scope Conclusion to SLM inference engineering |
 | Introduction narrative | Bottleneck + method dump + Section A/B + horse-race contributions (**Phase 21**) | Seven-paragraph methodology story; FIDELITY/BEHAVIOR/SYSTEM; instrument framing | Rewrite L52–60 per Phase 21 before Related Work |
 | Contributions block | (1) dual Section A/B engine; (2) 27-job study co-primary; (3) offline≠online (**Phase 22**) | Protocol-first: engine + protocol + controlled export; demonstrations second; safe scope | Rewrite L60 per Phase 22 taxonomy; mirror Abstract + Conclusion |
+| Results narrative | Method-by-method leaderboard (“TurboQuant achieved…”) (**Phase 23**) | Seven research findings (F1–F7); tables as evidence; F6 future work only | Experiments L215–218 + Discussion L595–623 restructure; step 9 |
 | Related Work structure | Algorithm-family subsections + standalone Positioning (**Phase 20**) | Four sections: Eviction / Representation / Arch-Serving / **Evaluation** + *What is still missing?* | Restructure L62–81; add Oaken/SCOPE/CacheBlend/Cache-in-the-Wild bibs |
 | Quality under compression | Section B = PPL + throughput only | BEHAVIOR: PPL + retrieval + instruction following (+ reasoning opt-in) | BEHAVIOR subsection; PPL in results; task probes in methodology (+ optional appendix numbers) |
 | Runtime efficiency | Throughput under Section B | SYSTEM: TTFT, ITL, tok/s, latency (+ VRAM/bandwidth opt-in) | Separate **SYSTEM** subsection; tok/s tables move under SYSTEM |
@@ -1873,7 +1874,7 @@ Use these as **building blocks**; merge for Intro if page-limited (see packaging
 | **C1** Framework | ✅ Always | ✅ Always | No |
 | **C2** Three-branch methodology | ✅ Always | ✅ Always | No |
 | **C3** Controlled protocol | ✅ Always (minimal); detail in Methodology | ✅ Always | No |
-| **C4** Empirical demonstrations | ✅ Always — **secondary** to C1–C3 | ✅ Always — summarize patterns, not winners | No for existing TQ/QJL/RocketKV; yes to add SnapKV/Palu **results** |
+| **4** Empirical demonstrations | ✅ Always — **secondary** to C1–C3 | ✅ Always — summarize **Findings 1–7** (Phase 23), not winners | No for existing TQ/QJL/RocketKV; yes to add SnapKV/Palu **results** |
 | **C5** Plug-in architecture | ⚠️ Merge into C1 if tight; else ✅ | ✅ Always | No |
 | **Cost accounting** (optional) | Full tier only | Full tier | No |
 | **Reproducibility export** (optional) | Fold into C3 | ✅ Full tier | No |
@@ -1940,47 +1941,95 @@ Use these as **building blocks**; merge for Intro if page-limited (see packaging
 
 ---
 
-# Phase 23: Change the Results Narrative
+# Phase 23: Change the Results Narrative 📝 **Paper only**
 
-Don't write:
+> **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. The Experiments section (L319+) reports results **method-by-method** (“TurboQuant achieved…”, “QJL achieved…”), which reads as a **leaderboard**. Discussion (L608–621) already states the right **decoupling** claims but uses method-centric paragraph titles. Phase 23 reframes both sections around **seven research questions (findings)** that the case studies **answer**, supporting Phase 15/22’s “demonstrations, not horse-race” framing.
 
-> TurboQuant achieved the lowest reconstruction error.
+### Narrative shift
 
-Then:
+| | Current paper | Target paper |
+| --- | ------------- | -------------- |
+| **Results structure** | `\paragraph{TurboQuant results}` → `\paragraph{QJL results}` → `\paragraph{RocketKV results}` | Tables stay; prose shortened. Optional `\subsection{Summary of findings}` with F1–F7 before detail tables |
+| **Discussion structure** | “Offline fidelity does not predict…” + mechanism/context/architecture paragraphs | **Same content**, reorganized under `\textbf{Finding N: …?}` headers |
+| **Sentence pattern** | “Method X achieved the lowest Y” | “**Finding N:** Under matched conditions, … **therefore** FIDELITY alone is insufficient” |
+| **Reader takeaway** | Implicit ranking (TurboQuant “wins” on Qwen3) | Explicit **evaluation lessons** — no deployment recommendation |
 
-> QJL achieved X throughput.
+### Seven findings — questions, evidence, `.tex` anchors
 
-Instead ask:
+| ID | Research question | Answer in current data (summary) | Primary `.tex` / figure | Claim in paper? |
+| -- | ----------------- | -------------------------------- | ----------------------- | --------------- |
+| **F1** | Does better KV reconstruction imply better model quality? | **No** — QJL moderate attention metrics, catastrophic PPL; TQ 4-bit inverse pattern | L608, L394; `fig:offon` (attention RMSE vs PPL) | ✅ Yes |
+| **F2** | Does higher compression imply lower memory? | **Mostly yes**, with metadata/shared-projection caveats (QJL mem ratio modest despite 1-bit keys) | FIDELITY memory columns in tables; `tab:cross` | ✅ Yes |
+| **F3** | Does lower memory imply higher throughput? | **No** — TQ trades memory for speed (decompress overhead); RocketKV high tok/s but quality collapse on Qwen3 GQA | L617, SYSTEM tok/s columns | ✅ Yes |
+| **F4** | Does offline (FIDELITY) quality predict online (BEHAVIOR) generation quality? | **No** — weak Pearson coupling; central claim | L608–609, `fig:offon`; cite `chen2026pitfalls` | ✅ Yes — headline |
+| **F5** | Does the best method change with context length? | **Yes** — TQ 4-bit stable across T; 2/3-bit degrade at T=512; RocketKV only compresses meaningfully when B < T | L619 | ✅ Yes |
+| **F6** | Does the best method change with workload? | **Not evaluated** in paper (WikiText-2 PPL only) | — | ⏸ **Future work** (Phase 11); mention as open question in Discussion closing, **do not answer** |
+| **F7** | What is the quality–memory–speed Pareto frontier? | **No single winner** — TQ quality/memory, RocketKV speed, QJL neither; empirical front at T=512 | `fig:pareto` L475–481, L617; `scripts/analyze_pareto.py` | ✅ Yes |
 
-### Finding 1
+### Retire vs adopt (results prose)
 
-Does better KV reconstruction imply better model quality?
+| Retire (leaderboard) | Adopt (findings) |
+| -------------------- | ---------------- |
+| “TurboQuant achieved the lowest reconstruction error” (standalone headline) | “**Finding 1:** tensor/attention reconstruction does not rank methods for BEHAVIOR (e.g., QJL vs TQ 4-bit)” |
+| “QJL achieved X tok/s” as a success metric | “**Finding 3:** memory reduction and SYSTEM throughput decouple (mechanism-dependent online cost)” |
+| “TurboQuant is the best method on Qwen3” | “TurboQuant 4-bit is the **most stable BEHAVIOR/memory trade-off in this SLM grid** — not a universal winner (F7)” |
+| Per-method results paragraphs as primary narrative | Finding-led Discussion + compact method tables as **evidence** |
+| “Section A / Section B” in finding text | FIDELITY / BEHAVIOR / SYSTEM |
 
-### Finding 2
+### Recommended `.tex` structure (choose at rewrite time)
 
-Does higher compression imply lower memory?
+| Tier | Experiments (`\label{sec:experiments}`) | Discussion (`\label{sec:discussion}`) |
+| ---- | --------------------------------------- | ------------------------------------- |
+| **Minimal** | Keep method subsections + tables; add 1 paragraph at L218 listing F1–F7 as “questions this section answers”; reframe Discussion L608–621 with `\textbf{Finding N:}` headers only | Lowest diff |
+| **Standard (recommended)** | Add `\subsection{Research Findings}` after setup (before L319) with 7 short bullets (2–3 sentences each, no new numbers); method tables move to `\subsection{Detailed case-study tables}` | Clearest for reviewers |
+| **Full** | Findings subsection + `\subsection{Cross-dimensional analysis}` stub pointing to Phase 24 appendix | Only if page budget |
 
-### Finding 3
+### When to apply
 
-Does lower memory imply higher throughput?
+| Timing | Rationale |
+| ------ | --------- |
+| **Rewrite pass 2, step 9** — after framing pass (steps 1–8) and **with** result table/figure update | Findings cite numbers; restructure can use existing Phase-5 data if numbers unchanged |
+| **Same pass as Phase 22 C4 wording** | Findings = contribution (4) demonstrations |
+| **After Phase 1 terminology** | FIDELITY/BEHAVIOR/SYSTEM in finding headers and figure captions |
+| **No new GPU jobs** for F1–F5, F7 with existing bundles | Replot Pareto + offline-vs-online from JSON (Phase 9) |
+| **F6 explicitly out of scope** | Phase 11 deferred — one sentence in Discussion future work only |
 
-### Finding 4
+### Paper change log — section by section (`conference_101719.tex`)
 
-Does offline quality predict online generation quality?
+| When | Section (label, lines) | Why | What to change |
+| ---- | ------------------------ | --- | -------------- |
+| **Rewrite pass 2** | **§Experiments opening** (L215–218) | “full Phase-5 **results**” = leaderboard frame | Replace with: *“This section **answers seven evaluation questions** (Findings 1–7) using three compressor families as controlled demonstrations; detailed tables follow.”* Cross-ref `\ref{sec:discussion}`. **Phase 19/22:** demonstrations, not exhaustive survey. |
+| **Rewrite pass 2** | **NEW `\subsection{Research Findings}`** (insert ~L318, before `\label{sec:qwen3}`) **or** Discussion-only restructure | Readers need finding list before tables | Seven `\textbf{Finding N: …?}` bullets (2–3 sentences each). F6 = *“left to future multi-workload evaluation (Phase 11).”* |
+| **Rewrite pass 2** | **§Qwen3 / §OLMo2 paragraph leads** (L343+, L393+, RocketKV paragraphs) | Method-first prose | Shorten to: *“Table~\ref{…} provides FIDELITY/BEHAVIOR/SYSTEM evidence for Findings 1–5, 7; see Discussion.”* Keep 1 illustrative sentence per method max. |
+| **Rewrite pass 2** | **Table / figure captions** (L347, L375, `fig:offon`, `fig:pareto`) | Section A/B labels | Rename axes/branches. **`fig:offon` caption:** “Evidence for **Finding 4** (FIDELITY vs BEHAVIOR decoupling).” **`fig:pareto` caption:** “**Finding 7:** empirical Pareto front at T=512; no config dominates all axes.” |
+| **Rewrite pass 2** | **§Discussion opening** (L598) | “four patterns” is good but unnamed | Open with: *“The case studies answer seven evaluation questions; we organize the discussion as Findings 1–7.”* Keep “contribution is protocol” sentence. |
+| **Rewrite pass 2** | **§Discussion body** (L608–621) | Content maps to findings; titles don't | Rename paragraphs: **Finding 4** (L608), **Finding 3** + **F7** (L617), **Finding 5** (L619), **Finding 1** + architecture (L621 → split F1 vs GQA replication). Merge L621 architecture content as sub-finding: *rankings are not architecture-invariant*. |
+| **Rewrite pass 2** | **§Discussion Implications** (L623) | Should follow finding frame | Preface: *“These implications follow from Findings 1–7, not from a single winning compressor.”* Replace Section A/B → three branches. |
+| **Rewrite pass 2** | **§Conclusion** (L627) | Repeats method ranking tone | Lead with 2–3 findings (F4, F7, architecture), not “TurboQuant remains most stable” as headline — relegate to parenthetical evidence. **Phase 22** C4 wording. |
+| **Rewrite pass 2** | **Abstract** (L45) | Empirical clause is leaderboard-like | One clause: *“Case studies show FIDELITY, BEHAVIOR, and SYSTEM decouple (Findings 1–4, 7).”* |
+| **Do not** | Claim F6 answer | No multi-workload data | WikiText only — future work sentence |
+| **Do not** | Delete result tables | Evidence required | Tables support findings; shrink prose not data |
 
-### Finding 5
+### Cross-references
 
-Does the best method change with context length?
+| Phase | Link |
+| ----- | ---- |
+| **15** | Findings answer *how to evaluate*, not *who wins* |
+| **16** | F1–F4 instantiate metric decoupling cascade |
+| **17** | Avoid “best method” deployment claims; F7 = no universal winner |
+| **22** | C4 = cross-method demonstrations framed as **Findings 1–7** (Phase 23) |
+| **23** | ¶7 / C4 land as finding-led Discussion |
+| **9** | F7 Pareto — regenerate via `scripts/analyze_pareto.py` |
+| **11** | F6 deferred — do not claim |
+| **24** | Optional appendix: correlation matrix supporting F1–F3 (full tier) |
 
-### Finding 6
+### Completeness record
 
-Does the best method change with workload?
-
-### Finding 7
-
-What is the actual quality-memory-speed Pareto frontier?
-
-This transforms your results from a **leaderboard** into **research findings**.
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Aligned | Phase-5 bundles + Pareto export supply all F1–F5, F7 evidence; no code changes. |
+| **Documentation** | ✅ Done | This section; [Results](#results-qwen3--olmo2-l319-labelsecqwen3-labelsecolmo2) + [Discussion](#discussion-l595623-labelsecdiscussion) in paper alignment guide. |
+| **Paper** | 📝 Pending | Restructure Experiments + Discussion around F1–F7. Apply at rewrite **step 9**. **No new GPU jobs** for current grid. |
 
 ---
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import modal
 
-from modal_app.settings import load_modal_config, volume_names
+from modal_app.settings import load_modal_config, modal_runtime_env, reference_gpu_label, volume_names
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_MOUNT = "/models"
@@ -24,6 +24,7 @@ cuda_image = (
     .env(
         {
             "KV_EVAL_DEVICE": "cuda",
+            **modal_runtime_env(_modal_cfg),
             "HF_HUB_CACHE": HF_CACHE,
             "HF_HUB_ENABLE_HF_TRANSFER": "1",
             "TRANSFORMERS_NO_ADVISORY_WARNINGS": "1",

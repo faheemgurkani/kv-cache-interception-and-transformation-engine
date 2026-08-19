@@ -17,6 +17,8 @@ def flatten_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
     bundles on disk, so both can be merged into one CSV.
     """
     is_legacy = "section_a_fidelity" in payload
+    peak_memory: dict[str, Any] = {}
+    gpu_util: dict[str, Any] = {}
     if is_legacy:
         fidelity = payload.get("section_a_fidelity") or {}
         behavior = payload.get("section_b_inference") or {}
@@ -34,9 +36,15 @@ def flatten_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
         attention = fidelity.get("attention") or {}
         memory = fidelity.get("memory") or {}
         throughput = system.get("latency_throughput") or {}
+        peak_memory = system.get("peak_memory") or {}
+        gpu_util = system.get("gpu_utilization") or {}
         task_quality = behavior.get("task_quality") or {}
         perplexity = task_quality.get("perplexity")
         perplexity_baseline = task_quality.get("perplexity_baseline")
+
+    hardware = payload.get("hardware") or {}
+    controlled = payload.get("controlled_conditions") or {}
+    fixed_hw = (controlled.get("fixed") or {}).get("hardware") or {}
 
     return {
         "label": payload.get("label"),
@@ -59,7 +67,17 @@ def flatten_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "tokens_per_second": throughput.get("tokens_per_second"),
         "latency_ms_per_token": throughput.get("latency_ms_per_token"),
         "ttft_ms": throughput.get("ttft_ms"),
+        "itl_ms_mean": throughput.get("itl_ms_mean"),
         "online_compressed_kv": throughput.get("online_compressed_kv"),
+        "peak_vram_allocated_mb": peak_memory.get("peak_allocated_mb") if not is_legacy else None,
+        "peak_vram_reserved_mb": peak_memory.get("peak_reserved_mb") if not is_legacy else None,
+        "gpu_util_mean_pct": gpu_util.get("mean_utilization_pct") if not is_legacy else None,
+        "gpu_util_max_pct": gpu_util.get("max_utilization_pct") if not is_legacy else None,
+        "hardware_device_name": hardware.get("device_name") or fixed_hw.get("device_name"),
+        "hardware_configured_gpu": hardware.get("configured_gpu") or fixed_hw.get("configured_gpu"),
+        "hardware_execution_platform": hardware.get("execution_platform") or fixed_hw.get("execution_platform"),
+        "hardware_single_gpu_policy": hardware.get("single_gpu_policy", fixed_hw.get("single_gpu_policy")),
+        "reference_gpu": payload.get("reference_gpu") or hardware.get("configured_gpu"),
         "finished_at": payload.get("finished_at"),
     }
 
@@ -85,7 +103,17 @@ CSV_FIELDNAMES = [
     "tokens_per_second",
     "latency_ms_per_token",
     "ttft_ms",
+    "itl_ms_mean",
     "online_compressed_kv",
+    "peak_vram_allocated_mb",
+    "peak_vram_reserved_mb",
+    "gpu_util_mean_pct",
+    "gpu_util_max_pct",
+    "hardware_device_name",
+    "hardware_configured_gpu",
+    "hardware_execution_platform",
+    "hardware_single_gpu_policy",
+    "reference_gpu",
     "finished_at",
 ]
 

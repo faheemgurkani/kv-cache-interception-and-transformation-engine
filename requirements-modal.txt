@@ -9,6 +9,7 @@ pandas
 tqdm
 einops
 psutil
+pynvml
 scikit-learn
 sentencepiece
 safetensors

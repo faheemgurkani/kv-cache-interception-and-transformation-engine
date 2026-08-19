@@ -67,6 +67,9 @@ class ResultReporter:
             "latency_ms_per_token",
             "end_to_end_latency_ms",
             "peak_vram_allocated_mb",
+            "peak_vram_reserved_mb",
+            "gpu_util_mean_pct",
+            "gpu_util_max_pct",
             "memory_bandwidth_gbps",
             "compress_decompress_time_ms",
             "online_compressed_kv",
@@ -82,6 +85,13 @@ class ResultReporter:
             "cost_decompression_time_ms",
             "cost_attention_ms",
             "cost_end_to_end_decode_ms",
+            # HARDWARE (Phase 10)
+            "hardware_device_name",
+            "hardware_configured_gpu",
+            "hardware_execution_platform",
+            "hardware_compute_capability",
+            "hardware_driver_version",
+            "hardware_single_gpu_policy",
         ]
         with path.open("w", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -140,6 +150,19 @@ class ResultReporter:
                         "peak_vram_allocated_mb": (
                             system.peak_memory.peak_allocated_mb if system and system.peak_memory else None
                         ),
+                        "peak_vram_reserved_mb": (
+                            system.peak_memory.peak_reserved_mb if system and system.peak_memory else None
+                        ),
+                        "gpu_util_mean_pct": (
+                            system.gpu_utilization.mean_utilization_pct
+                            if system and system.gpu_utilization
+                            else None
+                        ),
+                        "gpu_util_max_pct": (
+                            system.gpu_utilization.max_utilization_pct
+                            if system and system.gpu_utilization
+                            else None
+                        ),
                         "memory_bandwidth_gbps": (
                             system.memory_bandwidth.effective_bandwidth_gbps
                             if system and system.memory_bandwidth
@@ -166,6 +189,18 @@ class ResultReporter:
                         "cost_decompression_time_ms": cost.online.decompression_time_ms if cost else None,
                         "cost_attention_ms": cost.online.attention_cost_ms if cost else None,
                         "cost_end_to_end_decode_ms": cost.online.end_to_end_decode_cost_ms if cost else None,
+                        "hardware_device_name": result.hardware.device_name if result.hardware else None,
+                        "hardware_configured_gpu": result.hardware.configured_gpu if result.hardware else None,
+                        "hardware_execution_platform": (
+                            result.hardware.execution_platform if result.hardware else None
+                        ),
+                        "hardware_compute_capability": (
+                            result.hardware.compute_capability if result.hardware else None
+                        ),
+                        "hardware_driver_version": result.hardware.driver_version if result.hardware else None,
+                        "hardware_single_gpu_policy": (
+                            result.hardware.single_gpu_policy if result.hardware else None
+                        ),
                     }
                 )
         return path

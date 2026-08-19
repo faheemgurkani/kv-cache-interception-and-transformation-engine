@@ -379,6 +379,25 @@ After sweeps, compute non-dominated trade-offs from job JSON or `EvaluationResul
 
 Legacy Phase-5 bundles (`section_a_fidelity` / `section_b_inference`) and new three-branch `to_dict()` payloads are both supported.
 
+### 6.8 Hardware-aware evaluation (`eval/hardware/`, Phase 10)
+
+**Scope:** one **single NVIDIA GPU per job** on Modal (`gpu=a10g` with `[a10g, l4, any]` fallbacks). A multi-GPU tier matrix (A100 / H100 / RTX 4090) is **not** automated — change `configs/modal.yaml` and rerun manually if needed.
+
+Every run exports a top-level `hardware` block (`EvaluationResult.hardware`) plus the hardware axis inside `controlled_conditions.fixed.hardware`:
+
+| Field | Source |
+|---|---|
+| `device_name`, `total_memory_bytes`, `compute_capability`, `driver_version` | `nvidia-smi` + `torch.cuda` when CUDA available |
+| `configured_gpu`, `gpu_fallbacks` | `configs/modal.yaml` / env |
+| `execution_platform` | `KV_EXECUTION_PLATFORM` (`local` vs `modal`) |
+| `single_gpu_policy`, `multi_gpu_matrix` | Always `true` / `false` (documents no multi-GPU matrix) |
+
+**Modal reference path:** image sets `KV_EVAL_DEVICE=cuda`, `KV_EXECUTION_PLATFORM=modal`, `KV_HARDWARE_PROFILE=NVIDIA A10G`, `KV_COLLECT_HARDWARE_METRICS=1`. Worker enables peak VRAM + GPU utilization on every job (`pynvml` in `requirements-modal.txt`).
+
+**Local dev:** MPS/CPU by default; stamp a reference label with `KV_HARDWARE_PROFILE=NVIDIA A10G` or pass `--hardware-metrics` on CUDA hosts to mirror Modal SYSTEM collection.
+
+**Reporting:** `ResultReporter.save_summary_csv()` and `modal_app/merge.py` flatten hardware + `peak_vram_*` + `gpu_util_*` columns.
+
 ---
 
 ## 7. Phase 5 sweep design

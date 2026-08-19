@@ -54,6 +54,11 @@ def main() -> None:
     parser.add_argument("--memory-bandwidth", action="store_true", help="Run SYSTEM/memory_bandwidth.")
     parser.add_argument("--kernel-cost", action="store_true", help="Run SYSTEM/kernel_cost (compress/decompress time).")
     parser.add_argument("--gpu-utilization", action="store_true", help="Run SYSTEM/gpu_utilization (CUDA + pynvml only).")
+    parser.add_argument(
+        "--hardware-metrics",
+        action="store_true",
+        help="Enable peak VRAM + GPU util (also auto-on when KV_EXECUTION_PLATFORM=modal).",
+    )
     parser.add_argument("--skip-cost", action="store_true", help="Skip COST accounting block (Phase 3).")
     parser.add_argument(
         "--max-capacity-prompt",
@@ -103,6 +108,7 @@ def main() -> None:
         "run_memory_bandwidth": args.memory_bandwidth,
         "run_kernel_cost": args.kernel_cost,
         "run_gpu_utilization": args.gpu_utilization,
+        "collect_hardware_metrics": args.hardware_metrics or None,
         "run_cost": not args.skip_cost,
         "include_baselines": args.include_baselines,
     }

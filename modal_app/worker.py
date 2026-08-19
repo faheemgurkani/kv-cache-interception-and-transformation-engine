@@ -12,7 +12,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from modal_app.image import MODEL_MOUNT, RESULTS_MOUNT, cuda_image, model_volume, results_volume
 from modal_app.job_spec import EvalJobSpec
-from modal_app.settings import gpu_spec, secret_name, timeout_seconds
+from modal_app.settings import gpu_spec, load_modal_config, reference_gpu_label, secret_name, timeout_seconds
 
 app = modal.App("kv-cache-engine-eval", image=cuda_image)
 
@@ -74,6 +74,7 @@ def eval_worker(job: dict) -> dict:
         results_volume.reload()
 
         from compressors.registry import get_compressor
+        from eval.hardware.profile import collect_hardware_profile, hardware_metrics_enabled
         from eval.runner import EvaluationRunner
         from framework.config import load_eval_config, load_model_config
         from framework.model import ModelLayer
@@ -88,10 +89,16 @@ def eval_worker(job: dict) -> dict:
             eval_config=load_eval_config(),
             model_config=load_model_config(),
         )
+        modal_cfg = load_modal_config()
+        hw_cfg = modal_cfg.get("hardware") or {}
+        collect_hw = hardware_metrics_enabled()
         result = runner.run(
             spec.context_length,
             run_perplexity=not spec.skip_perplexity,
             run_throughput=not spec.skip_throughput,
+            run_peak_memory=bool(hw_cfg.get("collect_peak_memory", collect_hw)),
+            run_gpu_utilization=bool(hw_cfg.get("collect_gpu_utilization", collect_hw)),
+            collect_hardware_metrics=collect_hw,
             include_baselines=True,
         )
 
@@ -100,6 +107,15 @@ def eval_worker(job: dict) -> dict:
         payload["job"] = spec.to_dict()
         payload["model_name"] = load_model_config().get("model_name")
         payload["model_path"] = str(model_path)
+        payload["modal_gpu"] = gpu_spec(modal_cfg)
+        payload["reference_gpu"] = reference_gpu_label(modal_cfg)
+        if payload.get("hardware") is None:
+            payload["hardware"] = collect_hardware_profile(
+                runner.model_layer.device,
+                configured_gpu=reference_gpu_label(modal_cfg),
+                gpu_fallbacks=modal_cfg.get("gpu_fallbacks") or [modal_cfg.get("gpu", "a10g")],
+                execution_platform="modal",
+            ).to_dict()
         payload["started_at"] = started_at
         payload["finished_at"] = datetime.now(UTC).isoformat()
         payload["status"] = "ok"

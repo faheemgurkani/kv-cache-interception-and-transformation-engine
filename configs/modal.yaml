@@ -1,12 +1,23 @@
 # Modal GPU eval configuration (see docs/MODAL_GPU_EVAL_DESIGN.md)
+#
+# Phase 10 scope: **single NVIDIA GPU per job** (`eval_worker` gets one `gpu=`).
+# Multi-GPU tier matrix (A100 / H100 / RTX 4090) is **not** implemented — rerun the
+# same sweep manually by changing `gpu` / `gpu_fallbacks` if needed.
 
-gpu: A10G
+gpu: a10g
 gpu_fallbacks:
-  - A10G
-  - L4
+  - a10g
+  - l4
   - any
 
 timeout_hours: 4
+
+hardware:
+  reference_gpu: NVIDIA A10G
+  single_gpu_policy: true
+  multi_gpu_matrix: false
+  collect_peak_memory: true
+  collect_gpu_utilization: true
 
 volumes:
   model: kv-engine-qwen3 # persist Qwen3-1.7B weights (~3.2 GB)

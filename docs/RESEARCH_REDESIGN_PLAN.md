@@ -795,6 +795,44 @@ The important thing is to measure actual:
 * throughput
 * GPU execution behavior
 
+### Scope decision (2026-08-19)
+
+**In scope:** one **single-GPU** NVIDIA CUDA reference path — Modal `@app.function(gpu=…)` with `a10g` primary and `[a10g, l4, any]` fallbacks per [Modal GPU docs](https://modal.com/docs/guide/gpu). Each `eval_worker` job runs on **one** container GPU; peak VRAM and GPU utilization are collected automatically on Modal.
+
+**Out of scope (not planned):** multi-GPU tier matrix (A100 / H100 / RTX 4090 side-by-side sweeps). To compare tiers later, rerun the same sweep after editing `configs/modal.yaml` `gpu` / `gpu_fallbacks` manually — no automated matrix runner.
+
+### Implementation
+
+| Component | Path | Role |
+| --------- | ---- | ---- |
+| Hardware profile | `eval/hardware/profile.py` | `HardwareProfile`, `collect_hardware_profile()`, `nvidia-smi` + torch CUDA props |
+| Runner export | `eval/runner.py` | `EvaluationResult.hardware`; auto-enables peak VRAM + GPU util when `KV_COLLECT_HARDWARE_METRICS=1` or `KV_EXECUTION_PLATFORM=modal` |
+| Modal image env | `modal_app/image.py` | `KV_EVAL_DEVICE=cuda`, `KV_EXECUTION_PLATFORM=modal`, `KV_HARDWARE_PROFILE`, `KV_COLLECT_HARDWARE_METRICS=1` |
+| Modal worker | `modal_app/worker.py` | CUDA run with `--peak-memory` / `--gpu-utilization` equivalent flags; stamps `reference_gpu`, `modal_gpu` |
+| Config | `configs/modal.yaml` | `hardware:` block documents single-GPU policy; `gpu: a10g` |
+| Merge CSV | `modal_app/merge.py` | Flattened hardware + peak VRAM + GPU util columns |
+| Reporter CSV | `reporting/reporter.py` | Hardware + SYSTEM VRAM/GPU util columns |
+| CLI | `scripts/run_eval.py` | `--hardware-metrics` (local CUDA smoke) |
+| Tests | `tests/test_hardware_profile.py` | Profile collection + env gating |
+
+**Environment variables:**
+
+| Variable | Purpose |
+| -------- | ------- |
+| `KV_EVAL_DEVICE=cuda` | Force CUDA device (Modal image) |
+| `KV_EXECUTION_PLATFORM=modal` | Marks Modal reference sweeps; enables hardware metrics by default |
+| `KV_HARDWARE_PROFILE=NVIDIA A10G` | Configured/reference GPU label in JSON |
+| `KV_COLLECT_HARDWARE_METRICS=1` | Opt-in peak VRAM + GPU util locally |
+| `MODAL_GPU_REQUEST` | Primary Modal `gpu=` request from config |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | Single-GPU Modal A10G path; hardware block + peak VRAM + GPU util collected/reported/merged. Multi-GPU matrix explicitly **not planned**. |
+| **Documentation** | ✅ Done | This section + `METHODOLOGY.md` §6.8 + `configs/modal.yaml` comments. |
+| **Paper** | 📝 Documented | Existing A10G CUDA sweeps satisfy “one CUDA experiment”; add peak VRAM / GPU util columns to tables when re-sweeping. |
+
 ---
 
 # Phase 11: Add a Realistic Workload Dimension

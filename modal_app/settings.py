@@ -45,12 +45,41 @@ def load_modal_config(path: Path | str | None = None) -> dict:
 
 
 def gpu_spec(config: dict | None = None) -> str | list[str]:
-    """Return Modal gpu= argument with fallbacks."""
+    """Return Modal ``gpu=`` argument with fallbacks (see Modal GPU guide)."""
     cfg = config or load_modal_config()
-    fallbacks = cfg.get("gpu_fallbacks") or [cfg.get("gpu", "A10G")]
+    fallbacks = cfg.get("gpu_fallbacks") or [cfg.get("gpu", "a10g")]
     if len(fallbacks) == 1:
         return fallbacks[0]
     return fallbacks
+
+
+def hardware_config(config: dict | None = None) -> dict:
+    """Phase 10 hardware collection policy from ``configs/modal.yaml``."""
+    cfg = config or load_modal_config()
+    return cfg.get("hardware") or {}
+
+
+def reference_gpu_label(config: dict | None = None) -> str:
+    return hardware_config(config).get("reference_gpu", "NVIDIA A10G")
+
+
+def collect_hardware_metrics(config: dict | None = None) -> bool:
+    hw = hardware_config(config)
+    return bool(hw.get("collect_peak_memory", True) or hw.get("collect_gpu_utilization", True))
+
+
+def modal_runtime_env(config: dict | None = None) -> dict[str, str]:
+    """Environment stamped into the Modal CUDA image for hardware-aware eval."""
+    cfg = config or load_modal_config()
+    primary_gpu = cfg.get("gpu_fallbacks", [cfg.get("gpu", "a10g")])[0]
+    env = {
+        "KV_EXECUTION_PLATFORM": "modal",
+        "KV_HARDWARE_PROFILE": reference_gpu_label(cfg),
+        "MODAL_GPU_REQUEST": str(primary_gpu),
+    }
+    if collect_hardware_metrics(cfg):
+        env["KV_COLLECT_HARDWARE_METRICS"] = "1"
+    return env
 
 
 def timeout_seconds(config: dict | None = None) -> int:

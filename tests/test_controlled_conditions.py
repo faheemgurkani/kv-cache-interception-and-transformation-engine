@@ -194,6 +194,8 @@ def test_detect_hardware_cpu_and_env_override(monkeypatch):
     assert profile["device_type"] == "cpu"
     assert profile["device_name"] == "CPU"
     assert "NVIDIA A10G" in profile["documented_reference_gpu"]
+    assert profile["single_gpu_policy"] is True
+    assert profile["multi_gpu_matrix"] is False
 
     monkeypatch.setenv("KV_HARDWARE_PROFILE", "NVIDIA L4")
     profile = detect_hardware(torch.device("cpu"))

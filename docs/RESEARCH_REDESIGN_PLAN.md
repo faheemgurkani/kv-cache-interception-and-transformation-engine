@@ -369,7 +369,7 @@ Runs on a **single offline forward pass** by default (`run_fidelity=True`). Expl
 | ----- | ------ | ------ |
 | **Engine** | ✅ Done | All planned metrics + hybrid `recurrent.py` extension. |
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §6.1; `MATHEMATICS_AND_ALGORITHMS.md`. |
-| **Paper** | 📝 Pending | **§Section A: Offline Fidelity** (L267–274) → **§FIDELITY**. Add: relative reconstruction error, attention-output RMSE, attention-distribution KL (already in code). Table headers “Section A” → “FIDELITY” throughout Results (e.g. L347, L417). Optional footnote: recurrent sub-metric for hybrid models only. |
+| **Paper** | 📝 Documented | [§Evaluation Protocol → FIDELITY](#evaluation-protocol-l255285-labelsubseceval_protocol); [Results caption renames](#results-qwen3--olmo2-l319-labelsecqwen3-labelsecolmo2). |
 
 ---
 
@@ -400,7 +400,7 @@ All BEHAVIOR metrics run through **`KVCacheEngine`** (compressed KV drives real 
 | ----- | ------ | ------ |
 | **Engine** | ✅ Done | PPL + retrieval + instruction following default; reasoning opt-in. All via `KVCacheEngine`. |
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §6.2; module docstrings in `eval/behavior/`. |
-| **Paper** | 📝 Pending | **§Section B: Online Inference** (L276–284) → split: **BEHAVIOR** (PPL + task probes) vs legacy “online” wording. Paper currently reports **PPL only** in results tables — add short paragraph on synthetic retrieval/instruction-following protocol (or defer to appendix with “future work: LongBench/RULER”). Rename table captions “Section B PPL” → “BEHAVIOR / perplexity”. |
+| **Paper** | 📝 Documented | [§Evaluation Protocol → BEHAVIOR](#evaluation-protocol-l255285-labelsubseceval_protocol); synthetic task protocols optional until re-sweep. |
 
 ---
 
@@ -436,7 +436,7 @@ The **4× compression vs 3× with lower overhead** tradeoff is exactly why SYSTE
 | ----- | ------ | ------ |
 | **Engine** | ✅ Done | TTFT/ITL/tok-s/end-to-end default; VRAM, bandwidth, kernel cost, GPU util opt-in. |
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §6.3; `eval/system/__init__.py` rationale. |
-| **Paper** | 📝 Pending | Throughput appears under Section B (L284, results tables L375+). Add **§SYSTEM** subsection: TTFT, ITL, decode latency — not just tok/s. Discussion (L608+): cite TurboQuant ~0.08 tok/s as SYSTEM–FIDELITY tradeoff. Optional appendix table for `--peak-memory` / `--kernel-cost` CUDA runs. |
+| **Paper** | 📝 Documented | [§Evaluation Protocol → SYSTEM](#evaluation-protocol-l255285-labelsubseceval_protocol); [§Discussion L617](#discussion-l595623-labelsecdiscussion). |
 
 ---
 
@@ -478,7 +478,7 @@ Recent work such as Oaken explicitly separates offline preparation from online i
 | ----- | ------ | ------ |
 | **Engine** | ✅ Done | `eval/cost/accounting.py`; hooks on `compressors/base.py`; `--skip-cost`; `--kernel-cost` for online breakdown. |
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §6.5; cost fields in CSV/JSON export. |
-| **Paper** | 📝 Pending | **Not in paper today.** Add **§Cost accounting** under Methodology (after Evaluation Protocol, ~L315): compression / offline / online cost tree (mirror plan diagram above). One summary table column or appendix row: calibration required?, theoretical ratio, decode ms/token. Cite TurboQuant Lloyd-Max calibration vs identity/QJL calibration-free. |
+| **Paper** | 📝 Documented | [§Evaluation Protocol → COST (new)](#evaluation-protocol-l255285-labelsubseceval_protocol). |
 
 ---
 
@@ -531,7 +531,7 @@ This distinction is particularly important for methods such as RocketKV and Palu
 | ----- | ------ | ------ |
 | **Engine** | ✅ Done | Categories A–E; `EvaluationResult.taxonomy`; SnapKV + Palu plug-ins registered. KIVI remains stub. |
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §5a/5b; `SYSTEM_DESIGN.md`; `CURRENT_STATE.md`. |
-| **Paper** | 📝 Pending | **§Case-Study Methods** (L165–167): still **three** families (TQ, QJL, RocketKV). Related Work cites Palu/SnapKV (L72, L75) but no results. Options: (a) add taxonomy table (A–E) in Methodology; (b) list SnapKV/Palu as **engine extensions** in Conclusion future work (L629+) without new result tables; (c) optional appendix plug-in inventory. Do **not** claim SnapKV/Palu empirical results unless new sweeps are run. |
+| **Paper** | 📝 Documented | [NEW §Compression taxonomy](#new-compression-taxonomy-insert-after-labelsubsecplugins-before-case-study-methods); [§Case-Study Methods](#case-study-methods-l165167-labelsubsecmethods). No SnapKV/Palu results unless re-swept. |
 
 ---
 
@@ -643,7 +643,7 @@ That controlled environment is much more important than simply saying "we benchm
 | ----- | ------ | ------ |
 | **Engine** | ✅ Done | Principle + diagram semantics enforced in runner/engine docstrings. |
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §1.1; `SYSTEM_DESIGN.md` Phase 6 block; `README.md` lead paragraph. |
-| **Paper** | 📝 Pending | Reframe contribution — **not** “another benchmark.” **Title/Abstract** (L31, L45): “controlled interception-and-transformation engine” over “benchmarking framework.” **Contributions** (L60): item (1) → interception engine + three-branch protocol. **§Design Principles** (L90–95): lead with plug-in isolation + controlled path. **Fig. pipeline** (L98–102): caption → FIDELITY/BEHAVIOR/SYSTEM + interception diagram (Phase 6 ASCII). **Discussion** (L598): “benchmarking study” → “controlled experimentation framework.” |
+| **Paper** | 📝 Documented | [§Design Principles](#design-principles-l8896-labelsubsecdesign); [Fig. pipeline](#fig-pipeline-caption-l98102-labelfigpipeline); [§Discussion](#discussion-l595623-labelsecdiscussion); [§Conclusion](#conclusion-l625629-labelsecconclusion). |
 
 ---
 
@@ -683,7 +683,7 @@ Your methodology can explicitly say:
 | ----- | ------ | ------ |
 | **Engine** | ✅ Done | `REQUIRED_FIXED_AXES` validated per run; hardware, tokenizer, input construction, decoding, metrics, compression budget exported. Env: `KV_EVAL_DEVICE`, `KV_HARDWARE_PROFILE`. |
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §1.1 (full axis table); `CURRENT_STATE.md`; `tests/test_controlled_conditions.py` (12 tests). |
-| **Paper** | 📝 Pending | **§Experimental setup** (L218–229): add **Controlled conditions** table — model, tokenizer, WikiText-2, ctx 128/256/512, batch 1, greedy decode, A10G, generation 64, PPL stride 512; state explicitly that **only compressor + budget vary**. Reference reproducibility: “per-job JSON includes `controlled_conditions`.” Can paste a sanitized example from `results/*/jobs/*.json`. Align with Phase 6 narrative rewrite. |
+| **Paper** | 📝 Documented | [§Experiments setup + controlled conditions table](#experiments-opening--setup-l216229). |
 
 ---
 

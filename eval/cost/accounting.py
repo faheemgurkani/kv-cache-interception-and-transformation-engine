@@ -13,6 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from compressors.base import KVCompressor
+from eval.cost.benchmark_dimensions import BenchmarkDimensions, build_benchmark_dimensions
+from eval.cost.oaken_taxonomy import OakenLayerSnapshot, build_oaken_layers
 from eval.fidelity import FidelityMetrics
 from eval.system import SystemMetrics
 
@@ -61,13 +63,20 @@ class CostMetrics:
     compression: CompressionCostMetrics
     offline: OfflineCostMetrics
     online: OnlineCostMetrics
+    oaken_layers: list[OakenLayerSnapshot] | None = None
+    benchmark_dimensions: BenchmarkDimensions | None = None
 
     def to_dict(self) -> dict:
-        return {
+        payload = {
             "compression": self.compression.to_dict(),
             "offline": self.offline.to_dict(),
             "online": self.online.to_dict(),
         }
+        if self.oaken_layers is not None:
+            payload["oaken_layers"] = [layer.to_dict() for layer in self.oaken_layers]
+        if self.benchmark_dimensions is not None:
+            payload["benchmark_dimensions"] = self.benchmark_dimensions.to_dict()
+        return payload
 
 
 def evaluate_cost(
@@ -115,4 +124,11 @@ def evaluate_cost(
         kernel_cost_measured=kernel is not None,
     )
 
-    return CostMetrics(compression=compression, offline=offline, online=online)
+    partial = CostMetrics(compression=compression, offline=offline, online=online)
+    return CostMetrics(
+        compression=compression,
+        offline=offline,
+        online=online,
+        oaken_layers=build_oaken_layers(cost=partial, fidelity=fidelity, system=system),
+        benchmark_dimensions=build_benchmark_dimensions(compressor, partial, system=system),
+    )

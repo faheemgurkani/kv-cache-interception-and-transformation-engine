@@ -57,9 +57,7 @@ def test_audit_detects_anonymous_entries():
 def test_audit_flags_remove_candidates_still_cited():
     report = audit_bibliography(BIB, TEX, STAGING)
     cited_remove = set(report.remove_still_cited)
-    assert PHASE31_REMOVE_CANDIDATES.issubset(cited_remove | report.tex_cite_keys)
-    # All four remove candidates are currently cited — rewrite must address them
-    assert cited_remove == sorted(PHASE31_REMOVE_CANDIDATES)
+    assert cited_remove == PHASE31_REMOVE_CANDIDATES
 
 
 def test_full_audit_passes_on_repo_baseline():

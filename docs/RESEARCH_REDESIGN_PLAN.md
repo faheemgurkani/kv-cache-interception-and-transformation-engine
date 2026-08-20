@@ -1,10 +1,10 @@
 # KVBench: Complete Research Improvement Roadmap
 
-## Completeness record — Phases 1–28 (verified 2026-08-20)
+## Completeness record — Phases 1–33 (verified 2026-08-20)
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, **14**, **24**, **25**, **26**, and **27** are **complete in the engine and documentation** (re-audited 2026-08-20; **63** core tests passed). **Phase 28** is **paper-only** (workload-aware discussion; engine scope documented, Phase 11 deferred). **Phases 15–23** are **paper-only** framing with per-phase **Paper change log** subsections. **Phases 1–7** now include matching paper change logs (terminology + protocol + controlled conditions). The paper still uses Section A/B naming and lacks Oaken taxonomy prose (Phase 26), calibration dimension table (Phase 27), and workload scope paragraph (Phase 28). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, **14**, **24**, **25**, **26**, **27**, **31** (audit tooling), and **32** (conceptual model docs) are **complete in the engine and documentation** (re-audited 2026-08-20). **Phases 28–30**, **33** are **paper-only** framing. **Phases 15–23**, **29–30**, **33** have per-phase **Paper change log** subsections. **Phase 31** bib cleanup is **paper-pending** but **`scripts/audit_bibliography.py`** + tests enforce invariants. The paper still uses Section A/B naming, lacks Oaken/calibration/workload prose (Phases 26–28), serving-benchmark contrast (Phase 30), and updated pipeline figure (Phase 32). **Paper changes documented only** in this file — apply at rewrite. Phases **5**, **8**, **11**, **12**, **13** require **no work** for current scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -35,11 +35,16 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **26** Oaken cost taxonomy | ✅ Done | ✅ Done | 📝 Pending | `eval/cost/oaken_taxonomy.py`, `cost.oaken_layers` export |
 | **27** Calibration dimensions | ✅ Done | ✅ Done | 📝 Pending | `cost.benchmark_dimensions`, `export_method_benchmark_table.py` |
 | **28** Workload-aware discussion | ⏸ Paper only | ✅ Scoped | 📝 Pending | WikiText scope + Phase 11 deferred — Phase 28 |
+| **29** Recent literature map | — | ✅ Done | 📝 Pending | `docs/literature/LITERATURE_ALIGNMENT.md`, `staging_entries.bib` |
+| **30** Serving benchmark contrast | — | ✅ Done | 📝 Pending | Explicit `kvbench2026serving` differentiation — Phase 30 |
+| **31** Bibliography cleanup | ✅ Audit CLI | ✅ Done | 📝 Pending | `scripts/audit_bibliography.py`, `tests/test_bibliography_audit.py` |
+| **32** Conceptual model | ✅ Pipeline | ✅ Done | 📝 Pending | `SYSTEM_DESIGN.md` §Phase 32; regen pipeline figure |
+| **33** One-sentence identity | — | ✅ Done | 📝 Pending | Abstract + Conclusion canonical sentence — Phase 33 |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 | **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
 
-**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_reproducibility_harness.py`, `tests/test_cost_accounting.py`, `tests/test_oaken_benchmark_dimensions.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_cross_dim_analysis.py`, `tests/test_hardware_profile.py`, `tests/test_modal_merge_hardware.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
+**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_reproducibility_harness.py`, `tests/test_cost_accounting.py`, `tests/test_oaken_benchmark_dimensions.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_cross_dim_analysis.py`, `tests/test_hardware_profile.py`, `tests/test_modal_merge_hardware.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_bibliography_audit.py`, `tests/test_*_reference.py`.
 
 **Paper rewrite hub:** [`conference_101719.tex`](research_paper_writeup/conference_101719.tex) — full section-by-section spec in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below.
 
@@ -393,6 +398,16 @@ Apply step **9** when result tables/figures are updated (re-sweep or replot from
 | 12 | **28** | **§Experiments setup** scope sentence (WikiText only); **§Discussion Finding 6** disclaimer; **NEW `\paragraph{Workload scope and limits.}`** before Implications |
 
 Apply steps **11–12** in the same pass as step **10** (no new GPU jobs — tables/figures from existing JSON + `export_method_benchmark_table.py`).
+
+### Phases 29–33 — literature, bib, identity (rewrite pass 1–2)
+
+| Step | Phase | Primary `.tex` targets |
+| ---- | ----- | -------------------- |
+| 13 | **29–30** | Merge `staging_entries.bib` → `reference.bib`; Related Work §4 + Intro ¶4 cites; **`\paragraph{Relation to serving benchmarks.}`** (Phase 30) |
+| 14 | **31** | Run `scripts/audit_bibliography.py`; drop/replace anonymous cites; delete stale SnapKV ACL comment (L641) |
+| 15 | **32–33** | Regenerate `\label{fig:pipeline}`; Abstract + Conclusion open with Phase 33 canonical sentence |
+
+Step **13** with Phase 20 step **8**; step **14** before final PDF; step **15** after Phase 22 contributions locked.
 
 Cross-link [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) for line-level detail.
 
@@ -2426,133 +2441,183 @@ This communicates **no config dominates all three axes** more directly than a si
 
 ---
 
-# Phase 29: Use Recent Literature to Strengthen, Not Replace, Your Existing Work
+# Phase 29: Use Recent Literature to Strengthen, Not Replace, Your Existing Work 📝 **Paper only · docs staged**
 
-The important papers I would now explicitly incorporate into the story are:
+> **Status (2026-08-20):** **Paper-writeup + documentation phase** — no new compressor implementations. The engine already embodies the *response* to this literature (three branches, cost/Oaken layers, Pareto/cross-dim, controlled conditions). Phase 29 adds **citations and narrative hooks** at rewrite time. Staging BibTeX and alignment table live in-repo; **do not merge into `reference.bib` until metadata verified**.
 
-### Highest priority
+These papers **shape methodology and positioning** — not every paper requires implementation.
 
-1. **Oaken — ISCA 2025**
+### Literature ↔ engine ↔ paper map
 
-   * offline/online hybrid
-   * hardware/runtime cost
+| # | Paper | Key (target) | Engine touchpoint | Paper use | In `.tex` today? |
+| - | ----- | ------------ | ----------------- | --------- | ---------------- |
+| 1 | **Oaken** — ISCA 2025 | `oaken2025` | `eval/cost/oaken_taxonomy.py` (Phase 26) | Related Work §4; COST subsection | ❌ — staging only |
+| 2 | **SCOPE** — ACL 2025 | `scope2025` | SYSTEM TTFT/ITL vs BEHAVIOR PPL | Related Work §4; prefill/decode eval gap | ❌ |
+| 3 | **RocketKV** — ICML 2025 | `rocketkv` | `compressors/rocketkv.py` | Case study + §3 hybrid | ✅ |
+| 4 | **TurboAttention** — MLSys 2025 | `turboattention2025` | `eval/system/kernel_cost.py` | Related Work §3–§4 (attention execution cost) | ❌ |
+| 5 | **R-KV** — NeurIPS 2025 | `rkv2025` | BEHAVIOR `reasoning.py` (opt-in) | Future work / F6 motivation | ❌ |
+| 6 | **Pitfalls** — ACL 2026 | `chen2026pitfalls` | BEHAVIOR stack | Related Work §4; F1/F4 | ✅ L56, L77 |
+| 7 | **OjaKV** — ACL 2026 | `ojakv2026` | `cost.benchmark_dimensions.stateful` | Related Work §3; Phase 27 table | ❌ |
+| 8 | **HybridKV** — ACL 2026 | `hybridkv2026` | Taxonomy D+E (Phase 5 deferred) | Related Work §3 | ❌ |
+| 9 | **Benchmarking KV-Cache Optimizations…** — 2026 | `kvbench2026serving` | Phase 30 contrast | Intro + Related Work §4 — **explicit differentiation** | ✅ L54, L77–78 |
+| 10 | **KVCache Cache in the Wild** — USENIX ATC 2025 | `kvcachewild2025` | Phase 28 workload scope | Related Work §4; Discussion F6 | ❌ |
+| 11 | **CacheBlend** — EuroSys 2025 | `cacheblend2025` | Phase 28 RAG/serving future | Related Work §4 | ❌ |
 
-2. **SCOPE — ACL 2025**
+**Repo artifacts:**
 
-   * long-context generation
-   * prefill/decode evaluation
+| Artifact | Path |
+| -------- | ---- |
+| Alignment table + narrative roles | `docs/literature/LITERATURE_ALIGNMENT.md` |
+| Staging BibTeX (merge at rewrite) | `docs/literature/staging_entries.bib` |
+| Overlap with Phase 20 bib list | [Phase 20 bibliography work](#bibliography-work-bib--reference) |
 
-3. **RocketKV — ICML 2025**
+### Paper change log — section by section (`conference_101719.tex`)
 
-   * compression + actual attention execution
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 1** (with Phase 20 §4) | **Related Work §4** | Missing cost/workload/decode-eval literature | Add Oaken, SCOPE, Cache in the Wild, CacheBlend cites from merged `staging_entries.bib` |
+| **Same pass** | **Intro ¶4** (extend L56) | Recent evidence list incomplete | Add Oaken (offline/online cost), SCOPE (decode eval), workload papers (Cache in the Wild) — **do not** claim KVBench implements them |
+| **Rewrite pass 2, step 11** | **§COST** (Phase 26) | Oaken motivates five-layer taxonomy | Cite `oaken2025`; contrast KVBench software instrumentation vs Oaken hardware co-design |
+| **Rewrite pass 2, step 12** | **Discussion workload** (Phase 28) | Workload realism motivation | Cite `kvcachewild2025`, `cacheblend2025`; F6 remains unanswered |
+| **Do not** | Methods / Results | No new algorithms | Do **not** add OjaKV/HybridKV/R-KV **results** without implementation sweeps |
 
-4. **TurboAttention — MLSys 2025**
+### Completeness record
 
-   * compression must account for attention execution
-
-5. **R-KV — NeurIPS 2025**
-
-   * reasoning workloads
-
-6. **The Pitfalls of KV Cache Compression — ACL 2026**
-
-   * behavioral evaluation
-
-7. **OjaKV — ACL 2026**
-
-   * stateful/online adaptation
-
-8. **HybridKV — ACL 2026**
-
-   * heterogeneous adaptive compression
-
-9. **Benchmarking KV-Cache Optimizations... — 2026**
-
-   * closest competing benchmark
-
-10. **KVCache Cache in the Wild — USENIX ATC 2025**
-
-* workload realism
-
-11. **CacheBlend — EuroSys 2025**
-
-* serving/RAG workload
-
-These aren't all things you need to implement. Some are there to **shape your methodology and positioning**.
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | — | No new implementations; existing engine is the methodological response. |
+| **Documentation** | ✅ Done | `docs/literature/LITERATURE_ALIGNMENT.md`, `staging_entries.bib`, this section. |
+| **Paper** | 📝 Pending | Merge staging bibs + Related Work / Intro cites at rewrite. |
 
 ---
 
-# Phase 30: Explicitly Address the Closest Competing Benchmark
+# Phase 30: Explicitly Address the Closest Competing Benchmark 📝 **Paper only**
 
-This is critical.
+> **Status (2026-08-20):** **Paper-writeup phase only**. The paper **already cites** `kvbench2026serving` (L54, L56, L66, L78, L81) but treats it as complementary background — **not** as the closest benchmark requiring an explicit contrast paragraph. Phase 30 makes the distinction **prominent in Intro + Related Work §4** (not a footnote).
 
-The 2026:
+### Paper today vs target
 
-> **Benchmarking KV-Cache Optimizations Across Task Quality and System Performance for Long-Context Serving**
+| | `conference_101719.tex` today | Target after rewrite |
+| --- | ----------------------------- | -------------------- |
+| **Citation** | ✅ `kvbench2026serving` in Intro + Related Work | Keep — do not remove |
+| **Framing** | “Concurrent serving benchmarks stress joint quality…” (L78) | **Explicit contrast paragraph** (below) |
+| **Risk** | Names collide (“KVBench” vs their title) | Clarify: *this repo* = controlled interception instrument; *their work* = serving-stack benchmark across workloads |
+| **Positioning subsection** | L80–81 “shared yardstick” | Replace with Phase 17 novelty + Phase 30 contrast (folded into §4 closing per Phase 20) |
 
-is close enough to KVBench that you must explicitly discuss it.
+### Canonical contrast (use in Intro + Related Work §4)
 
-Don't hide it.
+> Agrawal and Mayer evaluate existing KV-cache optimizations across **task quality and system performance for long-context serving**. KVBench differs by providing a **controlled KV interception and transformation layer** in which different transformations execute through a **common incremental autoregressive decode path**, enabling matched **representation-level (FIDELITY), behavioral, and runtime (SYSTEM)** analysis under fixed model, input, and decode conditions — a pre-deployment factorial instrument on SLMs, not a serving-engine leaderboard.
 
-Instead say, in substance:
+### Codebase alignment (why the contrast is accurate)
 
-> That work evaluates existing KV optimizations across workloads and system-level metrics. KVBench differs by providing a controlled KV interception/transformation layer in which different transformations execute through a common incremental autoregressive decode path, allowing matched representation-level, behavioral, and runtime analysis.
+| Their emphasis (serving benchmark) | KVBench emphasis (this repo) | Evidence |
+| ---------------------------------- | ------------------------------ | -------- |
+| Workloads + system metrics in serving context | Controlled plug-in factorial on fixed decode loop | `eval/controlled_conditions.py`, `framework/kv_engine.py` |
+| Existing optimizations as deployed | TQ / QJL / RocketKV as **case studies** under same engine | `compressors/`, Phase-5 bundles |
+| Long-context serving | SLM ctx 128–512, batch 1 (Phase 12 deferred) | `configs/model.yaml`, Phase 28 scope |
+| Joint quality + efficiency | FIDELITY + BEHAVIOR + SYSTEM + cost export | `eval/runner.py`, `eval/cost/` |
 
-That distinction should appear in **Related Work and Introduction**, not just in a footnote.
+### Paper change log — section by section (`conference_101719.tex`)
 
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 1, step 8** (with Phase 20) | **Related Work §4 closing** | Reviewer will search for this paper | Add **dedicated `\paragraph{Relation to serving benchmarks.}`** with canonical contrast above |
+| **Rewrite pass 1** | **Intro ¶6** (KVBench description, L58) | Name collision + contribution clarity | One sentence: *“Unlike serving-stack benchmarks that score deployed optimizations~\cite{kvbench2026serving}, KVBench fixes the incremental decode path and swaps compressors as plug-ins.”* |
+| **Rewrite pass 1** | **DELETE L80–81 positioning** | Absorbed into §4 | Fold contrast into *What is still missing?* — do **not** dismiss their work |
+| **Do not** | Abstract empirical claims | Different scopes | Do **not** claim superiority on serving workloads; claim **complementary controlled evaluation** |
 
+### Cross-references
 
----
+| Phase | Link |
+| ----- | ---- |
+| **17** | Safe novelty — instrument vs serving benchmark |
+| **18** | KVBench is not vLLM/SGLang |
+| **20** | §4 evaluation section hosts contrast |
+| **29** | `kvbench2026serving` row in literature map |
 
-# Phase 31: Clean the Bibliography
+### Completeness record
 
-### Definitely keep
-
-* H2O
-* Scissorhands
-* StreamingLLM
-* SnapKV
-* PyramidKV
-* MiniCache
-* QJL
-* Palu
-* Outlier Tokens
-* KVSink
-* AsymKV
-* XQuant
-* Qwen3
-* OLMo 2
-* TurboQuant
-* HqeKV
-* The Pitfalls
-* KVBench Serving
-* WikiText
-
-### Verify/fix
-
-* Ada-KV
-* KVSink venue
-* RocketKV metadata
-* CompressKV
-* PatternKV
-* MHA→GQA
-
-### Remove unless specifically needed
-
-* anonymous Cost-Optimal GQA
-* QJL-CS anonymous preprint
-* Expected Attention anonymous/unverified
-* Short-RL
-
-And fix the **SnapKV venue from ACL to NeurIPS 2024**.
-
-
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | — | No changes. |
+| **Documentation** | ✅ Done | This section; `LITERATURE_ALIGNMENT.md` §Closest competing benchmark. |
+| **Paper** | 📝 Pending | Intro + Related Work §4 contrast paragraph. |
 
 ---
 
-# Phase 32: The Final Conceptual Model of KVBench
+# Phase 31: Clean the Bibliography 📝 **Paper only · audit tooling done**
 
-After all these changes, I would want the paper to communicate this:
+> **Status (2026-08-20):** **Audit tooling complete** — `scripts/audit_bibliography.py` + `tests/test_bibliography_audit.py` validate `reference.bib` against `conference_101719.tex` and Phase 31 rules. **Paper `.bib` cleanup deferred** — apply at rewrite; do **not** edit `reference.bib` until cite keys are finalized with Phase 20/29 merges.
+
+### Audit snapshot (2026-08-20)
+
+| Check | Status | Detail |
+| ----- | ------ | ------ |
+| All `\cite{}` keys resolve in `reference.bib` | ✅ Pass | 27 unique cite keys in `.tex` |
+| Phase 31 **keep** list | ✅ Pass | H2O, Scissorhands, StreamingLLM, SnapKV, … RocketKV, Pitfalls, KVBench Serving, WikiText |
+| **SnapKV venue** | ✅ Already NeurIPS 2024 | `li2024snapkv` → `Advances in Neural Information Processing Systems`, 2024 — **no ACL fix needed** (commented L641 in `.tex` is stale) |
+| **Anonymous entries** | ⚠️ Flagged | `expectedattn2026`, `qjlcs2025` — replace with verified authors or remove cites at rewrite |
+| **Remove candidates still cited** | ⚠️ Action at rewrite | `costoptgqa2025`, `qjlcs2025`, `expectedattn2026`, `yuan2026shortrl` — drop or replace per row below |
+| **Phase 29 staging** | 📝 Not merged | 8 keys in `docs/literature/staging_entries.bib` — merge after metadata verification |
+
+### Definitely keep (must remain in `reference.bib`)
+
+H2O, Scissorhands, StreamingLLM, SnapKV, PyramidKV, MiniCache, QJL, Palu, Outlier Tokens, KVSink, AsymKV, XQuant, Qwen3, OLMo 2, TurboQuant, HqeKV, The Pitfalls, KVBench Serving (`kvbench2026serving`), WikiText, RocketKV — plus cites already in `.tex` for CompressKV, PatternKV, MHA→GQA, PagedEviction, etc.
+
+### Verify / fix at rewrite
+
+| Key | Issue | Action |
+| --- | ----- | ------ |
+| `feng2024adakv` | NeurIPS 2025 + arXiv note | Verify proceedings pages |
+| `su2025kvsink` | arXiv only | Promote to venue or keep as arXiv with note |
+| `rocketkv` | ICML 2025 PMLR 267 | ✅ metadata present — spot-check pages |
+| `compresskv2026` | arXiv 2026 | Update if published |
+| `jin2025mha2gqa` | Findings EMNLP 2025 | Keep; distinct from `costoptgqa2025` |
+| `li2024snapkv` | Comment L641 says ACL 2024 | **Delete stale comment**; bib is already NeurIPS |
+
+### Remove unless specifically needed (rewrite pass)
+
+| Key | Why remove | Replacement strategy |
+| --- | ---------- | -------------------- |
+| `costoptgqa2025` | Anonymous-adjacent; overlaps `jin2025mha2gqa` / `compresskv2026` | Keep `jin2025mha2gqa` + `compresskv2026` for GQA narrative |
+| `qjlcs2025` | Anonymous OpenReview | Drop cite or replace with peer-reviewed QJL follow-up if available |
+| `expectedattn2026` | Anonymous ICLR entry | Drop cite or replace when authors public |
+| `yuan2026shortrl` | Reasoning motivation only; arXiv 2025 | Move to future work / Phase 28; cite `rkv2025` staging if reasoning scope expanded later |
+
+### Engine tooling
+
+```bash
+python scripts/audit_bibliography.py
+python scripts/audit_bibliography.py --json results/bibliography_audit.json
+```
+
+**Tests:** `tests/test_bibliography_audit.py`
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 1** | **`reference.bib`** | Anonymous + duplicate GQA cites | Apply remove/replace table; merge `staging_entries.bib`; re-run audit CLI |
+| **Same pass** | **Intro L54** | `yuan2026shortrl` + dense cite list | Trim remove candidates; keep Pitfalls + kvbench2026serving |
+| **Same pass** | **Related Work L75** | `expectedattn2026` anonymous | Remove or footnote “under review” — prefer drop |
+| **Same pass** | **Comment block L641–642** | Stale SnapKV ACL comment | Delete commented `\bibitem{li2024snapkv}` ACL line |
+| **Do not** | Break build | All cites must resolve | Run `audit_bibliography.py` after every bib edit |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | `scripts/audit_bibliography.py`, tests, staging bib. |
+| **Documentation** | ✅ Done | This section; audit snapshot above. |
+| **Paper** | 📝 Pending | Bib cleanup at rewrite — **no `.tex` / `.bib` edit until then**. |
+
+---
+
+# Phase 32: The Final Conceptual Model of KVBench ✅ **Docs done · 📝 Paper figure pending**
+
+> **Status (2026-08-20):** **Engine implements the full pipeline** below (interception → taxonomy → three branches → Pareto/cross-dim/findings). **Paper figure + narrative deferred** — `.tex` pipeline figure (L98–102) still shows dual Section A/B boxes.
+
+### Target conceptual model
 
 ```text
                          KVBench
@@ -2576,31 +2641,97 @@ After all these changes, I would want the paper to communicate this:
      FIDELITY            BEHAVIOR             SYSTEM
         │                   │                   │
     Reconstruction       PPL                 TTFT
-    Attention            Retrieval           ITL
-    Similarity           Instruction         Throughput
-    Memory               Reasoning           VRAM
-                        Robustness           Runtime
+    Attention            Retrieval*          ITL
+    Similarity           Instruction*        Throughput
+    Memory               Reasoning*          VRAM*
         │                   │                   │
         └───────────────────┼───────────────────┘
                             ↓
                  QUALITY / MEMORY / SPEED
                             ↓
-                  Pareto + Workload Analysis
+                  Pareto + Cross-Dim Analysis
                             ↓
-                    Research Findings
+                    Research Findings F1–F7
+
+    * engine default/opt-in; paper grid = WikiText PPL + tok/s (Phase 28)
 ```
 
-That is the **new KVBench story** I would aim for.
+### Code ↔ diagram mapping
+
+| Diagram block | Code / docs |
+| ------------- | ----------- |
+| KV interception layer | `framework/kv_engine.py`, `eval/controlled_conditions.py` |
+| Eviction / Quantization / Projection | `compressors/taxonomy.py` categories A–C (+ D/E hybrids) |
+| Same decode loop | `KVCacheEngine.generate()`, Phase 6–7 fixed axes |
+| FIDELITY / BEHAVIOR / SYSTEM | `eval/fidelity/`, `eval/behavior/`, `eval/system/` |
+| Quality / memory / speed | `eval/cost/`, FIDELITY.memory, SYSTEM.throughput |
+| Pareto + cross-dim | `eval/pareto/`, `eval/cross_dim/` (Phases 9, 24–25) |
+| Research findings | Phase 23 F1–F7 narrative spec |
+
+**Canonical doc:** [`docs/architecture/SYSTEM_DESIGN.md` §Phase 32](../architecture/SYSTEM_DESIGN.md#phase-32-conceptual-model-end-to-end-story)
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 2** | **Fig. pipeline** (`\label{fig:pipeline}`, L98–102) | Dual Section A/B diagram | Regenerate asset: interception layer → taxonomy fork → three branches → analysis layer; caption lists FIDELITY/BEHAVIOR/SYSTEM + cost |
+| **Same pass** | **§Methodology opening** (L83–86) | Narrative doesn't match figure | One paragraph walking top-to-bottom through diagram |
+| **Same pass** | **Abstract** (L45) | Implied two-metric story | Mention three branches + controlled interception (Phase 1) |
+| **Optional** | **Discussion** before findings | Reader orientation | Small inline version of diagram or pointer to Fig. pipeline |
+| **Do not** | Claim full BEHAVIOR grid in results | Phase 28 scope | Asterisk metrics in figure caption as “engine capabilities; paper reports WikiText PPL + SYSTEM” |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | Full pipeline implemented (Phases 1–10, 14, 24–27). |
+| **Documentation** | ✅ Done | `SYSTEM_DESIGN.md` §Phase 32; this section. |
+| **Paper** | 📝 Pending | Regenerate pipeline figure + caption. |
 
 ---
 
-# Phase 33: The new paper narrative in one sentence
+# Phase 33: The new paper narrative in one sentence 📝 **Paper only**
 
-If I had to reduce the entire revision to one sentence:
+> **Status (2026-08-20):** **Paper-writeup phase only** — canonical identity sentence for Abstract, Conclusion, and reviewer elevator pitch. Aligns with Phases 15 (research question), 17 (novelty), 22 (contributions), and 32 (conceptual model).
+
+### Canonical sentence
 
 > **KVBench is not primarily a benchmark asking which KV-cache compression method wins; it is a controlled inference-time experimentation framework for understanding how different KV transformations trade representation fidelity, model behavior, memory efficiency, and actual generation performance under matched conditions.**
 
-That is a substantially stronger research identity.
+### Where to place
+
+| Location | Current problem | Phase 33 action |
+| -------- | --------------- | --------------- |
+| **Abstract closing** (L45) | “yardstick for comparing methods” tone | Replace closing clause with canonical sentence (trim for length if needed) |
+| **Conclusion opening** (L627) | “benchmarking framework that bridges offline/online” | Open with canonical sentence; then enumerate Phase 22 contributions |
+| **Intro contributions** (L60) | Horse-race framing | Optional epigraph before `\textbf{Contributions.}` — one sentence max |
+| **Title subtitle** (optional) | “Bridging offline/online” | Consider “controlled inference-time experimentation framework” phrase |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 1, step 7** (Phase 22) | **Conclusion L627–629** | Old identity persists | First sentence = Phase 33 canonical; remove “yardstick for comparing KV compression methods” |
+| **Same pass** | **Abstract L45** | Dual-metric + comparison framing | Lead with controlled experimentation; close with methodology-for-evaluating-KV-transformations clause |
+| **Same pass** | **Intro L60** | Contributions sound like rankings | Contributions follow identity sentence — protocol first, case studies second (Phase 22) |
+| **Do not** | Results tables | Numbers unchanged | Identity is framing only |
+
+### Cross-references
+
+| Phase | Link |
+| ----- | ---- |
+| **15** | Research question asks *how to evaluate*, not *who wins* |
+| **17** | Novelty = protocol + engine |
+| **22** | Contributions packaging mirrors this sentence |
+| **32** | Diagram is the visual expansion of this sentence |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | — | Identity describes existing instrument. |
+| **Documentation** | ✅ Done | `LITERATURE_ALIGNMENT.md`; this section; cross-refs Phases 15, 22, 32. |
+| **Paper** | 📝 Pending | Abstract + Conclusion + optional Intro epigraph. |
 
 ---
 

@@ -132,7 +132,10 @@ def extract_tex_cite_keys(tex_text: str) -> set[str]:
 
 
 def extract_entry_block(bib_text: str, key: str) -> str:
-    pattern = re.compile(rf"@\w+\s*\{{\key}\s*,.*?(?=\n@\w+\s*\{{|\Z)", re.IGNORECASE | re.DOTALL)
+    pattern = re.compile(
+        rf"@\w+\s*\{{{re.escape(key)}\}}\s*,.*?(?=\n@\w+\s*\{{|\Z)",
+        re.IGNORECASE | re.DOTALL,
+    )
     match = pattern.search(bib_text)
     return match.group(0) if match else ""
 

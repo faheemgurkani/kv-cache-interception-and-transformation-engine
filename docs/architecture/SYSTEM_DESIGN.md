@@ -138,6 +138,53 @@ Methodology: [METHODOLOGY.md](../methodology/METHODOLOGY.md) · Equations: [MATH
 
 Modal details: [REPRODUCIBILITY.md §11](../reproducibility/REPRODUCIBILITY.md)
 
+## Phase 32: conceptual model (end-to-end story)
+
+After Phases 1–28, the engine implements this pipeline (paper figure + narrative target):
+
+```text
+                         KVBench
+                            │
+                 KV INTERCEPTION LAYER          ← framework/kv_engine.py
+                            │
+                    Original KV Cache
+                            │
+             ┌──────────────┼──────────────┐
+             │              │              │
+          Eviction      Quantization    Projection   ← compressors/taxonomy.py A–E
+             │              │              │
+             └──────────────┼──────────────┘
+                            │
+                     Transformed KV
+                            │
+                    Same Decode Loop          ← eval/controlled_conditions.py
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+     FIDELITY            BEHAVIOR             SYSTEM
+   eval/fidelity/      eval/behavior/       eval/system/
+        │                   │                   │
+    Reconstruction       PPL (paper)         TTFT / ITL
+    Attention            Retrieval*          Throughput
+    Memory               Instruction*        VRAM / GPU util*
+                        Reasoning*           Kernel cost*
+        │                   │                   │
+        └───────────────────┼───────────────────┘
+                            ↓
+              eval/cost/ + eval/pareto/ + eval/cross_dim/
+                            ↓
+                 QUALITY / MEMORY / SPEED
+                            ↓
+                  Research Findings F1–F7
+
+    * BEHAVIOR retrieval/IF/reasoning + extended SYSTEM metrics: engine default/opt-in;
+      current paper grid = WikiText PPL + tok/s only (Phase 28 scope).
+```
+
+**Analysis exports:** `scripts/analyze_pareto.py` (F7), `scripts/analyze_cross_dim.py` (F1–F4 weak predictors), `scripts/export_method_benchmark_table.py` (Phase 27).
+
+**Literature map:** [`docs/literature/LITERATURE_ALIGNMENT.md`](../literature/LITERATURE_ALIGNMENT.md) · **One-sentence identity (Phase 33):** see that doc.
+
 ## Non-goals
 
 CoreML, Ollama/GGUF (no KV access), MLX, FlashAttention, multi-GPU layer split.

@@ -352,6 +352,12 @@ Every evaluation run produces a unified **cost** block (Phase 3) aggregating com
 
 **Online detail:** Compress/decompress/attention breakdown requires `--kernel-cost`; end-to-end decode cost comes from default throughput metrics.
 
+**Oaken taxonomy (Phase 26):** Every `cost` export includes `oaken_layers` — five layers separating *offline evaluation* (FIDELITY metrics, not monetary cost) from *offline preprocessing* (calibration), *online transformation*, *online attention*, and *end-to-end serving*. See `eval/cost/oaken_taxonomy.py`.
+
+**Benchmark dimensions (Phase 27):** Every `cost` export includes `benchmark_dimensions`: `calibration_*`, `stateful`, `online_overhead_ms_per_token`. Table export: `python scripts/export_method_benchmark_table.py`. CSV columns also in `ResultReporter.save_summary_csv()`.
+
+**Workload scope (Phase 28):** Current paper grid uses WikiText-2 PPL + SYSTEM throughput only. BEHAVIOR retrieval/instruction/reasoning exist in the engine but are **Phase 11 deferred** — do not claim multi-workload generalization in the current submission. See Phase 28 in `RESEARCH_REDESIGN_PLAN.md`.
+
 ### 6.6 Taxonomy (`compressors/taxonomy.py`, Phase 4)
 
 Every `EvaluationResult` includes a `taxonomy` block classifying the compressor by mechanism:

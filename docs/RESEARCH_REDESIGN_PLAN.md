@@ -4,7 +4,7 @@
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, **14**, **24**, and **25** are **complete in the engine and documentation**. **Phases 15–23** are **paper-only** (framing through results narrative). The paper still reflects the **pre-redesign** framing for branches 1–7 and lacks reproducibility citations for Pareto/cross-dim (Phases 9/24/25) and extended SYSTEM hardware columns (Phase 10). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, **14**, **24**, **25**, **26**, and **27** are **complete in the engine and documentation**. **Phase 28** is **paper-only** (workload-aware discussion; engine scope documented, Phase 11 deferred). **Phases 15–23** are **paper-only** framing. The paper still lacks Oaken taxonomy prose (Phase 26), calibration dimension table (Phase 27), and workload scope paragraph (Phase 28). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -32,11 +32,14 @@ Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper*
 | **23** Results narrative | — | 📝 Spec only | 📝 Pending | Seven research findings vs leaderboard — Phase 23 |
 | **24** Cross-dimensional analysis | ✅ Done | ✅ Done | 📝 Pending | `eval/cross_dim/`, `scripts/analyze_cross_dim.py` |
 | **25** Trade-off figures | ✅ Done | ✅ Done | 📝 Pending | `plot_tradeoff_*.pdf` + Phase 9 Pareto — Phase 25 |
+| **26** Oaken cost taxonomy | ✅ Done | ✅ Done | 📝 Pending | `eval/cost/oaken_taxonomy.py`, `cost.oaken_layers` export |
+| **27** Calibration dimensions | ✅ Done | ✅ Done | 📝 Pending | `cost.benchmark_dimensions`, `export_method_benchmark_table.py` |
+| **28** Workload-aware discussion | ⏸ Paper only | ✅ Scoped | 📝 Pending | WikiText scope + Phase 11 deferred — Phase 28 |
 | **11** Realistic workload dimension | ⏸ Future extension | ⏸ Flagged | — | Current WikiText + default BEHAVIOR scope sufficient |
 | **12** Workload scaling (2K–32K, batch) | ⏸ Future extension | ⏸ Flagged | — | ctx 128–512 / batch 1 / 64 tok gen sufficient for paper |
 | **13** Serving-engine validation (vLLM/SGLang) | ⏸ Not planned | ⏸ Flagged | — | Controlled KVBench path sufficient; no vLLM/SGLang integration |
 
-**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_reproducibility_harness.py`, `tests/test_cost_accounting.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_cross_dim_analysis.py`, `tests/test_hardware_profile.py`, `tests/test_modal_merge_hardware.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
+**Cross-cutting tests:** `tests/test_eval_runner.py`, `tests/test_controlled_conditions.py`, `tests/test_reproducibility_harness.py`, `tests/test_cost_accounting.py`, `tests/test_oaken_benchmark_dimensions.py`, `tests/test_taxonomy.py`, `tests/test_pareto_analysis.py`, `tests/test_cross_dim_analysis.py`, `tests/test_hardware_profile.py`, `tests/test_modal_merge_hardware.py`, `tests/test_behavior_modules.py`, `tests/test_system_modules.py`, `tests/test_*_reference.py`.
 
 **Paper rewrite hub:** [`conference_101719.tex`](research_paper_writeup/conference_101719.tex) — full section-by-section spec in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) below.
 
@@ -251,10 +254,10 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 
 | Paper has | Codebase has | Action |
 | --------- | ------------ | ------ |
-| — | compression / offline / online tree | Add subsection mirroring Phase 3 diagram in this doc; cite TurboQuant calibration vs QJL/RocketKV calibration-free |
+| — | compression / offline / online tree | Add subsection mirroring Phase 3 diagram + **Phase 26 Oaken five-layer taxonomy** + **Phase 27 benchmark dimensions table** (from `method_benchmark_dimensions.csv`) |
 
 | **Needs new results?** | PPL/tok/s numbers yes; protocol structure no |
-| **Phase** | 1, 2, 3 |
+| **Phase** | 1, 2, 3, 26, 27 |
 
 #### §Online Evaluation Procedure (L286–315, `\label{subsec:online_proc}`)
 
@@ -342,6 +345,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | Pareto optimal set | `python scripts/analyze_pareto.py … --context-length 512` → `pareto_ctx512.json` |
 | Cross-dim correlations | `python scripts/analyze_cross_dim.py … --context-length 512` → `correlations_ctx512.json` |
 | Trade-off figure | `results/cross_dim/plot_tradeoff_ctx512.pdf` (Phase 25); Pareto: `plot_pareto_ctx512.pdf` (Phase 9/F7) |
+| Method benchmark table | `python scripts/export_method_benchmark_table.py` → `method_benchmark_dimensions.csv` (Phase 27) |
 | Hardware + VRAM/GPU util | `result.to_dict()["hardware"]`, `system.peak_memory`, `system.gpu_utilization`; Modal merge CSV |
 | Result numbers | `results/phase5_modal_*`, `results/olmo2_phase5_*` (or post-rewrite bundles) |
 
@@ -567,7 +571,7 @@ METHOD
     └── end-to-end decode cost
 ```
 
-**Code:** `eval/cost/accounting.py` · **Hooks:** `compressors/base.py` (`offline_cost_metadata`, `theoretical_compression_ratio`) · **Runner:** `EvaluationResult.cost` · **CLI:** on by default; `--skip-cost` to disable · **Online detail:** `--kernel-cost` for compress/decompress/attention breakdown.
+**Code:** `eval/cost/accounting.py` · `eval/cost/oaken_taxonomy.py` (Phase 26) · `eval/cost/benchmark_dimensions.py` (Phase 27) · **Hooks:** `compressors/base.py` · **Runner:** `EvaluationResult.cost` (includes `oaken_layers` + `benchmark_dimensions`) · **Export:** `scripts/export_method_benchmark_table.py` · **CLI:** on by default; `--skip-cost` to disable · **Online detail:** `--kernel-cost`
 
 **Tests:** `tests/test_cost_accounting.py`; cost block asserted in `tests/test_eval_runner.py`.
 
@@ -577,9 +581,9 @@ Recent work such as Oaken explicitly separates offline preparation from online i
 
 | Track | Status | Detail |
 | ----- | ------ | ------ |
-| **Engine** | ✅ Done | `eval/cost/accounting.py`; hooks on `compressors/base.py`; `--skip-cost`; `--kernel-cost` for online breakdown. |
-| **Documentation** | ✅ Done | `METHODOLOGY.md` §6.5; cost fields in CSV/JSON export. |
-| **Paper** | 📝 Documented | [§Evaluation Protocol → COST (new)](#evaluation-protocol-l255285-labelsubseceval_protocol). |
+| **Engine** | ✅ Done | Phase 3 base + Phase 26 Oaken layers + Phase 27 benchmark dimensions on every `cost` export. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §6.5; Phases 26–27 sections below. |
+| **Paper** | 📝 Pending | [§Evaluation Protocol → COST](#evaluation-protocol-l255285-labelsubseceval_protocol); Oaken Discussion paragraph; calibration table appendix. |
 
 ---
 
@@ -2167,77 +2171,177 @@ This communicates **no config dominates all three axes** more directly than a si
 
 ---
 
-# Phase 26: Add an Explicit "Offline Does Not Mean Cheap" Discussion
+# Phase 26: Add an Explicit "Offline Does Not Mean Cheap" Discussion ✅ **Done (engine) · 📝 Paper pending**
 
-This is an important refinement from Oaken.
+> **Status (2026-08-20):** **Engine complete** — `eval/cost/oaken_taxonomy.py` exports five Oaken-inspired layers on every `EvaluationResult.cost` as `oaken_layers`. **Paper deferred** — `.tex` still conflates “Section A offline” with zero-cost offline; no Oaken citation or five-layer Discussion paragraph yet.
 
-Your current offline/online terminology can accidentally imply:
+### Problem (paper today vs target)
 
-> offline = free
+| | Paper (`conference_101719.tex`) | Codebase (now) |
+| --- | ----------------- | ---------------- |
+| **Terminology** | “Section A offline fidelity” vs “Section B online” (L45, L95, L268) | **FIDELITY** branch + **`cost.oaken_layers`** five-way split |
+| **Implicit claim** | “Offline” reads as **free** preprocessing | Layer 1 = FIDELITY **metrics** (not $); Layer 2 = **calibration cost** (TurboQuant Lloyd-Max) |
+| **Online cost** | TurboQuant tok/s penalty in prose (L344, L617) | Layers 3–5: transform / attention / e2e in `cost.online` + SYSTEM |
+| **Oaken cite** | Not in `.tex` | Cross-ref in Phase 20 Related Work §4 (bib pending) |
 
-Instead distinguish:
+### Five Oaken layers (engine mapping)
 
-### Offline evaluation
+| Layer | Meaning | Engine source | “Measured” when |
+| ----- | ------- | ------------- | --------------- |
+| **1. Offline evaluation** | Static FIDELITY before/around decode | `fidelity.*` → `oaken_layers[0].metrics` | FIDELITY branch ran |
+| **2. Offline preprocessing** | Calibration / codebooks / rank search | `cost.offline.*` | `calibration_required` or `calibration_time_ms` set |
+| **3. Online transformation** | Per-step compress/decompress | `cost.online.compress*` | `--kernel-cost` or aggregate CD time |
+| **4. Online attention** | Attention with transformed cache | `cost.online.attention_cost_ms` | `--kernel-cost` |
+| **5. End-to-end serving** | User-visible decode latency / tok/s | `system.throughput.*` | Default SYSTEM branch |
 
-What happens **before/around inference**.
+**Key distinction for paper:** Layer **1** is **not** Layer **2**. QJL can show moderate FIDELITY (Layer 1) with **zero** calibration (Layer 2) yet catastrophic BEHAVIOR — and high Layer 5 latency.
 
-### Offline preprocessing cost
+### Code artifacts
 
-What the method itself needs to calculate.
+| Artifact | Path |
+| -------- | ---- |
+| Taxonomy builder | `eval/cost/oaken_taxonomy.py` — `OakenCostLayer`, `build_oaken_layers()` |
+| JSON export | `EvaluationResult.cost.to_dict()["oaken_layers"]` (5 entries) |
+| Tests | `tests/test_oaken_benchmark_dimensions.py` — offline eval ≠ preprocessing |
 
-### Online transformation cost
+### Paper change log — section by section (`conference_101719.tex`)
 
-What happens during generation.
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 2** | **§Methodology → COST** (new after SYSTEM, ~L285) | Retire “offline = free” | Add **Oaken-inspired cost taxonomy** subsection: five layers above; map to FIDELITY / `cost.offline` / `cost.online` / SYSTEM. Cite Oaken (bib from Phase 20). |
+| **Rewrite pass 2** | **§Design Principles** (L95) | “Dual evaluation” conflates layers 1 and 5 | Rename to three-branch + **“Report FIDELITY metrics separately from offline preprocessing cost and online serving cost.”** |
+| **Rewrite pass 2** | **§Discussion → Finding 3** (L617) | TurboQuant speed story | Frame as **Layers 3–5 decoupling**: high compression (FIDELITY memory) + heavy Layer 3 transform → low Layer 5 tok/s despite acceptable Layer 1 scores. |
+| **Rewrite pass 2** | **§Discussion Implications** (L623) | Practitioner checklist incomplete | Add: *(v)~ distinguish offline **evaluation** from offline **preprocessing** cost; (vi)~ report online transform + attention + e2e separately when `--kernel-cost` enabled.* |
+| **Do not** | Claim Oaken numbers | No Oaken implementation | Cite for **taxonomy** only; KVBench evidence from TQ/QJL/RocketKV |
 
-### Online attention cost
+### Cross-references
 
-What the transformed cache does to actual attention execution.
+| Phase | Link |
+| ----- | ---- |
+| **3** | Phase 26 extends Phase 3 cost tree with explicit layers |
+| **18** | Terminology: FIDELITY ≠ “offline cost” |
+| **20** | Oaken bib in Related Work §4 |
+| **27** | Layer 2 columns overlap calibration table |
+| **23** | Finding 3 (memory ≠ throughput) uses Layers 3–5 |
 
-### End-to-end serving cost
+### Completeness record
 
-What the user actually experiences.
-
-This is a much more rigorous interpretation of "offline vs online." 
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | `oaken_layers` on every `evaluate_cost()`; robust to partial FIDELITY test fakes. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §6.5; this section. |
+| **Paper** | 📝 Pending | COST subsection + Discussion paragraph. **No new GPU jobs.** |
 
 ---
 
-# Phase 27: Add Calibration as a Benchmark Dimension
+# Phase 27: Add Calibration as a Benchmark Dimension ✅ **Done (engine) · 📝 Paper pending**
 
-Every method should report:
+> **Status (2026-08-20):** **Engine complete** — Phase 27 columns exported as `cost.benchmark_dimensions` on every job; CSV via `ResultReporter` + `scripts/export_method_benchmark_table.py`. **Paper deferred** — `.tex` mentions TurboQuant Lloyd-Max “offline on Gaussian samples” (L181) but no cross-method calibration comparison table.
 
-| Property             | Example    |
-| -------------------- | ---------- |
-| Calibration required | Yes/No     |
-| Calibration data     | WikiText-2 |
-| Calibration tokens   | X          |
-| Calibration time     | X sec      |
-| Calibration memory   | X GB       |
-| Stateful             | Yes/No     |
-| Online overhead      | X ms/token |
+### Phase 27 column spec ↔ engine
 
-This makes comparisons much fairer. 
+| Property | Engine field | TQ (case study) | QJL | RocketKV |
+| -------- | ------------ | --------------- | --- | -------- |
+| Calibration required | `benchmark_dimensions.calibration_required` | **Yes** | No | No |
+| Calibration data | `calibration_dataset` | `gaussian_synthetic` | `fixed_seed_projection` | `online_token_selection` |
+| Calibration tokens | `calibration_tokens` | 1,000,000 | — | — |
+| Calibration time | `calibration_time_ms` | measured at init | — | — |
+| Calibration memory | `calibration_memory_bytes` | optional | — | — |
+| Stateful | `stateful` (`reset_state` hook) | No | **Yes** | **Yes** |
+| Online overhead | `online_overhead_ms_per_token` | from SYSTEM throughput | high (ms/tok in results) | moderate |
+
+**Logical rule (tested):** `online_overhead_ms_per_token` = `throughput.latency_ms_per_token` when available; else `end_to_end_decode_cost_ms / generated_tokens`.
+
+### Code ↔ paper alignment
+
+| | Paper today | Code today |
+| --- | ----------- | ---------- |
+| **Calibration prose** | TurboQuant Lloyd-Max on Gaussian samples (L181) | `TurboQuantCompressor.offline_cost_metadata()` + export |
+| **QJL/RocketKV** | “calibration-free” implied | Explicit `calibration_required=False` in JSON |
+| **Stateful** | Not discussed | `stateful=True` when plug-in has `reset_state` |
+| **Comparison table** | **Missing** | `results/method_benchmark_dimensions.csv` (static plug-ins) or per-job JSON |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 2** | **NEW table: Method benchmark dimensions** (Methodology after COST or appendix) | Fair comparison requires calibration + statefulness | Table from `method_benchmark_dimensions.csv` for TQ/QJL/RocketKV (+ identity). Columns match Phase 27 spec. |
+| **Rewrite pass 2** | **§Case-Study Methods** (L165–167) | Per-method calibration differs | One sentence each: TQ offline Lloyd-Max; QJL/RocketKV calibration-free; RocketKV/QJL **stateful**. |
+| **Rewrite pass 2** | **§Plug-in Interface** (L155) | Hooks exist but not named | List `offline_cost_metadata()`, `reset_state()`, `theoretical_compression_ratio`. |
+| **Rewrite pass 2** | **§Discussion** | Calibration as hidden variable | Short paragraph: *“Calibration-free methods are not comparable to calibration-heavy quantizers on deployment cost alone — KVBench exports both.”* |
+| **Re-sweep optional** | Per-job table | Legacy Phase-5 JSON lacks `benchmark_dimensions` | Re-run eval or merge static plug-in table for paper; **static table sufficient** for three case studies |
+| **Do not** | Claim Palu/SnapKV calibration numbers in results | Not in Phase-5 sweeps | May cite from plug-in metadata in Methodology only |
+
+### Cross-references
+
+| Phase | Link |
+| ----- | ---- |
+| **3** | Phase 27 formalizes Phase 3 offline block as benchmark column |
+| **26** | Layer 2 = calibration; Layer 5 = `online_overhead_ms_per_token` |
+| **14** | `calibration` in reproducibility manifest |
+| **4** | Taxonomy `calibration_free` flag aligns with `calibration_required` |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | `benchmark_dimensions` on `cost`; CSV export script; reporter columns `stateful`, `online_overhead_ms_per_token`. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §6.5; `tests/test_oaken_benchmark_dimensions.py`. |
+| **Paper** | 📝 Pending | Calibration dimension table + Discussion sentence. Static CSV OK for current submission. |
 
 ---
 
-# Phase 28: Add a Workload-Aware Discussion
+# Phase 28: Add a Workload-Aware Discussion 📝 **Paper only · engine scoped**
 
-Recent systems research suggests real KV workloads are not uniform.
+> **Status (2026-08-20):** **Paper-writeup + scope documentation only** — no new workload integration (Phase **11 deferred**). The engine already runs synthetic BEHAVIOR tasks (`eval/behavior/`) but the **paper correctly reports WikiText-2 PPL + throughput only**. Phase 28 adds the **Discussion / future-work framing** so reviewers do not treat WikiText as universal.
 
-Therefore discuss:
+### Codebase vs paper alignment
 
-> KV reuse/compression behavior can depend heavily on workload characteristics.
+| Workload type | Engine | Paper results | Phase 28 claim |
+| ------------- | ------ | ------------- | -------------- |
+| WikiText-2 PPL | ✅ `eval/behavior/task_quality.py` | ✅ Primary BEHAVIOR metric | **In scope** — controlled SLM case study |
+| Throughput / latency | ✅ SYSTEM | ✅ Reported | **In scope** |
+| Retrieval (needle) | ✅ synthetic `eval/behavior/retrieval.py` | ❌ Not in `.tex` | **Future work** (Phase 11) |
+| Instruction following | ✅ synthetic | ❌ Not in `.tex` | **Future work** |
+| Reasoning | ✅ opt-in `--reasoning` | ❌ Not in `.tex` | **Future work** |
+| Long-context 2K–32K | ❌ capped 512 (Phase 12 deferred) | ctx 128–512 | **Future work** |
+| RAG / multi-turn / serving | ❌ Phase 13 not planned | ❌ | **Future work** — cite Cache in the Wild, CacheBlend in Related Work |
 
-This gives you justification for eventually including:
+**Phase 23 Finding 6** (*best method vs workload*) must remain **unanswered** — one explicit sentence in Discussion.
 
-* long-context prompts
-* RAG
-* multi-turn conversations
-* long generation
-* reasoning
+### Target Discussion paragraph (canonical)
 
-rather than treating WikiText-2 as representative of all inference.
+> KV reuse and compression interact with **workload shape** (prompt length distribution, retrieval-heavy vs chat, long generation vs single-shot scoring). Our controlled factorial uses WikiText-2 sliding-window perplexity and greedy 64-token generation as an **SLM inference-engineering testbed**, not a claim about datacenter serving mixes. Extending KVBench to LongBench/RULER-style probes, multi-turn dialogs, and longer contexts is important future work (Phases 11–12).
 
+### Paper change log — section by section (`conference_101719.tex`)
 
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 2** | **§Experiments setup** (L222) | WikiText stated but scope unstated | Add: *“We scope BEHAVIOR to WikiText-2 PPL under incremental decode; broader workload types are future work.”* |
+| **Rewrite pass 2** | **§Discussion → Finding 6** | F6 must not be answered | Explicit: *“Finding 6 (workload dependence) is not evaluated in this study.”* |
+| **Rewrite pass 2** | **NEW `\paragraph{Workload scope and limits.}`** (Discussion, before Implications) | Phase 28 deliverable | Canonical paragraph above + bullets: long-context, RAG, multi-turn, reasoning rollouts → Phase 11–12 / cite `kvcachewild2025`, `cacheblend2025`, `yuan2026shortrl`. |
+| **Rewrite pass 2** | **§Conclusion future work** (L629) | Already mentions “alternative online metrics” | Align with Phase 28 list; cross-ref Phase 11 deferred explicitly |
+| **Rewrite pass 2** | **§Related Work §4** (Phase 20) | Workload realism literature | Cache in the Wild + CacheBlend support workload-aware **motivation**, not empirical claims |
+| **Do not** | Add LongBench/RULER results | Phase 11 not planned | Prose + future work only |
+| **Do not** | Soften WikiText findings | Case study valid | Frame as **controlled testbed**, not universal |
+
+### Cross-references
+
+| Phase | Link |
+| ----- | ---- |
+| **11** | Workload extension — **deferred**; Phase 28 cites as future |
+| **12** | Long-context scaling — deferred |
+| **13** | Serving stacks — out of scope |
+| **19** | SLM inference-engineering testbed framing |
+| **23** | F6 left open |
+
+### Completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Scoped | BEHAVIOR modules exist; default paper grid = WikiText PPL only (`METHODOLOGY.md`, Phase 11 flagged). |
+| **Documentation** | ✅ Done | This section; `METHODOLOGY.md` §6.5 workload note; Phase 11 section unchanged (deferred). |
+| **Paper** | 📝 Pending | Discussion workload paragraph + F6 disclaimer + Experiments scope sentence. **No engine changes required.** |
 
 ---
 

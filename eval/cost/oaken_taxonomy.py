@@ -77,14 +77,20 @@ def build_oaken_layers(
     """Map FIDELITY / COST / SYSTEM blocks onto the five Oaken layers."""
     fidelity_metrics: dict[str, Any] = {}
     if fidelity is not None:
-        fidelity_metrics = {
-            "representation_rmse_key": fidelity.representation.key_rmse,
-            "representation_rmse_value": fidelity.representation.value_rmse,
-            "attention_rmse": fidelity.attention.rmse,
-            "attention_cosine": fidelity.attention.cosine_similarity,
-            "compression_ratio": fidelity.memory.compression_ratio,
-            "effective_bits_per_kv": fidelity.memory.effective_bits_per_kv_element,
-        }
+        memory = getattr(fidelity, "memory", None)
+        representation = getattr(fidelity, "representation", None)
+        attention = getattr(fidelity, "attention", None)
+        if representation is not None:
+            fidelity_metrics["representation_rmse_key"] = getattr(representation, "key_rmse", None)
+            fidelity_metrics["representation_rmse_value"] = getattr(representation, "value_rmse", None)
+        if attention is not None:
+            fidelity_metrics["attention_rmse"] = getattr(attention, "rmse", None)
+            fidelity_metrics["attention_cosine"] = getattr(attention, "cosine_similarity", None)
+        if memory is not None:
+            fidelity_metrics["compression_ratio"] = getattr(memory, "compression_ratio", None)
+            fidelity_metrics["effective_bits_per_kv"] = getattr(
+                memory, "effective_bits_per_kv_element", None
+            )
 
     offline = cost.offline
     online = cost.online
@@ -106,7 +112,7 @@ def build_oaken_layers(
         OakenLayerSnapshot(
             layer=OakenCostLayer.OFFLINE_EVALUATION.value,
             description=OAKEN_LAYER_DESCRIPTIONS[OakenCostLayer.OFFLINE_EVALUATION],
-            measured=fidelity is not None,
+            measured=bool(fidelity_metrics),
             metrics=fidelity_metrics,
         ),
         OakenLayerSnapshot(

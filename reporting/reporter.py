@@ -81,6 +81,8 @@ class ResultReporter:
             "calibration_tokens",
             "calibration_time_ms",
             "calibration_memory_bytes",
+            "stateful",
+            "online_overhead_ms_per_token",
             "cost_compression_time_ms",
             "cost_decompression_time_ms",
             "cost_attention_ms",
@@ -185,6 +187,20 @@ class ResultReporter:
                         "calibration_tokens": cost.offline.calibration_tokens if cost else None,
                         "calibration_time_ms": cost.offline.calibration_time_ms if cost else None,
                         "calibration_memory_bytes": cost.offline.calibration_memory_bytes if cost else None,
+                        "stateful": (
+                            cost.benchmark_dimensions.stateful
+                            if cost and cost.benchmark_dimensions
+                            else None
+                        ),
+                        "online_overhead_ms_per_token": (
+                            cost.benchmark_dimensions.online_overhead_ms_per_token
+                            if cost and cost.benchmark_dimensions
+                            else (
+                                system.throughput.latency_ms_per_token
+                                if system and system.throughput
+                                else None
+                            )
+                        ),
                         "cost_compression_time_ms": cost.online.compression_time_ms if cost else None,
                         "cost_decompression_time_ms": cost.online.decompression_time_ms if cost else None,
                         "cost_attention_ms": cost.online.attention_cost_ms if cost else None,

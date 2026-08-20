@@ -7,12 +7,13 @@ cross-method comparison alongside FIDELITY / BEHAVIOR / SYSTEM metrics.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from compressors.base import KVCompressor
-from eval.cost.accounting import CostMetrics
-from eval.cost.oaken_taxonomy import compressor_is_stateful
 from eval.system import SystemMetrics
+
+if TYPE_CHECKING:
+    from eval.cost.accounting import CostMetrics
 
 
 @dataclass(frozen=True)
@@ -40,7 +41,7 @@ class BenchmarkDimensions:
 
 
 def derive_online_overhead_ms_per_token(
-    cost: CostMetrics,
+    cost: CostMetrics | Any,
     system: SystemMetrics | None,
 ) -> float | None:
     """Best available per-token online overhead for Phase 27 reporting.
@@ -75,10 +76,12 @@ def derive_online_overhead_ms_per_token(
 
 def build_benchmark_dimensions(
     compressor: KVCompressor,
-    cost: CostMetrics,
+    cost: CostMetrics | Any,
     *,
     system: SystemMetrics | None = None,
 ) -> BenchmarkDimensions:
+    from eval.cost.oaken_taxonomy import compressor_is_stateful
+
     offline = cost.offline
     return BenchmarkDimensions(
         calibration_required=offline.calibration_required,

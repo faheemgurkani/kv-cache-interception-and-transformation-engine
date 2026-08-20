@@ -12,7 +12,6 @@ from enum import Enum
 from typing import Any
 
 from compressors.base import KVCompressor
-from eval.cost.accounting import CostMetrics
 from eval.fidelity import FidelityMetrics
 from eval.system import SystemMetrics
 
@@ -71,7 +70,7 @@ def compressor_is_stateful(compressor: KVCompressor) -> bool:
 
 def build_oaken_layers(
     *,
-    cost: CostMetrics,
+    cost: Any,
     fidelity: FidelityMetrics | None = None,
     system: SystemMetrics | None = None,
 ) -> list[OakenLayerSnapshot]:

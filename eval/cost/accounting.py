@@ -11,12 +11,15 @@ Schema (per RESEARCH_REDESIGN_PLAN.md Phase 3):
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from compressors.base import KVCompressor
-from eval.cost.benchmark_dimensions import BenchmarkDimensions, build_benchmark_dimensions
-from eval.cost.oaken_taxonomy import OakenLayerSnapshot, build_oaken_layers
 from eval.fidelity import FidelityMetrics
 from eval.system import SystemMetrics
+
+if TYPE_CHECKING:
+    from eval.cost.benchmark_dimensions import BenchmarkDimensions
+    from eval.cost.oaken_taxonomy import OakenLayerSnapshot
 
 
 @dataclass
@@ -125,6 +128,9 @@ def evaluate_cost(
     )
 
     partial = CostMetrics(compression=compression, offline=offline, online=online)
+    from eval.cost.benchmark_dimensions import build_benchmark_dimensions
+    from eval.cost.oaken_taxonomy import build_oaken_layers
+
     return CostMetrics(
         compression=compression,
         offline=offline,

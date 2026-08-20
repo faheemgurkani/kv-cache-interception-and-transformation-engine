@@ -1,10 +1,10 @@
 # KVBench: Complete Research Improvement Roadmap
 
-## Completeness record — Phases 1–10 (verified 2026-08-19)
+## Completeness record — Phases 1–28 (verified 2026-08-20)
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
-**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, **14**, **24**, **25**, **26**, and **27** are **complete in the engine and documentation**. **Phase 28** is **paper-only** (workload-aware discussion; engine scope documented, Phase 11 deferred). **Phases 15–23** are **paper-only** framing. The paper still lacks Oaken taxonomy prose (Phase 26), calibration dimension table (Phase 27), and workload scope paragraph (Phase 28). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
+**Executive verdict:** Phases **1–4**, **6**, **7**, **9**, **10**, **14**, **24**, **25**, **26**, and **27** are **complete in the engine and documentation** (re-audited 2026-08-20; **63** core tests passed). **Phase 28** is **paper-only** (workload-aware discussion; engine scope documented, Phase 11 deferred). **Phases 15–23** are **paper-only** framing with per-phase **Paper change log** subsections. **Phases 1–7** now include matching paper change logs (terminology + protocol + controlled conditions). The paper still uses Section A/B naming and lacks Oaken taxonomy prose (Phase 26), calibration dimension table (Phase 27), and workload scope paragraph (Phase 28). **Paper changes are documented only** in [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) and per-phase **Paper change log** subsections below — apply when revised experimental results are ready. Phases **5**, **8**, **11**, **12**, and **13** require **no paper or engine work** for the current case-study scope.
 
 | Phase | Engine | Docs | Paper | Primary evidence |
 | ----- | ------ | ---- | ----- | ---------------- |
@@ -354,7 +354,7 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | Tier | When | Scope |
 | ---- | ---- | ----- |
 | **Minimal** | Re-sweep done; tight page limit | Terminology pass + controlled conditions table + **Phases 15–22 prose**; **Phase 23** findings structure in Experiments + Discussion; regenerate Pareto (Phase 9) |
-| **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) + optional **problem-cascade figure** (Phase 16) + reproducibility subsection (Phase 14) + **correlation table** from `correlations_ctx512.json` (Phase 24) + **trade-off figure** (Phase 25) |
+| **Full** | Re-sweep + appendix space | Above + Cost subsection + taxonomy table + **SYSTEM VRAM/GPU util columns** (Phase 10) + optional BEHAVIOR protocol prose (Phase 11 — no new numbers) + optional **problem-cascade figure** (Phase 16) + reproducibility subsection (Phase 14) + **correlation table** from `correlations_ctx512.json` (Phase 24) + **trade-off figure** (Phase 25) + **Oaken + calibration table** (Phases 26–27, rewrite step 11) + **workload scope paragraph** (Phase 28, step 12) |
 
 ### Phases 15–22 — recommended `.tex` rewrite order
 
@@ -384,6 +384,15 @@ Apply step **9** when result tables/figures are updated (re-sweep or replot from
 | Step | Phase | Primary `.tex` targets |
 | ---- | ----- | -------------------- |
 | 10 | **24–25** | Regenerate `plot_pareto.pdf`, `plot_tradeoff.pdf`, optional appendix correlation table from CLI; Discussion **F1/F3/F7** cites `correlations_ctx512.json` weak predictors |
+
+### Phases 26–28 — cost, calibration, workload scope (rewrite pass 2)
+
+| Step | Phase | Primary `.tex` targets |
+| ---- | ----- | -------------------- |
+| 11 | **26–27** | **NEW §COST** after SYSTEM (~L285): Oaken five-layer taxonomy + Phase 27 calibration/stateful/overhead table from `method_benchmark_dimensions.csv`; Design Principles L95; Discussion **F3** Layers 3–5 |
+| 12 | **28** | **§Experiments setup** scope sentence (WikiText only); **§Discussion Finding 6** disclaimer; **NEW `\paragraph{Workload scope and limits.}`** before Implications |
+
+Apply steps **11–12** in the same pass as step **10** (no new GPU jobs — tables/figures from existing JSON + `export_method_benchmark_table.py`).
 
 Cross-link [Paper alignment guide](#paper-alignment-guide--codebase--conference_101719tex) for line-level detail.
 
@@ -439,6 +448,20 @@ This turns KVBench from a **compression test harness** into a **multi-dimensiona
 | **Engine** | ✅ Done | Three-branch orchestrator; legacy Section A/B accessors retained on `EvaluationResult` for back-compat only. |
 | **Documentation** | ✅ Done | `README.md`, `SYSTEM_DESIGN.md`, `METHODOLOGY.md` §6, `CLAUDE.md`. |
 | **Paper** | 📝 Documented | See [Paper alignment guide — Title, Abstract, Introduction](#paper-alignment-guide--codebase--conference_101719tex). Apply after re-sweep. |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 1, step 0** (before Phase 15) | **Title** (L31) | “Bridging offline/online” encodes obsolete two-branch split | Prefer three-branch subtitle or *Controlled KV Interception Engine for Fidelity, Behavior, and System Evaluation* |
+| **Same pass** | **Abstract** (L45) | “dual metrics: Section A … Section B” | Replace with **FIDELITY / BEHAVIOR / SYSTEM**; one clause per branch |
+| **Same pass** | **Keywords** (L49) | `offline fidelity, online inference` only | Add `KV interception`, `fidelity evaluation`, `system metrics` |
+| **Same pass** | **Intro L58 “What” axis** | Still Section A/B pairing | Rewrite “What” as three independent branches (not offline/online dichotomy) |
+| **Same pass** | **§Methodology opening** (L83–86) | “dual offline/online evaluation contract” | “Three-branch evaluation contract” under controlled interception |
+| **Same pass** | **§Design Principles** (L95) | Bullet “Dual evaluation. Section A … Section B …” | **Three-branch evaluation** bullet listing FIDELITY / BEHAVIOR / SYSTEM |
+| **Same pass** | **Fig. pipeline caption** (L101) | “Section A offline … Section B online” | Caption lists three branches; optional cost block if figure asset updated |
+| **Same pass** | **§Evaluation Protocol** (L267–284) | Two subsubsections Section A/B | Split/rename per [§Evaluation Protocol](#evaluation-protocol-l255285-labelsubseceval_protocol) — four subsubsections |
+| **Do not** | Results tables | Branch rename is structural | Keep numeric results until re-sweep; terminology pass only |
 
 ---
 
@@ -543,6 +566,25 @@ The **4× compression vs 3× with lower overhead** tradeoff is exactly why SYSTE
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §6.3; `eval/system/__init__.py` rationale. |
 | **Paper** | 📝 Documented | [§Evaluation Protocol → SYSTEM](#evaluation-protocol-l255285-labelsubseceval_protocol); [§Discussion L617](#discussion-l595623-labelsecdiscussion). |
 
+### Paper change log — Phase 2 branches (`conference_101719.tex`)
+
+| When | Section | Branch | What to change |
+| ---- | ------- | ------ | -------------- |
+| **Rewrite pass 1** | **§Evaluation Protocol** (L267–274) | **FIDELITY** | Rename from “Section A: Offline Fidelity”; add relative recon error, cosine, KL, metadata overhead bullets from `METHODOLOGY.md` §6.1 |
+| **Same pass** | **§Evaluation Protocol** (L276–282) | **BEHAVIOR** | Rename from “Section B” PPL-only scope; keep Alg. 2 PPL; optional one-line synthetic retrieval/IF protocol (**no result table** — Phase 11 deferred) |
+| **Same pass** | **§Evaluation Protocol** (L284) | **SYSTEM** | Split tok/s from old Section B; add TTFT, ITL p50/p99, end-to-end latency; move throughput tables under SYSTEM in Results |
+| **Same pass** | **§Experiments** (L216) | All three | Replace “Each run records Section A and Section B metrics” with three-branch + cost sentence |
+| **Same pass** | **§Discussion L608–621** | FIDELITY vs BEHAVIOR | Cite branch names when discussing QJL/RocketKV decoupling (Phase 23 step 9 expands into F1–F7) |
+| **Do not** | BEHAVIOR result tables | Engine has synthetic tasks; paper grid is WikiText PPL | Phase 28 scope sentence only — no new BEHAVIOR numbers |
+
+### Phase 2 — consolidated completeness record
+
+| Track | Status | Detail |
+| ----- | ------ | ------ |
+| **Engine** | ✅ Done | FIDELITY (`eval/fidelity/`), BEHAVIOR (`eval/behavior/`), SYSTEM (`eval/system/`) — all modules wired in `EvaluationRunner.run()`. |
+| **Documentation** | ✅ Done | `METHODOLOGY.md` §6.1–6.3; per-branch completeness records above. |
+| **Paper** | 📝 Pending | §Evaluation Protocol four-way split; Results subsection headers FIDELITY/BEHAVIOR/SYSTEM. See table above + [global protocol spec](#evaluation-protocol-l255285-labelsubseceval_protocol). |
+
 ---
 
 # Phase 3: Add Explicit Cost Accounting ✅ **Done**
@@ -584,6 +626,16 @@ Recent work such as Oaken explicitly separates offline preparation from online i
 | **Engine** | ✅ Done | Phase 3 base + Phase 26 Oaken layers + Phase 27 benchmark dimensions on every `cost` export. |
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §6.5; Phases 26–27 sections below. |
 | **Paper** | 📝 Pending | [§Evaluation Protocol → COST](#evaluation-protocol-l255285-labelsubseceval_protocol); Oaken Discussion paragraph; calibration table appendix. |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 2, step 11** | **NEW §COST** (after SYSTEM, ~L285) | Paper omits cost entirely | Mirror Phase 3 tree: compression / offline / online; cross-ref **Phase 26** Oaken layers + **Phase 27** benchmark dimensions table |
+| **Same pass** | **§Plug-in Interface** (L153–155) | Hooks list incomplete | Add `offline_cost_metadata()`, `theoretical_compression_ratio()` hooks |
+| **Same pass** | **§Case-Study Methods — TurboQuant** (L181) | Lloyd-Max calibration mentioned in prose only | Point to `cost.offline` fields (`calibration_time_ms`, `calibration_tokens`); compare QJL/RocketKV calibration-free in Phase 27 table |
+| **Same pass** | **§Discussion Implications** (L623) | Practitioner checklist | Add: report offline preprocessing cost separately from FIDELITY metrics (Phase 26) |
+| **Do not** | New GPU jobs | Cost fields in existing JSON | Export table from bundles — no re-sweep required for structure |
 
 ---
 
@@ -637,6 +689,15 @@ This distinction is particularly important for methods such as RocketKV and Palu
 | **Engine** | ✅ Done | Categories A–E; `EvaluationResult.taxonomy`; SnapKV + Palu plug-ins registered. KIVI remains stub. |
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §5a/5b; `SYSTEM_DESIGN.md`; `CURRENT_STATE.md`. |
 | **Paper** | 📝 Documented | [NEW §Compression taxonomy](#new-compression-taxonomy-insert-after-labelsubsecplugins-before-case-study-methods); [§Case-Study Methods](#case-study-methods-l165167-labelsubsecmethods). No SnapKV/Palu results unless re-swept. |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 1** | **NEW §Compression taxonomy** (after `\label{subsec:plugins}`, before L165) | Paper lists three families in prose only | Table: categories A–E → mechanism → plug-in (TQ=B, QJL=B+E, RocketKV=D+E, SnapKV=A, Palu=C+E); **empirical rows = TQ/QJL/RocketKV only** |
+| **Same pass** | **§Case-Study Methods** (L165–167) | Implies exhaustive method survey | Cross-ref taxonomy; disclaimer: case studies demonstrate protocol, not full literature coverage |
+| **Same pass** | **Related Work** (L65–78) | Palu/SnapKV cited as algorithms, not evaluated | Keep citations in Related Work §1–2; **do not** add SnapKV/Palu result rows without re-sweep |
+| **Do not** | SnapKV/Palu empirical claims | Plug-ins exist (`compressors/snapkv.py`, `palu.py`) | Taxonomy + methodology only until sweeps run |
 
 ---
 
@@ -750,6 +811,16 @@ That controlled environment is much more important than simply saying "we benchm
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §1.1; `SYSTEM_DESIGN.md` Phase 6 block; `README.md` lead paragraph. |
 | **Paper** | 📝 Documented | [§Design Principles](#design-principles-l8896-labelsubsecdesign); [Fig. pipeline](#fig-pipeline-caption-l98102-labelfigpipeline); [§Discussion](#discussion-l595623-labelsecdiscussion); [§Conclusion](#conclusion-l625629-labelsecconclusion). |
 
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 1** | **Abstract + Intro** (L45, L58) | “benchmarking framework” undersells contribution | Lead with **controlled interception-and-transformation engine**; emphasize same model/input/decode loop, only KV transformation varies |
+| **Same pass** | **§Design Principles** (L88–96) | Missing controlled-comparison principle | New bullet: **Controlled comparison** — matched inference path; only compressor/budget changes (diagram in this Phase 6 section) |
+| **Same pass** | **Fig. pipeline** (L98–102) | Caption still dual-metric | Regenerate or recaption: interception at decode boundary → plug-in → three-branch evaluation |
+| **Same pass** | **§Discussion opening** (L595–598) | Contribution framed as method ranking | Reframe: contribution is **how to evaluate** under controlled conditions (Phase 15/22) |
+| **Do not** | Claim new compressors | Engine contribution is methodological | Case studies remain TQ/QJL/RocketKV unless re-sweep expands |
+
 ---
 
 # Phase 7: Introduce Controlled Experimental Conditions ✅ **Done**
@@ -789,6 +860,16 @@ Your methodology can explicitly say:
 | **Engine** | ✅ Done | `REQUIRED_FIXED_AXES` validated per run; hardware, tokenizer, input construction, decoding, metrics, compression budget exported. Env: `KV_EVAL_DEVICE`, `KV_HARDWARE_PROFILE`. |
 | **Documentation** | ✅ Done | `METHODOLOGY.md` §1.1 (full axis table); `CURRENT_STATE.md`; `tests/test_controlled_conditions.py` (12 tests). |
 | **Paper** | 📝 Documented | [§Experiments setup + controlled conditions table](#experiments-opening--setup-l216229). |
+
+### Paper change log — section by section (`conference_101719.tex`)
+
+| When | Section | Why | What to change |
+| ---- | ------- | --- | -------------- |
+| **Rewrite pass 1** (with Phase 14) | **§Experimental Configuration** (L220–229) | Setup in bullets, not causal contract | **Table: Controlled experimental conditions** — model, tokenizer, WikiText-2 split, ctx 128/256/512, gen 64, batch 1, FP16, greedy, A10G, PPL stride 512; footnote: only `compression_method`/budget varies |
+| **Same pass** | **§Experiments opening** (L216–218) | “dual Section A/B” | Three branches + per-job `controlled_conditions` JSON sentence |
+| **Same pass** | **§Evaluation Protocol intro** (L255) | Implicit fairness | Explicit: *“Same model + same input + same decode loop + same hardware + different KV transformation.”* |
+| **At re-sweep** | Results table captions | Reproducibility | Cite `controlled_conditions.variable.compression_budget` fields (bitwidth, stage, RocketKV r256/r512/r1024, QJL seed 42) |
+| **Do not** | Expand ctx/batch grid | Phase 12 deferred | Keep 128–512 / batch 1 / 64 tok — document as fixed axes |
 
 ---
 

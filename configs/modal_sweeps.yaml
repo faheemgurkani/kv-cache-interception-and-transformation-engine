@@ -50,3 +50,39 @@ presets:
       token_budget: 1024
       hsa_budget: 1024
       window_size: 32
+
+  # One job per active taxonomy plug-in (skip KIVI stub). ctx from CLI (smoke uses 128).
+  # Budgets sized so eviction/projection actually fire at ctx=128.
+  taxonomy_smoke:
+    - label: identity_baseline
+      name: identity
+    - label: tq_full_b4
+      name: turboquant
+      stage: full
+      bitwidth: 4
+    - label: qjl_default
+      name: qjl
+      bitwidth: 1
+      seed: 42
+    - label: rocketkv_smoke
+      name: rocketkv
+      token_budget: 64
+      hsa_budget: 64
+      window_size: 8
+    - label: snapkv_smoke
+      name: snapkv
+      max_capacity_prompt: 64
+      window_size: 8
+      kernel_size: 5
+    - label: palu_smoke
+      name: palu
+      compression_rate: 0.5
+      group_size: 1
+
+preset_options:
+  taxonomy_smoke:
+    run_reasoning: true
+    run_kernel_cost: true
+    run_memory_bandwidth: true
+    generated_tokens: 8
+

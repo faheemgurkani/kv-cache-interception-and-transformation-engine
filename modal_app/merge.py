@@ -45,6 +45,20 @@ def flatten_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
     hardware = payload.get("hardware") or {}
     controlled = payload.get("controlled_conditions") or {}
     fixed_hw = (controlled.get("fixed") or {}).get("hardware") or {}
+    taxonomy = payload.get("taxonomy") or {}
+    cost = payload.get("cost") or {}
+    compression_cost = cost.get("compression") or {}
+    offline = cost.get("offline") or {}
+    online = cost.get("online") or {}
+    oaken = cost.get("oaken_layers") or []
+    dims = cost.get("benchmark_dimensions") or {}
+    gates = payload.get("compatibility_gates") or {}
+    retrieval = behavior.get("retrieval") or {} if not is_legacy else {}
+    reasoning = behavior.get("reasoning") or {} if not is_legacy else {}
+    instruction = behavior.get("instruction_following") or {} if not is_legacy else {}
+    recurrent = fidelity.get("recurrent") or {} if not is_legacy else {}
+    kernel = system.get("kernel_cost") or {} if not is_legacy else {}
+    bandwidth = system.get("memory_bandwidth") or {} if not is_legacy else {}
 
     return {
         "label": payload.get("label"),
@@ -52,6 +66,8 @@ def flatten_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "bitwidth": payload.get("bitwidth"),
         "stage": payload.get("stage"),
         "context_length": payload.get("context_length"),
+        "taxonomy_primary": taxonomy.get("primary"),
+        "taxonomy_secondary": ",".join(taxonomy.get("secondary") or []),
         "key_rmse": representation.get("key_rmse"),
         "value_rmse": representation.get("value_rmse"),
         "attention_rmse": attention.get("rmse"),
@@ -62,17 +78,36 @@ def flatten_result_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "compression_ratio": memory.get("compression_ratio"),
         "effective_bits_per_kv_element": memory.get("effective_bits_per_kv_element"),
         "shared_metadata_bytes": memory.get("shared_metadata_bytes"),
+        "recurrent_applicable": recurrent.get("applicable"),
+        "recurrent_exact_preservation": recurrent.get("exact_preservation"),
         "perplexity_compressed": perplexity,
         "perplexity_baseline": perplexity_baseline,
+        "retrieval_accuracy": retrieval.get("exact_match_accuracy"),
+        "reasoning_accuracy": reasoning.get("exact_match_accuracy"),
+        "instruction_following_compliance": instruction.get("format_compliance_rate"),
         "tokens_per_second": throughput.get("tokens_per_second"),
         "latency_ms_per_token": throughput.get("latency_ms_per_token"),
         "ttft_ms": throughput.get("ttft_ms"),
         "itl_ms_mean": throughput.get("itl_ms_mean"),
+        "end_to_end_latency_ms": throughput.get("end_to_end_latency_ms"),
         "online_compressed_kv": throughput.get("online_compressed_kv"),
         "peak_vram_allocated_mb": peak_memory.get("peak_allocated_mb") if not is_legacy else None,
         "peak_vram_reserved_mb": peak_memory.get("peak_reserved_mb") if not is_legacy else None,
         "gpu_util_mean_pct": gpu_util.get("mean_utilization_pct") if not is_legacy else None,
         "gpu_util_max_pct": gpu_util.get("max_utilization_pct") if not is_legacy else None,
+        "memory_bandwidth_gbps": bandwidth.get("effective_bandwidth_gbps") if not is_legacy else None,
+        "compress_decompress_time_ms": kernel.get("compress_decompress_time_ms") if not is_legacy else None,
+        "theoretical_compression_ratio": compression_cost.get("theoretical_compression_ratio"),
+        "calibration_required": offline.get("calibration_required"),
+        "stateful": dims.get("stateful"),
+        "cost_compression_time_ms": online.get("compression_time_ms"),
+        "cost_decompression_time_ms": online.get("decompression_time_ms"),
+        "cost_attention_ms": online.get("attention_cost_ms"),
+        "cost_end_to_end_decode_ms": online.get("end_to_end_decode_cost_ms"),
+        "oaken_layers_measured": sum(1 for item in oaken if isinstance(item, dict) and item.get("measured")),
+        "gate_loader_state": (gates.get("loader_state") or {}).get("passed") if isinstance(gates, dict) else None,
+        "gate_attention": (gates.get("attention") or {}).get("passed") if isinstance(gates, dict) else None,
+        "gate_state_semantics": (gates.get("state_semantics") or {}).get("passed") if isinstance(gates, dict) else None,
         "hardware_device_name": hardware.get("device_name") or fixed_hw.get("device_name"),
         "hardware_configured_gpu": hardware.get("configured_gpu") or fixed_hw.get("configured_gpu"),
         "hardware_execution_platform": hardware.get("execution_platform") or fixed_hw.get("execution_platform"),
@@ -88,6 +123,8 @@ CSV_FIELDNAMES = [
     "bitwidth",
     "stage",
     "context_length",
+    "taxonomy_primary",
+    "taxonomy_secondary",
     "key_rmse",
     "value_rmse",
     "attention_rmse",
@@ -98,17 +135,36 @@ CSV_FIELDNAMES = [
     "compression_ratio",
     "effective_bits_per_kv_element",
     "shared_metadata_bytes",
+    "recurrent_applicable",
+    "recurrent_exact_preservation",
     "perplexity_compressed",
     "perplexity_baseline",
+    "retrieval_accuracy",
+    "reasoning_accuracy",
+    "instruction_following_compliance",
     "tokens_per_second",
     "latency_ms_per_token",
     "ttft_ms",
     "itl_ms_mean",
+    "end_to_end_latency_ms",
     "online_compressed_kv",
     "peak_vram_allocated_mb",
     "peak_vram_reserved_mb",
     "gpu_util_mean_pct",
     "gpu_util_max_pct",
+    "memory_bandwidth_gbps",
+    "compress_decompress_time_ms",
+    "theoretical_compression_ratio",
+    "calibration_required",
+    "stateful",
+    "cost_compression_time_ms",
+    "cost_decompression_time_ms",
+    "cost_attention_ms",
+    "cost_end_to_end_decode_ms",
+    "oaken_layers_measured",
+    "gate_loader_state",
+    "gate_attention",
+    "gate_state_semantics",
     "hardware_device_name",
     "hardware_configured_gpu",
     "hardware_execution_platform",

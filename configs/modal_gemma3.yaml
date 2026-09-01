@@ -1,0 +1,26 @@
+# Modal GPU eval for Gemma3-270M taxonomy-coverage smoke (shortlist).
+#
+# Does not replace configs/modal.yaml (legacy Qwen3-1.7B volume).
+# Activate with: KV_MODAL_CONFIG=configs/modal_gemma3.yaml KV_MODEL_CONFIG=configs/model_gemma3_270m.yaml
+
+gpu: a10g
+gpu_fallbacks:
+  - a10g
+  - l4
+  - any
+
+timeout_hours: 2
+
+hardware:
+  reference_gpu: NVIDIA A10G
+  single_gpu_policy: true
+  multi_gpu_matrix: false
+  collect_peak_memory: true
+  collect_gpu_utilization: true
+
+volumes:
+  model: kv-engine-gemma3
+  results: kv-engine-results-gemma3
+
+secrets:
+  huggingface: huggingface-secret

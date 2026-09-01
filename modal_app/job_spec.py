@@ -12,6 +12,14 @@ from modal_app.settings import project_root
 
 SWEEPS_CONFIG_PATH = project_root() / "configs" / "modal_sweeps.yaml"
 PRESET_ORDER = ("baseline", "turboquant", "qjl", "rocketkv")
+JOB_OPTION_KEYS = (
+    "run_reasoning",
+    "run_kernel_cost",
+    "run_memory_bandwidth",
+    "generated_tokens",
+    "run_retrieval",
+    "run_instruction_following",
+)
 
 
 @dataclass
@@ -24,6 +32,12 @@ class EvalJobSpec:
     skip_perplexity: bool = False
     skip_throughput: bool = False
     compressor_kwargs: dict[str, Any] = field(default_factory=dict)
+    run_reasoning: bool = False
+    run_kernel_cost: bool = False
+    run_memory_bandwidth: bool = False
+    generated_tokens: int | None = None
+    run_retrieval: bool = True
+    run_instruction_following: bool = True
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -61,6 +75,15 @@ class EvalJobSpec:
                 f"{self.label}_ctx{self.context_length}_r{r}"
                 f"_ws{window_size}_k{dynamic_top_k}"
             )
+        if "max_capacity_prompt" in self.compressor_kwargs:
+            cap = int(self.compressor_kwargs["max_capacity_prompt"])
+            window_size = int(self.compressor_kwargs.get("window_size", 16))
+            return f"{self.label}_ctx{self.context_length}_cap{cap}_ws{window_size}"
+        if "compression_rate" in self.compressor_kwargs:
+            rate = float(self.compressor_kwargs["compression_rate"])
+            group_size = int(self.compressor_kwargs.get("group_size", 4))
+            r = int(round(rate * 100))
+            return f"{self.label}_ctx{self.context_length}_cr{r}_g{group_size}"
 
         bit = self.bitwidth if self.bitwidth is not None else "na"
         stage = self.stage or "na"
@@ -104,6 +127,13 @@ def get_sweep_configs(preset: str = "turboquant") -> list[tuple[str, dict]]:
     return _parse_preset_entries(presets[preset])
 
 
+def get_preset_options(preset: str = "turboquant") -> dict[str, Any]:
+    """Per-preset eval flags (reasoning, kernel-cost, generated_tokens, …)."""
+    raw = load_sweeps_config().get("preset_options") or {}
+    options = dict(raw.get(preset) or {})
+    return options
+
+
 def turboquant_sweep_configs() -> list[tuple[str, dict]]:
     """Backward-compatible alias for the original TurboQuant sweep grid."""
     return get_sweep_configs("turboquant")
@@ -124,6 +154,7 @@ def build_sweep_jobs(
 ) -> list[EvalJobSpec]:
     lengths = context_lengths or default_context_lengths()
     sweep_configs = get_sweep_configs(preset)
+    options = get_preset_options(preset)
     jobs: list[EvalJobSpec] = []
     for ctx in lengths:
         for label, cfg in sweep_configs:
@@ -133,6 +164,8 @@ def build_sweep_jobs(
             name = params.pop("name")
             bitwidth = params.pop("bitwidth", None)
             stage = params.pop("stage", None)
+            job_opts = {key: params.pop(key) for key in list(params) if key in JOB_OPTION_KEYS}
+            job_opts = {**options, **job_opts}
             jobs.append(
                 EvalJobSpec(
                     compressor=name,
@@ -143,6 +176,12 @@ def build_sweep_jobs(
                     skip_perplexity=skip_perplexity,
                     skip_throughput=skip_throughput,
                     compressor_kwargs=params,
+                    run_reasoning=bool(job_opts.get("run_reasoning", False)),
+                    run_kernel_cost=bool(job_opts.get("run_kernel_cost", False)),
+                    run_memory_bandwidth=bool(job_opts.get("run_memory_bandwidth", False)),
+                    generated_tokens=job_opts.get("generated_tokens"),
+                    run_retrieval=bool(job_opts.get("run_retrieval", True)),
+                    run_instruction_following=bool(job_opts.get("run_instruction_following", True)),
                 )
             )
     return jobs

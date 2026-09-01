@@ -29,3 +29,6 @@ def test_flatten_includes_hardware_and_system_metrics():
     assert row["hardware_execution_platform"] == "modal"
     assert row["reference_gpu"] == "NVIDIA A10G"
     assert "hardware_device_name" in CSV_FIELDNAMES
+    assert "taxonomy_primary" in CSV_FIELDNAMES
+    assert "retrieval_accuracy" in CSV_FIELDNAMES
+    assert "oaken_layers_measured" in CSV_FIELDNAMES

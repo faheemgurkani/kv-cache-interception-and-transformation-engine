@@ -96,10 +96,16 @@ def eval_worker(job: dict) -> dict:
             spec.context_length,
             run_perplexity=not spec.skip_perplexity,
             run_throughput=not spec.skip_throughput,
+            run_retrieval=spec.run_retrieval,
+            run_instruction_following=spec.run_instruction_following,
+            run_reasoning=spec.run_reasoning,
             run_peak_memory=bool(hw_cfg.get("collect_peak_memory", collect_hw)),
             run_gpu_utilization=bool(hw_cfg.get("collect_gpu_utilization", collect_hw)),
+            run_kernel_cost=spec.run_kernel_cost,
+            run_memory_bandwidth=spec.run_memory_bandwidth,
             collect_hardware_metrics=collect_hw,
             include_baselines=True,
+            generated_tokens=spec.generated_tokens,
         )
 
         payload = result.to_dict()

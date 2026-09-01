@@ -37,11 +37,20 @@ PROJECT_ROOT = project_root()
 DEFAULT_MODAL_CONFIG = PROJECT_ROOT / DEFAULT_MODAL_CONFIG_NAME
 
 
-@lru_cache(maxsize=1)
-def load_modal_config(path: Path | str | None = None) -> dict:
-    config_path = Path(path) if path else DEFAULT_MODAL_CONFIG
-    with config_path.open() as handle:
+@lru_cache(maxsize=8)
+def _load_modal_config_cached(config_path: str) -> dict:
+    with Path(config_path).open() as handle:
         return yaml.safe_load(handle)
+
+
+def load_modal_config(path: Path | str | None = None) -> dict:
+    if path is None:
+        raw = os.environ.get("KV_MODAL_CONFIG", "").strip()
+        path = raw or DEFAULT_MODAL_CONFIG
+    config_path = Path(path)
+    if not config_path.is_absolute():
+        config_path = project_root() / config_path
+    return _load_modal_config_cached(str(config_path))
 
 
 def gpu_spec(config: dict | None = None) -> str | list[str]:
@@ -79,6 +88,12 @@ def modal_runtime_env(config: dict | None = None) -> dict[str, str]:
     }
     if collect_hardware_metrics(cfg):
         env["KV_COLLECT_HARDWARE_METRICS"] = "1"
+    model_cfg = os.environ.get("KV_MODEL_CONFIG", "").strip()
+    if model_cfg:
+        env["KV_MODEL_CONFIG"] = model_cfg
+    modal_cfg = os.environ.get("KV_MODAL_CONFIG", "").strip()
+    if modal_cfg:
+        env["KV_MODAL_CONFIG"] = modal_cfg
     return env
 
 

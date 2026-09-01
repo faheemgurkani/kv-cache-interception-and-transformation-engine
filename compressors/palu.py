@@ -16,6 +16,48 @@ from quantizers.palu import (
 )
 
 
+def _iter_self_attn_modules(model):
+    """Yield per-layer attention modules across nested HF causal-LM wrappers."""
+    inner = getattr(model, "model", model)
+    layers = getattr(inner, "layers", None)
+    if layers is None:
+        inner = getattr(inner, "language_model", inner)
+        layers = getattr(inner, "layers", None)
+    if layers is None:
+        raise AttributeError("Could not locate decoder layers for Palu bind_model")
+    for layer in layers:
+        attn = getattr(layer, "self_attn", None)
+        if attn is None:
+            raise AttributeError("Decoder layer has no self_attn for Palu bind_model")
+        yield attn
+
+
+def _kv_projection_geometry(attn, k_weight: torch.Tensor) -> tuple[int, int]:
+    """Resolve (num_kv_heads, head_dim) without the unsafe ``out // 128`` fallback.
+
+    Gemma3-270M stores ``head_dim=256`` and ``num_key_value_heads=1`` on the
+    config, not as ``attn.num_key_value_heads``. Using ``out_features // 128``
+    would invent two heads of dim 128 and break G-LRD.
+    """
+    config = getattr(attn, "config", None)
+    head_dim = getattr(attn, "head_dim", None)
+    if head_dim is None and config is not None:
+        head_dim = getattr(config, "head_dim", None)
+    num_kv_heads = getattr(attn, "num_key_value_heads", None)
+    if num_kv_heads is None and config is not None:
+        num_kv_heads = getattr(config, "num_key_value_heads", None)
+    if head_dim is None and num_kv_heads:
+        head_dim = k_weight.shape[0] // max(int(num_kv_heads), 1)
+    if num_kv_heads is None and head_dim:
+        num_kv_heads = k_weight.shape[0] // max(int(head_dim), 1)
+    if head_dim is None or num_kv_heads is None:
+        raise ValueError(
+            "Cannot resolve KV head geometry for Palu bind_model "
+            f"(k_proj out_features={tuple(k_weight.shape)})"
+        )
+    return int(num_kv_heads), int(head_dim)
+
+
 class PaluCompressor(KVCompressor):
     """Palu plug-in — group-head low-rank latent cache with RoPE-aware online path."""
 
@@ -51,12 +93,10 @@ class PaluCompressor(KVCompressor):
         """Offline G-LRD decomposition of k_proj / v_proj weights (once per model)."""
         if self._model_bound:
             return
-        for layer_idx, layer in enumerate(model.model.layers):
-            attn = layer.self_attn
+        for layer_idx, attn in enumerate(_iter_self_attn_modules(model)):
             k_weight = attn.k_proj.weight.detach().cpu()
             v_weight = attn.v_proj.weight.detach().cpu()
-            num_kv_heads = getattr(attn, "num_key_value_heads", k_weight.shape[0] // 128)
-            head_dim = k_weight.shape[0] // max(num_kv_heads, 1)
+            num_kv_heads, head_dim = _kv_projection_geometry(attn, k_weight)
             self._layer_factors[layer_idx] = build_layer_factors_from_projections(
                 k_weight,
                 v_weight,

@@ -100,3 +100,23 @@ METHOD_TAXONOMY: dict[str, MethodTaxonomy] = {
 
 def get_method_taxonomy(compressor_name: str) -> MethodTaxonomy | None:
     return METHOD_TAXONOMY.get(compressor_name)
+
+
+# KIVI is registered but unimplemented — excluded from live eval / taxonomy smokes.
+STUB_METHODS: frozenset[str] = frozenset({"kivi"})
+
+
+def active_eval_methods() -> tuple[str, ...]:
+    """Plug-ins that are implemented and should appear in taxonomy-coverage smokes."""
+    return tuple(name for name in METHOD_TAXONOMY if name not in STUB_METHODS)
+
+
+def taxonomy_categories_covered(method_names: list[str] | tuple[str, ...]) -> set[CompressionCategory]:
+    covered: set[CompressionCategory] = set()
+    for name in method_names:
+        meta = METHOD_TAXONOMY.get(name)
+        if meta is None:
+            continue
+        covered.add(meta.primary)
+        covered.update(meta.secondary)
+    return covered

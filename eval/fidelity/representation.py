@@ -102,7 +102,7 @@ def _layer_roundtrip(
     layer_idx: int,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """Return reconstructed K/V plus reference tensors aligned for comparison."""
-    if getattr(compressor, "name", None) == "rocketkv":
+    if getattr(compressor, "name", None) in {"rocketkv", "palu"}:
         compressed = compressor.compress(key, value, layer=layer_idx)
         k_hat, v_hat = compressor.decompress(compressed)
         payload = compressed.keys

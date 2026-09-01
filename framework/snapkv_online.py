@@ -52,7 +52,9 @@ def enable_snapkv_online(model, compressor: SnapKVCompressor) -> None:
 
     ops = load_attention_ops(model.config)
 
-    for layer_idx, layer in enumerate(model.model.layers):
+    from framework.attention_patches import decoder_layers
+
+    for layer_idx, layer in enumerate(decoder_layers(model)):
         attn = layer.self_attn
 
         def make_forward(layer_index: int, attn_module=attn, attn_ops=ops):

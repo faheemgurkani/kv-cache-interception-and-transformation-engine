@@ -97,7 +97,12 @@ def evaluate_memory_from_cache(
     compressed_layers = compressed_attention_layers(compressed_states)
     payload_bytes = compressed_size_bytes(compressed_layers, compressor)
     shared_metadata_bytes = compressor.shared_storage_bytes()
-    compressed_kv_bytes = payload_bytes + shared_metadata_bytes
+    # Palu A/B factors are static model-side G-LRD weights, not cache-resident.
+    # Counting them in compressed_bytes makes short-context ratios < 1.
+    if getattr(compressor, "name", None) == "palu":
+        compressed_kv_bytes = payload_bytes
+    else:
+        compressed_kv_bytes = payload_bytes + shared_metadata_bytes
     compressed_total_bytes = compressed_kv_bytes + recurrent_bytes
     ratio = visible_bytes / compressed_total_bytes if compressed_total_bytes > 0 else 1.0
     kv_ratio = attn_bytes / compressed_kv_bytes if compressed_kv_bytes > 0 else 1.0

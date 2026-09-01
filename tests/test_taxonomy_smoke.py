@@ -70,3 +70,113 @@ def test_palu_bind_uses_config_kv_heads_for_gemma_mqa():
     assert factors is not None
     assert factors.num_kv_heads == 1
     assert factors.head_dim == 256
+
+
+def test_vanilla_attention_restores_after_patch():
+    import types
+
+    from framework.attention_patches import ensure_vanilla_attention
+
+    class _Attn:
+        def forward(self, x):
+            return ("vanilla", x)
+
+    class _Layer:
+        def __init__(self):
+            self.self_attn = _Attn()
+
+    class _Inner:
+        def __init__(self):
+            self.layers = [_Layer(), _Layer()]
+
+    class _Model:
+        def __init__(self):
+            self.model = _Inner()
+
+    model = _Model()
+    ensure_vanilla_attention(model)
+    assert model.model.layers[0].self_attn.forward("x") == ("vanilla", "x")
+
+    def patched(self, x):
+        return ("patched", x)
+
+    model.model.layers[0].self_attn.forward = types.MethodType(patched, model.model.layers[0].self_attn)
+    assert model.model.layers[0].self_attn.forward("x") == ("patched", "x")
+    model._qjl_online_enabled = True
+    ensure_vanilla_attention(model)
+    assert model.model.layers[0].self_attn.forward("x") == ("vanilla", "x")
+    assert not hasattr(model, "_qjl_online_enabled")
+
+
+def test_palu_representation_roundtrip_is_not_identity():
+    import torch
+
+    from eval.fidelity.representation import _layer_roundtrip
+
+    compressor = PaluCompressor(compression_rate=0.25, group_size=2)
+    key = torch.randn(1, 4, 16, 32)
+    value = torch.randn(1, 4, 16, 32)
+    k_hat, v_hat, key_ref, value_ref = _layer_roundtrip(key, value, compressor, 0)
+    assert k_hat.shape == key.shape
+    rmse = (k_hat.float() - key_ref.float()).pow(2).mean().sqrt().item()
+    assert rmse > 1e-3
+
+
+def test_attention_cosine_clamped_to_unit_interval():
+    from eval.fidelity.attention import clamp_cosine
+
+    assert clamp_cosine(1.0078125) == 1.0
+    assert clamp_cosine(-1.01) == -1.0
+    assert clamp_cosine(float("nan")) == 0.0
+
+
+def test_paper_collection_flags_qjl_ppl_anomaly():
+    from eval.paper_collection import paper_quality_anomalies
+
+    identity = {
+        "label": "identity_baseline",
+        "compressor": "identity",
+        "fidelity": {
+            "representation": {"key_rmse": 0.0, "key_cosine_similarity": 1.0},
+            "attention": {"rmse": 0.0, "cosine_similarity": 1.0},
+            "memory": {"compression_ratio": 1.0},
+        },
+        "behavior": {"task_quality": {"perplexity": 100.0}},
+        "system": {"latency_throughput": {"tokens_per_second": 10.0}},
+        "cost": {
+            "offline": {"calibration_required": False},
+            "oaken_layers": [{"layer": "offline_evaluation", "measured": True}],
+        },
+    }
+    qjl = {
+        "label": "qjl_default",
+        "compressor": "qjl",
+        "fidelity": {
+            "representation": {"key_rmse": 5.0, "key_cosine_similarity": 0.01},
+            "attention": {"rmse": 5.0, "cosine_similarity": 0.6},
+            "memory": {"compression_ratio": 1.5},
+        },
+        "behavior": {"task_quality": {"perplexity": 5000.0}},
+        "system": {"latency_throughput": {"tokens_per_second": 1.0}},
+        "cost": {
+            "offline": {"calibration_required": False},
+            "oaken_layers": [{"layer": "offline_evaluation", "measured": True}],
+        },
+    }
+    anomalies = paper_quality_anomalies([identity, qjl])
+    assert any("QJL PPL" in item for item in anomalies)
+
+
+def test_export_bundle_documentation(tmp_path: Path):
+    from reporting.documentation import export_bundle_documentation
+
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    (jobs / "identity.json").write_text(
+        '{"compressor": "identity", "fidelity": {"attention": {"per_layer": []}}}'
+    )
+    (tmp_path / "run.log").write_text("ok\n")
+    dest = export_bundle_documentation(tmp_path, tmp_path / "RESULTS_COMPLETE.md", model_name="test")
+    text = dest.read_text()
+    assert "identity.json" in text
+    assert "run.log" in text

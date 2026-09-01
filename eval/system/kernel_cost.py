@@ -33,6 +33,15 @@ class KernelCostMetrics:
         return self.__dict__.copy()
 
 
+def _warmup_compressor(compressor: KVCompressor, model_layer: ModelLayer) -> None:
+    """Prime Lloyd-Max / projection caches before the timed decode loop."""
+    if getattr(compressor, "name", "") != "turboquant":
+        return
+    dummy = torch.zeros(1, 1, 2, 8, device=model_layer.device, dtype=torch.float32)
+    payload = compressor.compress_kv(dummy, layer=0, mode="key")
+    compressor.decompress_kv(payload, mode="key")
+
+
 @contextmanager
 def _timed_methods(compressor: KVCompressor):
     """Monkeypatch compressor hooks to accumulate wall-clock time, then restore."""
@@ -110,6 +119,7 @@ def evaluate_kernel_cost(
 ) -> KernelCostMetrics:
     if hasattr(compressor, "reset_state"):
         compressor.reset_state()
+    _warmup_compressor(compressor, model_layer)
     engine = model_layer.make_kv_engine(compressor)
 
     generated = input_ids

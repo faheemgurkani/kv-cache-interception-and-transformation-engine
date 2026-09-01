@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Generate docs/results/qwen3_1.7b/RESULTS_COMPLETE.md from Phase 5 result bundles."""
+"""Document evaluation bundles (redesigned sweeps or historical Phase 5)."""
 
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+
+import setup_path  # noqa: F401
+from reporting.documentation import export_bundle_documentation
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DOCS_OUT = PROJECT_ROOT / "docs" / "results" / "qwen3_1.7b" / "RESULTS_COMPLETE.md"
@@ -106,6 +110,23 @@ def _per_layer_section(job_path: Path) -> list[str]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--bundle", type=Path, help="Sweep result directory to document")
+    parser.add_argument("--output", type=Path, help="Markdown output path")
+    parser.add_argument("--title", default="Complete evaluation results")
+    parser.add_argument("--model-name", default="unknown")
+    args = parser.parse_args()
+    if args.bundle:
+        dest = args.output or (args.bundle / "RESULTS_COMPLETE.md")
+        path = export_bundle_documentation(
+            args.bundle,
+            dest,
+            title=args.title,
+            model_name=args.model_name,
+        )
+        print(f"Wrote {path} ({path.stat().st_size // 1024} KB)")
+        return
+
     lines: list[str] = [
         "# Complete Evaluation Results",
         "",

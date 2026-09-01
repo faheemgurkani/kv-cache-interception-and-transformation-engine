@@ -64,15 +64,19 @@ def attention_scores(
     return torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(head_dim)
 
 
+def clamp_cosine(value: float) -> float:
+    """bf16/fp16 cosine can land slightly outside [-1, 1]; KPI schema forbids that."""
+    if math.isnan(value):
+        return 0.0
+    return max(-1.0, min(1.0, float(value)))
+
+
 def _score_distortion(scores_fp: torch.Tensor, scores_quant: torch.Tensor) -> tuple[float, float, float, float]:
     diff = scores_fp.float() - scores_quant.float()
     mse = diff.pow(2).mean().item()
     rmse = math.sqrt(mse)
-    cosine = F.cosine_similarity(scores_fp.flatten(), scores_quant.flatten(), dim=0).item()
-    if math.isnan(cosine):
-        cosine = 0.0
-    else:
-        cosine = max(-1.0, min(1.0, cosine))
+    cosine = F.cosine_similarity(scores_fp.float().flatten(), scores_quant.float().flatten(), dim=0).item()
+    cosine = clamp_cosine(cosine)
     max_error = diff.abs().max().item()
     return mse, rmse, cosine, max_error
 
@@ -231,6 +235,7 @@ def evaluate_attention_fidelity(
                 output_layers += 1
             del value_payload, value_hat, value_hat_exp
 
+        cosine = clamp_cosine(float(cosine))
         per_layer.append(
             LayerAttentionMetrics(
                 layer=layer_idx,
@@ -262,7 +267,7 @@ def evaluate_attention_fidelity(
     return AttentionMetrics(
         mse=mse_sum / layers,
         rmse=rmse_sum / layers,
-        cosine_similarity=cosine_sum / layers,
+        cosine_similarity=clamp_cosine(cosine_sum / layers),
         max_error=max_error,
         output_rmse=(output_rmse_sum / output_layers) if output_layers else None,
         distribution_kl_divergence=(kl_sum / output_layers) if output_layers else None,

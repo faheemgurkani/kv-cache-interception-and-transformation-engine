@@ -178,10 +178,11 @@ class SnapKVCompressor(KVCompressor):
             mse = diff.pow(2).mean().item()
             rmse = math.sqrt(mse)
             cosine = F.cosine_similarity(
-                scores_fp[..., :min_len].flatten(),
-                scores_kept[..., :min_len].flatten(),
+                scores_fp[..., :min_len].float().flatten(),
+                scores_kept[..., :min_len].float().flatten(),
                 dim=0,
             ).item()
+            cosine = max(-1.0, min(1.0, float(cosine)))
             max_error = diff.abs().max().item()
             return mse, rmse, cosine, max_error
         finally:

@@ -55,6 +55,12 @@ class KVCacheEngine:
         self.compressor = compressor
         self.compressed_cache: CompressedCache | None = None
         self._last_full_cache = None
+        from framework.attention_patches import ensure_vanilla_attention
+
+        try:
+            ensure_vanilla_attention(model)
+        except AttributeError:
+            pass
         if getattr(compressor, "name", "") == "rocketkv":
             from framework.rocketkv_online import enable_rocketkv_online
 

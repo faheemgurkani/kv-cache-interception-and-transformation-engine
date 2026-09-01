@@ -8,16 +8,20 @@ Modal ``eval_worker``.
 from __future__ import annotations
 
 import json
+import traceback
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from compressors.registry import get_compressor
 from eval.kpi_schema import validate_bundle
 from eval.taxonomy_smoke import TAXONOMY_SMOKE_PRESET
+from framework.attention_patches import ensure_vanilla_attention
 from framework.config import PROJECT_ROOT, load_model_config
 from framework.model import ModelLayer
 from modal_app.job_spec import build_sweep_jobs
 from modal_app.merge import write_merged_reports
+from reporting.documentation import export_bundle_documentation
 from reporting.reporter import ResultReporter
 
 LOCAL_LIVE_CONTEXT = 64
@@ -33,13 +37,17 @@ def run_local_live_collection(
 ) -> dict[str, Any]:
     """Run the full eval runner locally for the taxonomy_smoke job grid."""
     output_dir = Path(output_dir)
+    jobs_dir = output_dir / "jobs"
     output_dir.mkdir(parents=True, exist_ok=True)
+    jobs_dir.mkdir(parents=True, exist_ok=True)
+    log_path = output_dir / "taxonomy_smoke_local_live.log"
 
     model_cfg = load_model_config(model_config_path)
     model_path = PROJECT_ROOT / model_cfg["local_path"]
     if not (model_path / "config.json").exists():
         raise FileNotFoundError(f"Local checkpoint missing: {model_path}")
 
+    _log(log_path, f"Loading {model_cfg.get('model_name')} from {model_path}")
     model_layer = ModelLayer(model_path=model_path)
     jobs = build_sweep_jobs(context_lengths=[context_length], preset=TAXONOMY_SMOKE_PRESET)
 
@@ -50,12 +58,17 @@ def run_local_live_collection(
     job_errors: list[dict[str, str]] = []
 
     for job in jobs:
+        try:
+            ensure_vanilla_attention(model_layer.model)
+        except AttributeError:
+            pass
         compressor = get_compressor(job.compressor, **job.get_compressor_kwargs())
         runner = EvaluationRunner(
             model_layer=model_layer,
             compressor=compressor,
             model_config=model_cfg,
         )
+        _log(log_path, f"START {job.label} compressor={job.compressor} ctx={context_length}")
         try:
             result = runner.run(
                 context_length,
@@ -66,13 +79,26 @@ def run_local_live_collection(
                 include_baselines=True,
             )
         except Exception as exc:  # noqa: BLE001 — surface per-method failures
-            job_errors.append({"label": job.label, "compressor": job.compressor, "error": str(exc)})
+            err = {"label": job.label, "compressor": job.compressor, "error": str(exc)}
+            job_errors.append(err)
+            (jobs_dir / f"{job.result_stem}.error.json").write_text(
+                json.dumps({**err, "traceback": traceback.format_exc()}, indent=2)
+            )
+            _log(log_path, f"ERROR {job.label}: {exc}")
             continue
         payload = result.to_dict()
         payload["label"] = job.label
         payload["status"] = "ok"
+        payload["finished_at"] = datetime.now(UTC).isoformat()
+        (jobs_dir / f"{job.result_stem}.json").write_text(json.dumps(payload, indent=2))
         results.append(result)
         payloads.append(payload)
+        mem = (payload.get("fidelity") or {}).get("memory") or {}
+        ppl = ((payload.get("behavior") or {}).get("task_quality") or {}).get("perplexity")
+        _log(
+            log_path,
+            f"OK {job.label} ratio={mem.get('compression_ratio')} ppl={ppl}",
+        )
 
     reporter = ResultReporter(output_dir)
     if results:
@@ -100,7 +126,9 @@ def run_local_live_collection(
 
     merged_json = merged_csv = None
     if payloads:
-        merged_json, merged_csv = write_merged_reports(payloads, output_dir, "taxonomy_smoke_local_live_merged")
+        merged_json, merged_csv = write_merged_reports(
+            payloads, output_dir, "taxonomy_smoke_local_live_merged"
+        )
 
     schema_errors = validate_bundle(
         payloads,
@@ -108,7 +136,6 @@ def run_local_live_collection(
         execution_platform=None,
         require_full_taxonomy=True,
     )
-    # Local MPS/CPU will not populate CUDA peak VRAM; still require reasoning + kernel + bandwidth.
     for payload in payloads:
         system = payload.get("system") or {}
         behavior = payload.get("behavior") or {}
@@ -121,6 +148,43 @@ def run_local_live_collection(
 
     report_md = output_dir / "TAXONOMY_SMOKE_LOCAL_LIVE.md"
     _write_markdown_report(report_md, payloads, schema_errors, job_errors, model_cfg)
+
+    docs_md = output_dir / "RESULTS_COMPLETE.md"
+    try:
+        export_bundle_documentation(
+            output_dir,
+            docs_md,
+            title="Local live taxonomy smoke — complete results",
+            model_name=str(model_cfg.get("model_name") or "unknown"),
+        )
+    except Exception as exc:  # noqa: BLE001
+        job_errors.append({"label": "documentation", "compressor": "n/a", "error": str(exc)})
+
+    try:
+        import csv
+
+        from eval.cost.benchmark_dimensions import benchmark_dimensions_from_dict
+
+        dim_rows = []
+        for record in payloads:
+            dims = benchmark_dimensions_from_dict(record)
+            if dims is None:
+                continue
+            dim_rows.append(
+                {
+                    "compressor": record.get("compressor"),
+                    "context_length": record.get("context_length"),
+                    **dims.to_dict(),
+                }
+            )
+        if dim_rows:
+            dim_csv = output_dir / "taxonomy_smoke_local_live_benchmark_dimensions.csv"
+            with dim_csv.open("w", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(dim_rows[0].keys()))
+                writer.writeheader()
+                writer.writerows(dim_rows)
+    except Exception as exc:  # noqa: BLE001
+        job_errors.append({"label": "benchmark_dimensions", "compressor": "n/a", "error": str(exc)})
 
     summary = {
         "model": model_cfg.get("model_name"),
@@ -135,10 +199,20 @@ def run_local_live_collection(
         "merged_json": str(merged_json) if merged_json else None,
         "merged_csv": str(merged_csv) if merged_csv else None,
         "report_md": str(report_md),
+        "docs_md": str(docs_md),
+        "log": str(log_path),
         "ok": not job_errors and not schema_errors and len(payloads) == len(jobs),
     }
     (output_dir / "taxonomy_smoke_local_live_summary.json").write_text(json.dumps(summary, indent=2))
+    _log(log_path, f"DONE ok={summary['ok']} jobs={summary['ok_count']}/{summary['job_count']}")
     return summary
+
+
+def _log(path: Path, message: str) -> None:
+    line = f"{datetime.now(UTC).isoformat()} {message}"
+    print(line)
+    with path.open("a") as handle:
+        handle.write(line + "\n")
 
 
 def _write_markdown_report(

@@ -18,8 +18,10 @@ from pathlib import Path
 import setup_path  # noqa: F401
 from eval.kpi_schema import validate_bundle
 from eval.local_live_smoke import run_local_live_collection
+from eval.paper_collection import audit_paper_collection, write_paper_collection_report
 from eval.taxonomy_smoke import TAXONOMY_SMOKE_PRESET, run_dummy_collection
 from framework.config import PROJECT_ROOT
+from reporting.documentation import export_bundle_documentation
 
 DEFAULT_MODEL_CONFIG = "configs/model_gemma3_270m.yaml"
 DEFAULT_MODAL_CONFIG = "configs/modal_gemma3.yaml"
@@ -86,11 +88,50 @@ def validate_latest_modal_bundle(stem: str) -> None:
         require_full_taxonomy=True,
     )
     print(f"Validated {len(payloads)} jobs from {path}")
-    if errors:
-        for err in errors:
+    audit = audit_paper_collection(payloads, modal=True)
+    report_dir = PROJECT_ROOT / "results" / f"{stem}_paper"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = write_paper_collection_report(audit, report_dir / "PAPER_COLLECTION_REPORT.md")
+    export_bundle_documentation(
+        path.parent,
+        report_dir / "RESULTS_COMPLETE.md",
+        title="Gemma3-270M taxonomy subset — paper collection",
+        model_name="google/gemma-3-270m",
+    )
+    try:
+        from eval.cost.benchmark_dimensions import benchmark_dimensions_from_dict
+        import csv
+
+        rows = []
+        for record in payloads:
+            dims = benchmark_dimensions_from_dict(record)
+            if dims is None:
+                continue
+            rows.append(
+                {
+                    "compressor": record.get("compressor"),
+                    "context_length": record.get("context_length"),
+                    **dims.to_dict(),
+                }
+            )
+        if rows:
+            dim_csv = report_dir / "method_benchmark_dimensions.csv"
+            with dim_csv.open("w", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()))
+                writer.writeheader()
+                writer.writerows(rows)
+    except Exception as exc:  # noqa: BLE001
+        print(f"Benchmark-dimension export skipped: {exc}")
+    print(f"Paper collection report: {report_path}")
+    if audit["quality_anomalies"]:
+        print("Quality / math anomalies (reported):")
+        for err in audit["quality_anomalies"]:
             print(f"  - {err}")
-        raise SystemExit("Modal taxonomy smoke KPI validation failed")
-    print("Modal taxonomy KPI collection passed.")
+    if errors or not audit["collection_ok"]:
+        for err in errors or audit["missing"]:
+            print(f"  - {err}")
+        raise SystemExit("Modal taxonomy smoke KPI collection incomplete")
+    print("Modal taxonomy KPI collection passed (anomalies listed above if any).")
 
 
 def run_modal(
@@ -142,14 +183,41 @@ def main() -> None:
         type=Path,
         default=PROJECT_ROOT / "results" / "taxonomy_smoke_dummy",
     )
+    parser.add_argument(
+        "--local-output-dir",
+        type=Path,
+        default=PROJECT_ROOT / "results" / "taxonomy_smoke_local_live",
+    )
     args = parser.parse_args()
 
-    want_dummy = args.dummy or (not args.modal) or (args.modal and not args.skip_dummy)
-    if args.modal:
+    want_dummy = args.dummy or (not args.local and not args.modal) or (
+        (args.local or args.modal) and not args.skip_dummy
+    )
+    if args.local or args.modal:
         _activate_shortlist_env(args.model_config, args.modal_config)
 
     if want_dummy:
         run_dummy(args.dummy_output_dir)
+
+    if args.local:
+        print("==> Local live EvaluationRunner taxonomy smoke")
+        live = run_local_live_collection(
+            args.local_output_dir,
+            model_config_path=args.model_config,
+            context_length=min(args.context_length, 64),
+        )
+        print(json.dumps({k: live[k] for k in ("ok", "ok_count", "methods_ok", "report_md")}, indent=2))
+        if live["job_errors"]:
+            print("Job errors:")
+            for item in live["job_errors"]:
+                print(f"  - {item}")
+        if live["schema_errors"]:
+            print("Schema/math errors:")
+            for err in live["schema_errors"]:
+                print(f"  - {err}")
+        if not live["ok"]:
+            raise SystemExit("Local live taxonomy smoke failed")
+        print("Local live taxonomy smoke passed.")
 
     if args.modal:
         run_modal(

@@ -437,7 +437,10 @@ class RocketKVCompressor(KVCompressor):
             diff = scores_fp.float() - projected.float()
             mse = diff.pow(2).mean().item()
             rmse = math.sqrt(mse)
-            cosine = F.cosine_similarity(scores_fp.flatten(), projected.flatten(), dim=0).item()
+            cosine = F.cosine_similarity(
+                scores_fp.float().flatten(), projected.float().flatten(), dim=0
+            ).item()
+            cosine = max(-1.0, min(1.0, float(cosine)))
             max_error = diff.abs().max().item()
             return mse, rmse, cosine, max_error
         finally:

@@ -167,6 +167,13 @@ class EvaluationRunner:
         perplexity_stride: int | None = None,
         generated_tokens: int | None = None,
     ) -> EvaluationResult:
+        from framework.attention_patches import ensure_vanilla_attention
+
+        try:
+            ensure_vanilla_attention(self.model_layer.model)
+        except AttributeError:
+            pass
+
         input_ids = self.build_context(context_length)
         stride = perplexity_stride or self.eval_config.get("perplexity_stride", 512)
         num_new_tokens = generated_tokens or self.eval_config.get("generated_tokens", 64)

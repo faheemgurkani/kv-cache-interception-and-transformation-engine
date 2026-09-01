@@ -60,6 +60,7 @@ This is particularly important because the current evaluation framework has **th
 | TinyDeepSeek native latent (Tier 3) | Open research; Gate C fail by design |
 | Unified five-model CI sweep | Optional (~2–50 min/model); no single orchestrator yet |
 | `StateAdapter` naming in §36 | Doc alias for `state_interface` + `state_compression` |
+| **Oaken cost in paper / result tables** | 📝 **Engine done; reporting deferred** — see [`RESEARCH_REDESIGN_PLAN.md` → Post-sweep reminder — Oaken cost](RESEARCH_REDESIGN_PLAN.md#post-sweep-reminder--oaken-cost-phases-3-26-27). After each sweep: pull `cost` + `oaken_layers` from job JSON; add **§COST** + `oaken2025` cite at paper rewrite; optional `--kernel-cost` subset for compress/decompress/attention split |
 
 ### Bottom line
 

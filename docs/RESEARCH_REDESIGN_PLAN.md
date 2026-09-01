@@ -65,7 +65,27 @@ Authoritative metric definitions: [`docs/methodology/METHODOLOGY.md`](methodolog
 
 **Purpose:** Document exactly what the paper still says vs. what the engine/docs now implement, so a later rewrite stays aligned. **Do not edit the `.tex` file until revised experimental results are ready** — this section is the specification for that pass.
 
-**When to apply:** After the next evaluation sweep completes (new job JSON/CSV bundles under `results/`). Order of work: (1) run experiments → (2) update result tables/figures from bundles → (3) apply framing/terminology changes below → (4) compile PDF.
+**When to apply:** After the next evaluation sweep completes (new job JSON/CSV bundles under `results/`). Order of work: (1) run experiments → (2) update result tables/figures from bundles **including Oaken-style cost fields** (see [Post-sweep reminder — Oaken cost](#post-sweep-reminder--oaken-cost-phases-3-26-27)) → (3) apply framing/terminology changes below → (4) compile PDF.
+
+### Post-sweep reminder — Oaken cost (Phases 3, 26, 27)
+
+**Do not skip when compiling results or editing the paper.** Oaken (ISCA 2025) motivates separating **offline preprocessing cost** (calibration, codebooks) from **online per-token cost** (compress/decompress during decode). KVBench already collects this in the engine — the paper does not report it yet.
+
+| What | Status | Action at paper/results time |
+| ---- | ------ | ------------------------------ |
+| **Offline eval (FIDELITY)** | ✅ Every job | Do **not** conflate with “free” offline work — FIDELITY is quality measurement, not deployment cost |
+| **Offline preprocessing** | ✅ `cost.offline` | Report TurboQuant calibration (`calibration_required`, `calibration_time_ms`, …) vs QJL/RocketKV calibration-free |
+| **Online transformation** | ⚠️ Partial in standard sweeps | `cost.online` populated; **compress/decompress/attention split** needs `--kernel-cost` (opt-in; not default on Modal) |
+| **End-to-end decode** | ✅ Every job | Use `system.throughput.ttft_ms`, `itl_ms_*`, `end_to_end_latency_ms` + `cost.online.end_to_end_decode_cost_ms` |
+| **Oaken five-layer taxonomy** | ✅ `cost.oaken_layers` | Cite layers in new **§COST** subsection (rewrite step 11); Discussion **F3** |
+| **Phase 27 calibration table** | ✅ Export CLI | Run `python scripts/export_method_benchmark_table.py` → `method_benchmark_dimensions.csv` for appendix/table |
+| **Oaken hardware / serving stack** | ❌ Out of scope | Cite in Related Work §4 only — methodology alignment, not replication |
+
+**From existing sweep JSON (no re-run required):** compare methods on `cost` + `oaken_layers`, calibration flags in `benchmark_dimensions`, and TTFT/ITL/end-to-end latency.
+
+**Optional follow-up (subset re-run):** add `--kernel-cost` locally or to Modal worker for full online compress / decompress / attention breakdown before final tables.
+
+**Paper targets:** cite `oaken2025`; add **§COST** after SYSTEM; Related Work evaluation gap; practitioner checklist — report offline preprocessing separately from FIDELITY (Phase 26 rewrite step 11).
 
 **Paper file:** [`docs/research_paper_writeup/conference_101719.tex`](research_paper_writeup/conference_101719.tex)  
 **Code truth sources:** `eval/runner.py`, `eval/controlled_conditions.py`, `eval/{fidelity,behavior,system,cost}/`, `compressors/taxonomy.py`, `docs/methodology/METHODOLOGY.md`
@@ -346,6 +366,8 @@ Phases **5**, **8**, **11**, **12**, and **13:** no paper changes (flagged not p
 | BEHAVIOR protocols | §6.2 + `eval/behavior/*.py` docstrings |
 | SYSTEM metrics | §6.3 |
 | Cost tree | §6.5 + `eval/cost/accounting.py` |
+| Oaken five-layer snapshot | `result.to_dict()["cost"]["oaken_layers"]` from any job JSON (Phase 26) |
+| Offline vs online cost fields | `cost.offline` / `cost.online` in merged sweep CSV/JSON (Phase 3); kernel split if `--kernel-cost` was used |
 | Taxonomy table | `compressors/taxonomy.py` `METHOD_TAXONOMY` |
 | Pareto optimal set | `python scripts/analyze_pareto.py … --context-length 512` → `pareto_ctx512.json` |
 | Cross-dim correlations | `python scripts/analyze_cross_dim.py … --context-length 512` → `correlations_ctx512.json` |

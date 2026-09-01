@@ -10,6 +10,7 @@ two metrics comparable across compressors even when RMSE semantics differ.
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass
 
 import torch
@@ -48,7 +49,10 @@ def _relative_error(original: torch.Tensor, reconstructed: torch.Tensor) -> floa
 def _cosine_similarity(original: torch.Tensor, reconstructed: torch.Tensor) -> float:
     original = original.float().flatten()
     reconstructed = reconstructed.float().to(original.device).flatten()
-    return F.cosine_similarity(original, reconstructed, dim=0).item()
+    value = F.cosine_similarity(original, reconstructed, dim=0).item()
+    if math.isnan(value):
+        return 0.0
+    return max(-1.0, min(1.0, value))
 
 
 def evaluate_representation(past_key_values, compressor: KVCompressor) -> RepresentationMetrics:

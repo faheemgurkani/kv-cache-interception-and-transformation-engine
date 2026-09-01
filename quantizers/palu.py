@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 import torch
 
-from framework.storage_accounting import bits_to_bytes, float32_storage_bits
+from framework.storage_accounting import bits_to_bytes
 
 PALU_METADATA_BYTES = 32
 
@@ -35,15 +35,24 @@ class PaluLatentPayload:
     b_key: torch.Tensor | None = None
     b_value: torch.Tensor | None = None
 
-    def storage_bits(self) -> int:
+    def latent_storage_bits(self) -> int:
+        """Cache-resident latent activations only (H^k / H^v), at the tensor dtype."""
         bits = PALU_METADATA_BYTES * 8
-        bits += float32_storage_bits(self.h_key.numel())
-        bits += float32_storage_bits(self.h_value.numel())
-        if self.b_key is not None:
-            bits += float32_storage_bits(self.b_key.numel())
-        if self.b_value is not None:
-            bits += float32_storage_bits(self.b_value.numel())
+        bits += self.h_key.numel() * self.h_key.element_size() * 8
+        bits += self.h_value.numel() * self.h_value.element_size() * 8
         return bits
+
+    def factor_storage_bits(self) -> int:
+        """Offline reconstruction factors (B). Not part of the per-token cache."""
+        bits = 0
+        if self.b_key is not None:
+            bits += self.b_key.numel() * self.b_key.element_size() * 8
+        if self.b_value is not None:
+            bits += self.b_value.numel() * self.b_value.element_size() * 8
+        return bits
+
+    def storage_bits(self) -> int:
+        return self.latent_storage_bits()
 
     def storage_bytes(self) -> int:
         return bits_to_bytes(self.storage_bits())

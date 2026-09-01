@@ -69,6 +69,10 @@ def _score_distortion(scores_fp: torch.Tensor, scores_quant: torch.Tensor) -> tu
     mse = diff.pow(2).mean().item()
     rmse = math.sqrt(mse)
     cosine = F.cosine_similarity(scores_fp.flatten(), scores_quant.flatten(), dim=0).item()
+    if math.isnan(cosine):
+        cosine = 0.0
+    else:
+        cosine = max(-1.0, min(1.0, cosine))
     max_error = diff.abs().max().item()
     return mse, rmse, cosine, max_error
 

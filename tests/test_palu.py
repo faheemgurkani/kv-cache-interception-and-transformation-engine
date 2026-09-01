@@ -143,13 +143,16 @@ def test_palu_lowrank_rmse_decreases_with_rank():
     assert rmse16 < rmse4
 
 
-def test_palu_payload_storage_bytes_includes_latent_and_factors():
+def test_palu_payload_storage_bytes_count_latents_not_factors():
     key = torch.randn(1, 4, 16, 32)
     value = torch.randn(1, 4, 16, 32)
     payload = compress_kv_lowrank(key, value, rank=4)
     assert payload.b_key is not None
     assert payload.b_value is not None
-    assert payload.nbytes > payload.h_key.numel() * 4
+    latent_bytes = payload.h_key.numel() * payload.h_key.element_size()
+    latent_bytes += payload.h_value.numel() * payload.h_value.element_size()
+    assert payload.factor_storage_bits() > 0
+    assert payload.nbytes <= latent_bytes + 32
 
 
 def test_palu_compressor_round_trip():

@@ -17,6 +17,7 @@ from pathlib import Path
 
 import setup_path  # noqa: F401
 from eval.kpi_schema import validate_bundle
+from eval.local_live_smoke import run_local_live_collection
 from eval.taxonomy_smoke import TAXONOMY_SMOKE_PRESET, run_dummy_collection
 from framework.config import PROJECT_ROOT
 
@@ -122,8 +123,13 @@ def run_modal(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dummy", action="store_true", help="Run local dummy execution (default if neither flag).")
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Run a real local EvaluationRunner smoke on the shortlist checkpoint.",
+    )
     parser.add_argument("--modal", action="store_true", help="Run the Gemma3-270M taxonomy smoke on Modal.")
-    parser.add_argument("--skip-dummy", action="store_true", help="Skip dummy when --modal is set.")
+    parser.add_argument("--skip-dummy", action="store_true", help="Skip dummy when --local/--modal is set.")
     parser.add_argument("--sync", action="store_true", default=True, help="Wait for Modal jobs and merge locally.")
     parser.add_argument("--detach", action="store_true", help="Spawn Modal jobs without waiting.")
     parser.add_argument("--no-resume", action="store_true", help="Re-submit jobs even if results exist on the volume.")

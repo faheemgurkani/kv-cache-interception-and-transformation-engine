@@ -137,6 +137,25 @@ def validate_payload_invariants(
     ratio = memory.get("compression_ratio")
     if not _finite_number(ratio) or float(ratio) <= 0:
         errors.append(f"compression_ratio must be finite and > 0, got {ratio}")
+    uncompressed = memory.get("uncompressed_bytes")
+    compressed = memory.get("compressed_bytes")
+    if _finite_number(ratio) and _finite_number(uncompressed) and _finite_number(compressed) and float(compressed) > 0:
+        expected_ratio = float(uncompressed) / float(compressed)
+        if abs(float(ratio) - expected_ratio) > max(1e-6, 1e-5 * abs(expected_ratio)):
+            errors.append(
+                f"compression_ratio {ratio} != uncompressed/compressed {expected_ratio}"
+            )
+
+    for cname in ("key_cosine_similarity", "value_cosine_similarity"):
+        cosine = representation.get(cname)
+        if _finite_number(cosine) and not -1.0 <= float(cosine) <= 1.0:
+            errors.append(f"fidelity.representation.{cname}={cosine} outside [-1, 1]")
+    attn_cosine = _lookup(payload, "fidelity.attention.cosine_similarity")
+    if _finite_number(attn_cosine) and not -1.0 <= float(attn_cosine) <= 1.0:
+        errors.append(f"fidelity.attention.cosine_similarity={attn_cosine} outside [-1, 1]")
+
+    if compressor == "palu" and _finite_number(ratio) and float(ratio) < 0.99:
+        errors.append(f"palu measured compression_ratio {ratio} < 1 (latent cache should not expand FP16 KV)")
 
     ppl = _lookup(payload, "behavior.task_quality.perplexity")
     if not _finite_number(ppl) or float(ppl) <= 0:

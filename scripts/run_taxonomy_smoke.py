@@ -126,7 +126,7 @@ def main() -> None:
     parser.add_argument("--skip-dummy", action="store_true", help="Skip dummy when --modal is set.")
     parser.add_argument("--sync", action="store_true", default=True, help="Wait for Modal jobs and merge locally.")
     parser.add_argument("--detach", action="store_true", help="Spawn Modal jobs without waiting.")
-    parser.add_argument("--no-resume", action="store_true", default=True)
+    parser.add_argument("--no-resume", action="store_true", help="Re-submit jobs even if results exist on the volume.")
     parser.add_argument("--context-length", type=int, default=128)
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--model-config", default=DEFAULT_MODEL_CONFIG)

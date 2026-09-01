@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from framework.snapkv_online import _align_attention_mask
 from compressors.palu import PaluCompressor
 from compressors.taxonomy import CompressionCategory, active_eval_methods, taxonomy_categories_covered
 from eval.kpi_schema import validate_bundle
@@ -51,6 +52,15 @@ def test_dummy_compressor_math_and_collection(tmp_path: Path):
     assert "taxonomy_primary" in CSV_FIELDNAMES
     assert "oaken_layers_measured" in CSV_FIELDNAMES
     assert "gate_loader_state" in CSV_FIELDNAMES
+
+
+def test_snapkv_aligns_decode_attention_mask_to_evicted_kv_len():
+    import torch
+
+    mask = torch.zeros(1, 1, 1, 129)
+    aligned = _align_attention_mask(mask, q_len=1, k_len=65)
+    assert aligned is not None
+    assert aligned.shape == (1, 1, 1, 65)
 
 
 def test_palu_bind_uses_config_kv_heads_for_gemma_mqa():

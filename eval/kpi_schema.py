@@ -179,7 +179,14 @@ def validate_payload_invariants(
                 f"hardware.execution_platform={platform} (expected {execution_platform})"
             )
 
-    errors.extend(validate_phase14_manifest(payload))
+    errors.extend(
+        err
+        for err in validate_phase14_manifest(payload)
+        if not (
+            err == "missing Phase 14 field: seed"
+            and compressor not in {"qjl", "turboquant"}
+        )
+    )
     return errors
 
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import torch
+
 from compressors.snapkv import SnapKVCompressor
 from framework.model_adapter import (
     attention_call_kwargs,
@@ -10,6 +12,20 @@ from framework.model_adapter import (
     resolve_attention_interface,
 )
 from quantizers.snapkv import snap_kv
+
+
+def _align_attention_mask(
+    attention_mask: torch.Tensor | None,
+    *,
+    q_len: int,
+    k_len: int,
+) -> torch.Tensor | None:
+    """Slice a 4D attention mask to the current query/key lengths after eviction."""
+    if attention_mask is None or attention_mask.dim() != 4:
+        return attention_mask
+    if attention_mask.shape[-2] == q_len and attention_mask.shape[-1] == k_len:
+        return attention_mask
+    return attention_mask[..., -q_len:, -k_len:]
 
 
 def _write_cache_kv(
@@ -77,9 +93,10 @@ def enable_snapkv_online(model, compressor: SnapKVCompressor) -> None:
                         kernel_size=compressor.kernel_size,
                     )
                     _write_cache_kv(past_key_values, layer_index, key_states, value_states)
-                    if attention_mask is not None and attention_mask.dim() == 4:
-                        k_len = key_states.shape[2]
-                        attention_mask = attention_mask[..., -q_len:, -k_len:]
+                    kv_len = key_states.shape[2]
+                attention_mask = _align_attention_mask(
+                    attention_mask, q_len=q_len, k_len=kv_len
+                )
 
                 attention_interface = resolve_attention_interface(
                     attn_module, model.config, attn_ops

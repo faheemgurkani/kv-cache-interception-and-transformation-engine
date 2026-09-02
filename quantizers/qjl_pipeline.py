@@ -127,21 +127,20 @@ class QJLPipeline:
         """
         q = query.float()
         num_q = q.shape[1]
-        group = 1 if num_q == num_kv_heads else num_q // num_kv_heads
+        group = 1 if num_kv_heads <= 0 or num_q == num_kv_heads else max(num_q // num_kv_heads, 1)
         m = proj.shape[0]
         scale = math.sqrt(math.pi / 2.0) / m
 
-        head_scores: list[torch.Tensor] = []
-        for qi in range(num_q):
-            kv = qi // group
-            q_h = q[:, qi, :, :]
-            # Float JL projection of the query — do NOT sign-quantize Sq.
-            sq = torch.einsum("md,btd->btm", proj, q_h)
-            k_signs = sign_bits[:, kv, :, :]
-            k_norms = vector_norm[:, kv, :]
-            dots = torch.einsum("btm,bkm->btk", sq, k_signs)
-            head_scores.append(scale * dots * k_norms.unsqueeze(1))
-        return torch.stack(head_scores, dim=1)
+        # Float JL projection of every query head — do NOT sign-quantize Sq.
+        sq = torch.einsum("md,bhtd->bhtm", proj, q)
+        if num_q != num_kv_heads:
+            signs = sign_bits.repeat_interleave(group, dim=1)
+            norms = vector_norm.repeat_interleave(group, dim=1)
+        else:
+            signs = sign_bits
+            norms = vector_norm
+        dots = torch.einsum("bhtm,bhkm->bhtk", sq, signs)
+        return scale * dots * norms.unsqueeze(2)
 
     def estimate_inner_products(
         self,
@@ -214,6 +213,43 @@ class QJLPipeline:
                 scores = scores.unsqueeze(-2)
 
         return scores / math.sqrt(head_dim)
+
+    def split_seq_payload(self, payload: QJLTensorPayload) -> list[QJLTensorPayload]:
+        """Split a batched-seq payload into one payload per token (dim=2)."""
+        if payload.passthrough is not None:
+            tokens = payload.passthrough.split(1, dim=2)
+            return [
+                QJLTensorPayload(
+                    sign_bits=payload.sign_bits,
+                    vector_norm=payload.vector_norm,
+                    proj_dim=payload.proj_dim,
+                    head_dim=payload.head_dim,
+                    original_shape=tuple(tok.shape),
+                    original_dtype=payload.original_dtype,
+                    original_device=payload.original_device,
+                    passthrough=tok,
+                )
+                for tok in tokens
+            ]
+        seq = payload.sign_bits.shape[2]
+        bits = payload.sign_bits.split(1, dim=2)
+        norms = payload.vector_norm.split(1, dim=2)
+        out: list[QJLTensorPayload] = []
+        for t in range(seq):
+            shape = list(payload.original_shape)
+            shape[2] = 1
+            out.append(
+                QJLTensorPayload(
+                    sign_bits=bits[t],
+                    vector_norm=norms[t],
+                    proj_dim=payload.proj_dim,
+                    head_dim=payload.head_dim,
+                    original_shape=tuple(shape),
+                    original_dtype=payload.original_dtype,
+                    original_device=payload.original_device,
+                )
+            )
+        return out
 
     def reconstruction_error(self, x: torch.Tensor, mode: str = "key") -> float:
         restored = self.decompress_tensor(self.compress_tensor(x, mode=mode))

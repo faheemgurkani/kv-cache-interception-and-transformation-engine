@@ -21,6 +21,7 @@ def save_pareto_figure(
     path.parent.mkdir(parents=True, exist_ok=True)
 
     optimal = set(analysis.pareto_optimal_ids)
+    excluded = set(analysis.excluded_from_frontier_ids)
     highlight = highlight_ids or optimal
 
     fig, ax = plt.subplots(figsize=(8, 5))
@@ -32,6 +33,16 @@ def save_pareto_figure(
         size = 40.0
         if pt.tokens_per_second is not None:
             size = max(20.0, min(400.0, pt.tokens_per_second * 20.0))
+        if pt.point_id in excluded:
+            ax.scatter(
+                pt.compression_ratio,
+                pt.log10_perplexity_ratio,
+                s=size,
+                alpha=0.45,
+                marker="x",
+                label=f"{pt.compressor} (excluded)",
+            )
+            continue
         alpha = 0.35 if pt.point_id not in optimal else 0.95
         marker = "o" if pt.point_id in highlight else "."
         ax.scatter(

@@ -38,11 +38,18 @@ def unpad(x: torch.Tensor, original_dim: int, dim: int = -1) -> torch.Tensor:
     return x.narrow(dim, 0, original_dim)
 
 
+_HADAMARD_MATRIX_CACHE: dict[tuple[int, str, torch.dtype], torch.Tensor] = {}
+
+
 def _hadamard_scipy(x: torch.Tensor, dim: int = -1) -> torch.Tensor:
     import scipy.linalg
 
     n = x.shape[dim]
-    h = torch.tensor(scipy.linalg.hadamard(n), dtype=x.dtype, device=x.device) / math.sqrt(n)
+    cache_key = (n, str(x.device), x.dtype)
+    h = _HADAMARD_MATRIX_CACHE.get(cache_key)
+    if h is None:
+        h = torch.tensor(scipy.linalg.hadamard(n), dtype=x.dtype, device=x.device) / math.sqrt(n)
+        _HADAMARD_MATRIX_CACHE[cache_key] = h
     return torch.einsum("ij,...j->...i", h, x.movedim(dim, -1)).movedim(-1, dim)
 
 

@@ -25,6 +25,11 @@ class TurboQuantCompressor(KVCompressor):
         self.stage = stage
         self.pipeline = TurboQuantPipeline(bitwidth=bitwidth, stage=stage, seed=seed)
 
+    def split_seq_payload(self, payload: object) -> list[object]:
+        if not isinstance(payload, TurboQuantTensorPayload):
+            raise TypeError(f"Expected TurboQuantTensorPayload, got {type(payload)}")
+        return list(self.pipeline.split_seq_payload(payload))
+
     def compress_kv(
         self,
         tensor: torch.Tensor,

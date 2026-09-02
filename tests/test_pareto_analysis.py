@@ -125,3 +125,19 @@ def test_pareto_analysis_export_roundtrip():
     assert payload["point_count"] == 2
     assert any(row["pareto_optimal"] for row in payload["points"])
     assert payload["frontier_2d"]
+
+
+def test_analyze_pareto_excludes_quality_collapse_from_frontier():
+    points = [
+        _point("palu", ratio=2.0, ppl_ratio=1.0, tok_s=5.0),
+        _point("qjl", ratio=1.55, ppl_ratio=90.0, tok_s=1.8),
+        _point("turboquant", ratio=3.3, ppl_ratio=1.5, tok_s=0.4),
+    ]
+    analysis = analyze_pareto(points, context_length=512, max_perplexity_ratio=5.0)
+    payload = analysis.to_dict()
+    assert "qjl" in {p.split("_")[0] for p in analysis.excluded_from_frontier_ids} or any(
+        row["excluded_from_frontier"] for row in payload["points"] if row["compressor"] == "qjl"
+    )
+    assert "qjl" not in {pid.split("_")[0] for pid in analysis.pareto_optimal_ids}
+    assert payload["max_perplexity_ratio"] == 5.0
+    assert payload["point_count"] == 3

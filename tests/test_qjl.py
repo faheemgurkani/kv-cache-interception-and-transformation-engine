@@ -174,3 +174,31 @@ def test_qjl_layer_compress_decompress():
     errors = compressor.reconstruction_error(key, value)
     assert errors["key_rmse"] > 0
     assert errors["value_rmse"] < 1e-5
+
+
+def test_qjl_mqa_estimator_tracks_true_scores():
+    """Gemma3-style MQA: 4 query heads, 1 KV head, d=256."""
+    torch.manual_seed(0)
+    compressor = QJLCompressor(seed=42)
+    query = torch.randn(1, 4, 8, 256)
+    key = torch.randn(1, 1, 8, 256)
+    payload = compressor.compress_kv(key, layer=0, mode="key")
+    from eval.fidelity.attention import attention_scores, expand_kv_heads
+
+    scores_est = compressor.estimate_attention_scores(query, payload, head_dim=256)
+    scores_true = attention_scores(query, expand_kv_heads(key, 4, 1), 256)
+    assert scores_est.shape == scores_true.shape
+    corr = torch.corrcoef(torch.stack([scores_est.flatten(), scores_true.flatten()]))[0, 1]
+    assert corr > 0.15
+
+
+def test_qjl_split_seq_payload_matches_token_loop():
+    compressor = QJLCompressor(seed=42)
+    key = torch.randn(1, 1, 6, 64)
+    batched = compressor.compress_kv(key, layer=0, mode="key")
+    split = compressor.split_seq_payload(batched)
+    assert len(split) == 6
+    for t, part in enumerate(split):
+        single = compressor.compress_kv(key[:, :, t : t + 1, :], layer=0, mode="key")
+        assert torch.equal(part.sign_bits, single.sign_bits)
+        assert torch.allclose(part.vector_norm, single.vector_norm)

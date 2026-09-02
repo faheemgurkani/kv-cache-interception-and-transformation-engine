@@ -6,6 +6,7 @@ import torch
 import torch.nn.functional as F
 
 from compressors.qjl import QJLCompressor
+from framework.attention_patches import align_attention_mask
 from framework.model_adapter import load_attention_ops, project_attention_states
 from quantizers.qjl_pipeline import QJLTensorPayload
 
@@ -35,6 +36,18 @@ def _ensure_key_payloads(
     return payloads[:seq_len]
 
 
+def append_key_payloads(
+    compressor: QJLCompressor,
+    layer_idx: int,
+    new_key_states: torch.Tensor,
+) -> list[QJLTensorPayload]:
+    """Encode freshly projected keys before they mix with reconstructed past."""
+    for token_idx in range(new_key_states.shape[2]):
+        slice_k = new_key_states[:, :, token_idx : token_idx + 1, :]
+        compressor.compress_key_token(layer_idx, slice_k)
+    return compressor.online_key_payloads(layer_idx)
+
+
 def qjl_eager_attention_forward(
     query: torch.Tensor,
     value: torch.Tensor,
@@ -47,13 +60,15 @@ def qjl_eager_attention_forward(
     """Attention using QJL-estimated QK^T; values remain exact FP16."""
     head_dim = query.shape[-1]
     scores = compressor.estimate_attention_scores(query, key_payloads, head_dim)
-    # estimate_attention_scores applies 1/sqrt(d); match module scaling if needed
     expected = head_dim**-0.5
     if abs(scaling - expected) > 1e-6:
         scores = scores * (scaling / expected)
 
+    q_len = query.shape[2]
+    k_len = scores.shape[-1]
+    attention_mask = align_attention_mask(attention_mask, q_len=q_len, k_len=k_len)
     if attention_mask is not None:
-        scores = scores + attention_mask
+        scores = scores + attention_mask.to(device=scores.device, dtype=scores.dtype)
 
     attn_weights = F.softmax(scores.float(), dim=-1).to(query.dtype)
     value_states = _repeat_kv(value, num_key_value_groups)
@@ -93,14 +108,34 @@ def enable_qjl_online(model, compressor: QJLCompressor) -> None:
                     config=model.config,
                 )
 
-                if past_key_values is not None:
-                    key_states, value_states = past_key_values.update(
-                        key_states,
-                        value_states,
-                        layer_index,
-                    )
+                # Sketch the *new* keys before update() concatenates reconstructed past.
+                # Re-encoding from decompressed 1-bit keys (cosine ≈ 0) is what made
+                # Gemma3 MQA / Qwen3 GQA BEHAVIOR PPL explode.
+                already = len(compressor.online_key_payloads(layer_index))
+                if already == 0 or past_key_values is None:
+                    key_payloads = _ensure_key_payloads(compressor, layer_index, key_states)
+                else:
+                    key_payloads = append_key_payloads(compressor, layer_index, key_states)
 
-                key_payloads = _ensure_key_payloads(compressor, layer_index, key_states)
+                if past_key_values is not None:
+                    cache_kwargs = kwargs.get("cache_kwargs")
+                    if cache_kwargs:
+                        key_states, value_states = past_key_values.update(
+                            key_states,
+                            value_states,
+                            layer_index,
+                            cache_kwargs,
+                        )
+                    else:
+                        key_states, value_states = past_key_values.update(
+                            key_states,
+                            value_states,
+                            layer_index,
+                        )
+
+                if len(key_payloads) != key_states.shape[2]:
+                    key_payloads = _ensure_key_payloads(compressor, layer_index, key_states)
+
                 attn_output, attn_weights = qjl_eager_attention_forward(
                     query_states,
                     value_states,

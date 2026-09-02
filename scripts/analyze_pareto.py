@@ -45,6 +45,15 @@ def main() -> None:
         help="Exclude identity baseline from frontier (paper offline-vs-online style)",
     )
     parser.add_argument(
+        "--max-ppl-ratio",
+        type=float,
+        default=5.0,
+        help=(
+            "Exclude points with perplexity/baseline above this from the frontier "
+            "(default 5.0). Pass 0 to disable."
+        ),
+    )
+    parser.add_argument(
         "--output-dir",
         type=Path,
         default=PROJECT_ROOT / "results" / "pareto",
@@ -58,7 +67,13 @@ def main() -> None:
         raise SystemExit("No valid Pareto points extracted from bundles.")
 
     exclude = ["identity"] if args.exclude_identity else None
-    analysis = analyze_pareto(points, context_length=args.context_length, exclude_compressors=exclude)
+    max_ratio = None if args.max_ppl_ratio == 0 else args.max_ppl_ratio
+    analysis = analyze_pareto(
+        points,
+        context_length=args.context_length,
+        exclude_compressors=exclude,
+        max_perplexity_ratio=max_ratio,
+    )
 
     out_dir = args.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)

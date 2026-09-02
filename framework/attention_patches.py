@@ -7,6 +7,8 @@ leak into later compressors and invalidate every KPI after the first patched job
 
 from __future__ import annotations
 
+import torch
+
 ONLINE_FLAGS: tuple[str, ...] = (
     "_qjl_online_enabled",
     "_rocketkv_online_enabled",
@@ -25,6 +27,26 @@ def decoder_layers(model):
     if layers is None:
         raise AttributeError("Could not locate decoder layers for attention patches")
     return layers
+
+
+def align_attention_mask(
+    attention_mask: torch.Tensor | None,
+    *,
+    q_len: int,
+    k_len: int,
+) -> torch.Tensor | None:
+    """Slice a 4D attention mask to the current query/key lengths.
+
+    Gemma3 (and other sliding-window families) may pass a prefill-sized 4D mask
+    into decode. Adding that tensor to [B, H, 1, k] scores silently broadcasts
+    or writes -inf on the wrong positions — QJL's ProdQJL path was hitting this
+    on Gemma3-270M (PPL ~90× identity).
+    """
+    if attention_mask is None or attention_mask.dim() != 4:
+        return attention_mask
+    if attention_mask.shape[-2] == q_len and attention_mask.shape[-1] == k_len:
+        return attention_mask
+    return attention_mask[..., -q_len:, -k_len:]
 
 
 def _clear_online_flags(model) -> None:

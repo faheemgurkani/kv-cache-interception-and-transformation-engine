@@ -18,6 +18,7 @@ def save_pareto_analysis(
     exclude_identity: bool = False,
     write_plot: bool = True,
     name_prefix: str = "pareto",
+    max_perplexity_ratio: float | None = 5.0,
 ) -> tuple[ParetoAnalysis, Path]:
     """Analyze results and write ``pareto.json`` (+ optional PDF figure)."""
     output_dir = Path(output_dir)
@@ -25,7 +26,12 @@ def save_pareto_analysis(
 
     points = load_pareto_points_from_results(results)
     exclude = ["identity"] if exclude_identity else None
-    analysis = analyze_pareto(points, context_length=context_length, exclude_compressors=exclude)
+    analysis = analyze_pareto(
+        points,
+        context_length=context_length,
+        exclude_compressors=exclude,
+        max_perplexity_ratio=max_perplexity_ratio,
+    )
 
     suffix = f"_ctx{context_length}" if context_length is not None else "_all"
     json_path = output_dir / f"{name_prefix}{suffix}.json"

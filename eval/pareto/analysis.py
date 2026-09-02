@@ -70,6 +70,8 @@ class ParetoAnalysis:
     points: list[ParetoPoint]
     pareto_optimal_ids: list[str]
     frontier_2d: list[ParetoPoint]
+    excluded_from_frontier_ids: list[str] = field(default_factory=list)
+    max_perplexity_ratio: float | None = None
     objectives_3d: list[tuple[str, ParetoObjective]] = field(
         default_factory=lambda: [
             ("compression_ratio", ParetoObjective.MAXIMIZE),
@@ -80,8 +82,10 @@ class ParetoAnalysis:
 
     def to_dict(self) -> dict[str, Any]:
         optimal = {pid for pid in self.pareto_optimal_ids}
+        excluded = {pid for pid in self.excluded_from_frontier_ids}
         return {
             "context_length": self.context_length,
+            "max_perplexity_ratio": self.max_perplexity_ratio,
             "objectives_3d": [{"metric": m, "direction": d.value} for m, d in self.objectives_3d],
             "axes_2d": {
                 "x": "compression_ratio",
@@ -92,12 +96,23 @@ class ParetoAnalysis:
             },
             "point_count": len(self.points),
             "pareto_optimal_count": len(self.pareto_optimal_ids),
+            "excluded_from_frontier_count": len(self.excluded_from_frontier_ids),
             "points": [
-                {**p.to_dict(), "pareto_optimal": p.point_id in optimal}
+                {
+                    **p.to_dict(),
+                    "pareto_optimal": p.point_id in optimal,
+                    "excluded_from_frontier": p.point_id in excluded,
+                    "exclude_reason": (
+                        f"perplexity_ratio {p.perplexity_ratio:.3f} > {self.max_perplexity_ratio}"
+                        if p.point_id in excluded and self.max_perplexity_ratio is not None
+                        else None
+                    ),
+                }
                 for p in self.points
             ],
             "frontier_2d": [p.to_dict() for p in self.frontier_2d],
             "pareto_optimal_ids": self.pareto_optimal_ids,
+            "excluded_from_frontier_ids": self.excluded_from_frontier_ids,
         }
 
 
@@ -305,8 +320,14 @@ def analyze_pareto(
     *,
     context_length: int | None = None,
     exclude_compressors: Sequence[str] | None = None,
+    max_perplexity_ratio: float | None = None,
 ) -> ParetoAnalysis:
-    """Analyze a slice of points; optionally filter by context length."""
+    """Analyze a slice of points; optionally filter by context length.
+
+    ``max_perplexity_ratio`` keeps quality-collapse jobs (e.g. QJL 90× PPL) in
+    the export but excludes them from 2D/3D frontier membership so they cannot
+    sit on the paper Pareto set.
+    """
     filtered = list(points)
     if context_length is not None:
         filtered = [p for p in filtered if p.context_length == context_length]
@@ -314,12 +335,24 @@ def analyze_pareto(
         blocked = {c.lower() for c in exclude_compressors}
         filtered = [p for p in filtered if p.compressor.lower() not in blocked]
 
-    frontier_3d = compute_pareto_frontier(filtered)
-    frontier_2d = compute_frontier_2d(filtered)
+    excluded: list[ParetoPoint] = []
+    usable = filtered
+    if max_perplexity_ratio is not None:
+        usable = []
+        for point in filtered:
+            if point.perplexity_ratio > max_perplexity_ratio:
+                excluded.append(point)
+            else:
+                usable.append(point)
+
+    frontier_3d = compute_pareto_frontier(usable)
+    frontier_2d = compute_frontier_2d(usable)
 
     return ParetoAnalysis(
         context_length=context_length,
         points=sorted(filtered, key=lambda p: (p.compression_ratio, p.log10_perplexity_ratio)),
         pareto_optimal_ids=[p.point_id for p in frontier_3d],
         frontier_2d=frontier_2d,
+        excluded_from_frontier_ids=[p.point_id for p in excluded],
+        max_perplexity_ratio=max_perplexity_ratio,
     )

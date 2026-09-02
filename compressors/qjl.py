@@ -42,6 +42,11 @@ class QJLCompressor(KVCompressor):
         self._online_key_payloads.setdefault(layer, []).append(payload)
         return payload
 
+    def split_seq_payload(self, payload: object) -> list[object]:
+        if not isinstance(payload, QJLTensorPayload):
+            raise TypeError(f"Expected QJLTensorPayload, got {type(payload)}")
+        return list(self.pipeline.split_seq_payload(payload))
+
     def compress_kv(
         self,
         tensor: torch.Tensor,

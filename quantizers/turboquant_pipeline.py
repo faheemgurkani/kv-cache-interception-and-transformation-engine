@@ -297,6 +297,36 @@ class TurboQuantPipeline:
             apply_norm_correction=False,
         )
 
+    def split_seq_payload(self, payload: TurboQuantTensorPayload) -> list[TurboQuantTensorPayload]:
+        """Split a batched-seq payload into one payload per token (dim=2)."""
+        seq = payload.original_shape[2]
+        fields = ("indices", "qjl_bits", "norm_r", "vector_norm", "gamma", "wht_only")
+        split_fields: dict[str, list[torch.Tensor] | None] = {}
+        for name in fields:
+            tensor = getattr(payload, name)
+            split_fields[name] = None if tensor is None else list(tensor.split(1, dim=2))
+        out: list[TurboQuantTensorPayload] = []
+        for t in range(seq):
+            shape = list(payload.original_shape)
+            shape[2] = 1
+            out.append(
+                TurboQuantTensorPayload(
+                    indices=None if split_fields["indices"] is None else split_fields["indices"][t],
+                    qjl_bits=None if split_fields["qjl_bits"] is None else split_fields["qjl_bits"][t],
+                    norm_r=None if split_fields["norm_r"] is None else split_fields["norm_r"][t],
+                    vector_norm=None if split_fields["vector_norm"] is None else split_fields["vector_norm"][t],
+                    gamma=None if split_fields["gamma"] is None else split_fields["gamma"][t],
+                    original_dim=payload.original_dim,
+                    padded_dim=payload.padded_dim,
+                    original_shape=tuple(shape),
+                    original_dtype=payload.original_dtype,
+                    stage=payload.stage,
+                    bitwidth=payload.bitwidth,
+                    wht_only=None if split_fields["wht_only"] is None else split_fields["wht_only"][t],
+                )
+            )
+        return out
+
     def reconstruction_error(self, x: torch.Tensor, use_qjl: bool = True) -> float:
         restored = self.decompress_tensor(self.compress_tensor(x, use_qjl=use_qjl))
         restored = restored.to(device=x.device)

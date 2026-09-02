@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 
 from compressors.snapkv import SnapKVCompressor
+from framework.attention_patches import align_attention_mask
 from framework.model_adapter import (
     attention_call_kwargs,
     load_attention_ops,
@@ -21,11 +22,7 @@ def _align_attention_mask(
     k_len: int,
 ) -> torch.Tensor | None:
     """Slice a 4D attention mask to the current query/key lengths after eviction."""
-    if attention_mask is None or attention_mask.dim() != 4:
-        return attention_mask
-    if attention_mask.shape[-2] == q_len and attention_mask.shape[-1] == k_len:
-        return attention_mask
-    return attention_mask[..., -q_len:, -k_len:]
+    return align_attention_mask(attention_mask, q_len=q_len, k_len=k_len)
 
 
 def _write_cache_kv(

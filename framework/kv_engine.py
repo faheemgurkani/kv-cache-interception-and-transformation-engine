@@ -13,10 +13,13 @@ import torch
 
 from compressors.base import CompressedKV, KVCompressor
 from framework.kv_cache import (
+    append_decompressed_tokens,
     build_incremental_layer,
     compress_token_slice,
+    decompress_cache,
     decompress_to_legacy_cache,
     incremental_seq_length,
+    is_incremental_compressed,
     iter_layer_kv,
 )
 from quantizers.rocketkv import RocketKVLayerPayload
@@ -55,6 +58,8 @@ class KVCacheEngine:
         self.compressor = compressor
         self.compressed_cache: CompressedCache | None = None
         self._last_full_cache = None
+        self._decode_prefix: list[tuple[torch.Tensor, torch.Tensor]] | None = None
+        self._decode_prefix_len: int = 0
         from framework.attention_patches import ensure_vanilla_attention
 
         try:
@@ -98,12 +103,22 @@ class KVCacheEngine:
                 value_payloads = list(prior.values)  # type: ignore[arg-type]
                 start = prev_seq
 
-            for token_idx in range(start, total_seq):
-                key_payload, value_payload = compress_token_slice(
-                    key, value, token_idx, layer_idx, self.compressor
+            remaining = total_seq - start
+            splitter = getattr(self.compressor, "split_seq_payload", None)
+            if remaining > 1 and splitter is not None:
+                key_full = self.compressor.compress_kv(key[:, :, start:total_seq, :], layer_idx, "key")
+                value_full = self.compressor.compress_kv(
+                    value[:, :, start:total_seq, :], layer_idx, "value"
                 )
-                key_payloads.append(key_payload)
-                value_payloads.append(value_payload)
+                key_payloads.extend(splitter(key_full))
+                value_payloads.extend(splitter(value_full))
+            else:
+                for token_idx in range(start, total_seq):
+                    key_payload, value_payload = compress_token_slice(
+                        key, value, token_idx, layer_idx, self.compressor
+                    )
+                    key_payloads.append(key_payload)
+                    value_payloads.append(value_payload)
 
             new_layers.append(
                 build_incremental_layer(
@@ -117,6 +132,65 @@ class KVCacheEngine:
             )
         return new_layers
 
+    def _invalidate_decode_prefix(self) -> None:
+        self._decode_prefix = None
+        self._decode_prefix_len = 0
+
+    def _refresh_decode_prefix(self, new_layers: list[CompressedKV], prev_seq: int) -> None:
+        if not new_layers or not is_incremental_compressed(new_layers[0]):
+            self._invalidate_decode_prefix()
+            return
+        new_seq = incremental_seq_length(new_layers)
+        if (
+            self._decode_prefix is not None
+            and self._decode_prefix_len == prev_seq
+            and new_seq >= prev_seq
+        ):
+            self._decode_prefix = append_decompressed_tokens(
+                self._decode_prefix,
+                new_layers,
+                prev_seq,
+                self.compressor,
+            )
+            self._decode_prefix_len = new_seq
+            return
+        self._decode_prefix = decompress_cache(new_layers, self.compressor)
+        self._decode_prefix_len = new_seq
+
+    def _legacy_cache_from_prefix(self, cache: CompressedCache, device: torch.device):
+        if (
+            self._decode_prefix is None
+            or self._decode_prefix_len == 0
+            or cache.seq_length < self._decode_prefix_len
+        ):
+            self._invalidate_decode_prefix()
+            return decompress_to_legacy_cache(
+                cache.layers,
+                self.compressor,
+                self.model.config,
+                device=device,
+                template_cache=self._last_full_cache,
+            )
+        if cache.seq_length > self._decode_prefix_len:
+            self._decode_prefix = append_decompressed_tokens(
+                self._decode_prefix,
+                cache.layers,
+                self._decode_prefix_len,
+                self.compressor,
+            )
+            self._decode_prefix_len = cache.seq_length
+        from framework.kv_cache import merge_decompressed_kv_into_cache
+        from framework.state_interface import hybrid_layer_detected
+
+        if self._last_full_cache is not None and hybrid_layer_detected(self._last_full_cache):
+            return merge_decompressed_kv_into_cache(self._last_full_cache, self._decode_prefix)
+        try:
+            from transformers.cache_utils import DynamicCache
+
+            return DynamicCache(ddp_cache_data=tuple(self._decode_prefix), config=self.model.config)
+        except (ImportError, TypeError):
+            return tuple(self._decode_prefix)
+
     @torch.no_grad()
     def step(
         self,
@@ -127,6 +201,8 @@ class KVCacheEngine:
     ) -> tuple[torch.Tensor, CompressedCache]:
         cache = compressed_cache or self.compressed_cache
         prev_seq = cache.seq_length if cache is not None else 0
+        if cache is None or cache.seq_length < self._decode_prefix_len:
+            self._invalidate_decode_prefix()
 
         if attention_mask is None:
             attention_mask = torch.ones(
@@ -145,18 +221,15 @@ class KVCacheEngine:
                         self.compressor.restore_state_from_payload(layer_idx, payload)  # type: ignore[attr-defined]
             elif getattr(self.compressor, "name", "") == "qjl":
                 self.compressor.sync_key_payloads_from_cache(cache.layers)  # type: ignore[attr-defined]
-            past_kv = decompress_to_legacy_cache(
-                cache.layers,
-                self.compressor,
-                self.model.config,
-                device=input_ids.device,
-                template_cache=self._last_full_cache,
-            )
+            past_kv = self._legacy_cache_from_prefix(cache, input_ids.device)
         elif getattr(self.compressor, "name", "") == "qjl" and hasattr(self.compressor, "reset_state"):
             self.compressor.reset_state()  # type: ignore[attr-defined]
+            self._invalidate_decode_prefix()
 
         forward_mask = attention_mask
-        if getattr(self.model.config, "layer_types", None) and getattr(self.compressor, "name", "") == "rocketkv":
+        _uses_layer_types = bool(getattr(self.model.config, "layer_types", None))
+        _needs_native_mask = getattr(self.compressor, "name", "") in {"rocketkv", "qjl"}
+        if _uses_layer_types and _needs_native_mask:
             # Gemma3 builds per-layer sliding/full masks internally; a flat mask
             # desynchronizes once RocketKV sparsifies keys during decode.
             forward_mask = None
@@ -225,6 +298,7 @@ class KVCacheEngine:
         new_cache = CompressedCache(layers=new_layers)
         self.compressed_cache = new_cache
         self._last_full_cache = outputs.past_key_values
+        self._refresh_decode_prefix(new_layers, prev_seq)
         return outputs.logits, new_cache
 
     @torch.no_grad()
@@ -238,6 +312,7 @@ class KVCacheEngine:
         generated = input_ids
         attn = attention_mask
         cache: CompressedCache | None = None
+        self._invalidate_decode_prefix()
 
         for _ in range(max_new_tokens):
             logits, cache = self.step(generated if cache is None else generated[:, -1:], attn, cache)

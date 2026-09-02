@@ -219,6 +219,39 @@ def merge_decompressed_kv_into_cache(
     raise TypeError("template_cache must expose .layers or .key_cache/.value_cache for hybrid merge")
 
 
+def append_decompressed_tokens(
+    prefix_pairs: list[tuple[torch.Tensor, torch.Tensor]],
+    compressed_layers: list[CompressedKV],
+    prefix_len: int,
+    compressor: KVCompressor,
+) -> list[tuple[torch.Tensor, torch.Tensor]]:
+    """Decompress only newly appended token payloads and concat onto a prefix."""
+    updated: list[tuple[torch.Tensor, torch.Tensor]] = []
+    for (prev_key, prev_value), layer in zip(prefix_pairs, compressed_layers, strict=True):
+        if not is_incremental_compressed(layer):
+            return decompress_cache(compressed_layers, compressor)
+        key_tail = list(layer.keys)[prefix_len:]  # type: ignore[union-attr]
+        value_tail = list(layer.values)[prefix_len:]  # type: ignore[union-attr]
+        if not key_tail:
+            updated.append((prev_key, prev_value))
+            continue
+        new_key = torch.cat(
+            [compressor.decompress_kv(item, mode="key") for item in key_tail],
+            dim=2,
+        )
+        new_value = torch.cat(
+            [compressor.decompress_kv(item, mode="value") for item in value_tail],
+            dim=2,
+        )
+        updated.append(
+            (
+                torch.cat([prev_key, new_key.to(prev_key.device)], dim=2),
+                torch.cat([prev_value, new_value.to(prev_value.device)], dim=2),
+            )
+        )
+    return updated
+
+
 def decompress_to_legacy_cache(
     compressed_layers: list[CompressedKV],
     compressor: KVCompressor,

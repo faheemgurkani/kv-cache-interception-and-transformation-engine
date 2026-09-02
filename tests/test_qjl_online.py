@@ -54,3 +54,26 @@ def test_qjl_shared_storage_counts_projection_once():
     first = compressor.shared_storage_bytes()
     compressor.compress_kv(key, layer=1, mode="key")
     assert compressor.shared_storage_bytes() == first
+
+
+def test_qjl_attention_aligns_prefill_mask_on_decode():
+    compressor = QJLCompressor(seed=42)
+    query = torch.randn(1, 4, 1, 64)
+    key = torch.randn(1, 1, 8, 64)
+    value = torch.randn(1, 1, 8, 64)
+    payloads = [compressor.compress_key_token(0, key[:, :, t : t + 1, :]) for t in range(8)]
+    # Prefill-sized 4D mask (Gemma3 decode leak) — must not raise or broadcast to 8 queries.
+    mask = torch.zeros(1, 1, 8, 8)
+    mask[..., -1] = -1e9
+    out, weights = qjl_eager_attention_forward(
+        query,
+        value,
+        payloads,
+        compressor,
+        attention_mask=mask,
+        scaling=64**-0.5,
+        num_key_value_groups=4,
+    )
+    assert out.shape == (1, 1, 4, 64)
+    assert weights.shape == (1, 4, 1, 8)
+    assert torch.isfinite(out).all()

@@ -133,15 +133,22 @@ def extract_cross_dim_point(record: EvaluationResult | dict[str, Any]) -> CrossD
     if value_rmse is None:
         value_rmse = _dig(payload, "section_a_fidelity", "tensor", "value_rmse")
 
-    perplexity = _dig(payload, "behavior", "perplexity")
+    perplexity = _dig(payload, "behavior", "task_quality", "perplexity")
+    if perplexity is None:
+        perplexity = _dig(payload, "behavior", "perplexity")
     if perplexity is None:
         perplexity = _dig(payload, "section_b_inference", "perplexity")
-    perplexity_baseline = _dig(payload, "behavior", "perplexity_baseline")
+    perplexity_baseline = _dig(payload, "behavior", "task_quality", "perplexity_baseline")
+    if perplexity_baseline is None:
+        perplexity_baseline = _dig(payload, "behavior", "perplexity_baseline")
     if perplexity_baseline is None:
         perplexity_baseline = _dig(payload, "section_b_inference", "perplexity_baseline")
 
-    tokens_per_second = _dig(payload, "system", "throughput", "tokens_per_second")
-    latency_ms_per_token = _dig(payload, "system", "throughput", "latency_ms_per_token")
+    tokens_per_second = _dig(payload, "system", "latency_throughput", "tokens_per_second")
+    latency_ms_per_token = _dig(payload, "system", "latency_throughput", "latency_ms_per_token")
+    if tokens_per_second is None:
+        tokens_per_second = _dig(payload, "system", "throughput", "tokens_per_second")
+        latency_ms_per_token = _dig(payload, "system", "throughput", "latency_ms_per_token")
     if tokens_per_second is None:
         throughput = _dig(payload, "section_b_inference", "throughput") or {}
         if throughput.get("online_compressed_kv"):

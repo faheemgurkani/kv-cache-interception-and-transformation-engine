@@ -40,6 +40,22 @@ def _point(
     )
 
 
+def test_extract_pareto_point_from_redesigned_payload():
+    payload = {
+        "compressor": "palu",
+        "label": "palu_smoke",
+        "context_length": 128,
+        "fidelity": {"memory": {"compression_ratio": 2.0}},
+        "behavior": {"task_quality": {"perplexity": 68.9, "perplexity_baseline": 69.0}},
+        "system": {"latency_throughput": {"tokens_per_second": 4.6}},
+    }
+    pt = extract_pareto_point(payload)
+    assert pt is not None
+    assert pt.compression_ratio == pytest.approx(2.0)
+    assert pt.tokens_per_second == pytest.approx(4.6)
+    assert pt.perplexity_ratio == pytest.approx(68.9 / 69.0)
+
+
 def test_log10_perplexity_ratio_math():
     payload = {
         "compressor": "turboquant",

@@ -13,6 +13,7 @@ from enum import Enum
 class CompressionCategory(str, Enum):
     """Primary compression mechanism categories from RESEARCH_REDESIGN_PLAN Phase 4."""
 
+    BASELINE = "baseline"  # uncompressed identity — not a compression family
     EVICTION = "eviction"  # A — drop tokens; retained tokens stay dense
     QUANTIZATION = "quantization"  # B — lower bitwidth on tensor elements
     PROJECTION = "projection"  # C — dimensionality reduction / low-rank latent cache
@@ -47,7 +48,7 @@ class MethodTaxonomy:
 METHOD_TAXONOMY: dict[str, MethodTaxonomy] = {
     "identity": MethodTaxonomy(
         name="identity",
-        primary=CompressionCategory.QUANTIZATION,
+        primary=CompressionCategory.BASELINE,
         description="Uncompressed FP16 baseline (no transformation).",
         compression_unit="tensor",
     ),
@@ -109,6 +110,11 @@ STUB_METHODS: frozenset[str] = frozenset({"kivi"})
 def active_eval_methods() -> tuple[str, ...]:
     """Plug-ins that are implemented and should appear in taxonomy-coverage smokes."""
     return tuple(name for name in METHOD_TAXONOMY if name not in STUB_METHODS)
+
+
+def mechanism_categories() -> set[CompressionCategory]:
+    """Phase 4 families A–E — excludes the uncompressed baseline bucket."""
+    return {item for item in CompressionCategory if item is not CompressionCategory.BASELINE}
 
 
 def taxonomy_categories_covered(method_names: list[str] | tuple[str, ...]) -> set[CompressionCategory]:

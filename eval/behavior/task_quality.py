@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
@@ -14,6 +15,17 @@ from framework.kv_engine import CompressedCache
 from framework.model import ModelLayer
 
 
+@dataclass
+class PerplexityResult:
+    perplexity: float
+    n_tokens: int
+    nll_sum: float
+    prefill_tokens: int = 0
+
+    def __float__(self) -> float:
+        return self.perplexity
+
+
 @torch.no_grad()
 def evaluate_perplexity_baseline(
     model_layer: ModelLayer,
@@ -22,6 +34,18 @@ def evaluate_perplexity_baseline(
     stride: int = 512,
 ) -> float:
     """Uncompressed sliding-window perplexity (baseline reference only)."""
+    return evaluate_perplexity_baseline_result(
+        model_layer, input_ids, max_length=max_length, stride=stride
+    ).perplexity
+
+
+@torch.no_grad()
+def evaluate_perplexity_baseline_result(
+    model_layer: ModelLayer,
+    input_ids: torch.Tensor,
+    max_length: int | None = None,
+    stride: int = 512,
+) -> PerplexityResult:
     model = model_layer.model
     device = model_layer.device
     max_length = max_length or getattr(model.config, "max_position_embeddings", input_ids.size(1))
@@ -54,7 +78,7 @@ def evaluate_perplexity_baseline(
     if n_tokens == 0:
         raise ValueError("No tokens available for perplexity evaluation.")
 
-    return math.exp(nll_sum / n_tokens)
+    return PerplexityResult(perplexity=math.exp(nll_sum / n_tokens), n_tokens=n_tokens, nll_sum=nll_sum)
 
 
 def _maybe_trim_cache(cache: CompressedCache, max_length: int, compressor: KVCompressor) -> CompressedCache:
@@ -79,11 +103,26 @@ def evaluate_perplexity(
     max_length: int | None = None,
     stride: int = 512,
 ) -> float:
-    """
-    Sliding-window perplexity with compressed KV stored between autoregressive steps.
+    """Sliding-window perplexity with compressed KV stored between steps."""
+    return evaluate_perplexity_result(
+        model_layer, input_ids, compressor, max_length=max_length, stride=stride
+    ).perplexity
 
-    Uses a single incremental compressed cache across stride windows (no prefix replay).
-    Passes an explicit attention mask so past KV positions are visible to the model.
+
+@torch.no_grad()
+def evaluate_perplexity_result(
+    model_layer: ModelLayer,
+    input_ids: torch.Tensor,
+    compressor: KVCompressor,
+    max_length: int | None = None,
+    stride: int = 512,
+) -> PerplexityResult:
+    """
+    Sliding-window perplexity with compressed KV.
+
+    Each stride window is one multi-token ``engine.step`` so prefill-only methods
+    (SnapKV) see ``q_len == kv_len`` and actually evict. Token-by-token stepping
+    was scoring SnapKV as a no-op (PPL identical to identity).
     """
     device = model_layer.device
     if hasattr(compressor, "reset_state"):
@@ -98,35 +137,46 @@ def evaluate_perplexity(
     n_tokens = 0
     prev_end_loc = 0
     cache: CompressedCache | None = None
+    prefill_tokens = 0
 
     for begin_loc in tqdm(range(0, seq_len, stride), desc="ppl-compressed", leave=False):
         end_loc = min(begin_loc + max_length, seq_len)
         score_from = max(1, prev_end_loc + 1)
         score_to = end_loc - 1
+        new_ids = input_ids[:, prev_end_loc:end_loc].to(device)
+        if new_ids.shape[1] == 0:
+            break
+        past_len = cache.seq_length if cache is not None else 0
+        attn_len = past_len + new_ids.shape[1]
+        attention_mask = torch.ones(
+            new_ids.shape[0],
+            attn_len,
+            device=device,
+            dtype=torch.long,
+        )
+        position_ids = torch.arange(
+            prev_end_loc, end_loc, device=device, dtype=torch.long
+        ).unsqueeze(0)
+        logits, cache = engine.step(
+            new_ids,
+            attention_mask=attention_mask,
+            compressed_cache=cache,
+            position_ids=position_ids,
+        )
+        if prev_end_loc == 0:
+            prefill_tokens += int(new_ids.shape[1])
 
-        for t in range(prev_end_loc, end_loc):
-            token = input_ids[:, t : t + 1].to(device)
-            attn_len = t + 1
-            attention_mask = torch.ones(
-                token.shape[0],
-                attn_len,
-                device=device,
-                dtype=torch.long,
-            )
-            position_ids = torch.tensor([[t]], device=device, dtype=torch.long)
-            logits, cache = engine.step(
-                token,
-                attention_mask=attention_mask,
-                compressed_cache=cache,
-                position_ids=position_ids,
-            )
-
+        # logits: [B, new_len, V] — score next-token NLL for in-window targets
+        for offset, t in enumerate(range(prev_end_loc, end_loc)):
             target_pos = t + 1
-            if score_from <= target_pos <= score_to:
-                target = input_ids[:, target_pos].to(device)
-                nll = F.cross_entropy(logits[:, -1, :], target, reduction="sum")
-                nll_sum += nll.item()
-                n_tokens += 1
+            if not (score_from <= target_pos <= score_to):
+                continue
+            if offset >= logits.shape[1]:
+                break
+            target = input_ids[:, target_pos].to(device)
+            nll = F.cross_entropy(logits[:, offset, :], target, reduction="sum")
+            nll_sum += nll.item()
+            n_tokens += 1
 
         cache = _maybe_trim_cache(cache, max_length, compressor) if cache is not None else None
         prev_end_loc = end_loc
@@ -136,4 +186,9 @@ def evaluate_perplexity(
     if n_tokens == 0:
         raise ValueError("No tokens available for compressed perplexity evaluation.")
 
-    return math.exp(nll_sum / n_tokens)
+    return PerplexityResult(
+        perplexity=math.exp(nll_sum / n_tokens),
+        n_tokens=n_tokens,
+        nll_sum=nll_sum,
+        prefill_tokens=prefill_tokens,
+    )

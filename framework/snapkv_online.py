@@ -82,7 +82,14 @@ def enable_snapkv_online(model, compressor: SnapKVCompressor) -> None:
 
                 q_len = query_states.shape[2]
                 kv_len = key_states.shape[2]
-                if q_len == kv_len and kv_len >= compressor.max_capacity_prompt:
+                prefill_done = compressor._prefill_done.get(layer_index, False)
+                # Prefill-only: fire once the cache first reaches capacity.
+                # Token-by-token PPL never has q_len == kv_len except t=0, so the
+                # old conjunct skipped eviction and SnapKV PPL matched identity.
+                should_evict = kv_len >= compressor.max_capacity_prompt and (
+                    q_len == kv_len or not prefill_done
+                )
+                if should_evict:
                     key_states, value_states = snap_kv(
                         query_states,
                         key_states,
@@ -92,6 +99,7 @@ def enable_snapkv_online(model, compressor: SnapKVCompressor) -> None:
                         kernel_size=compressor.kernel_size,
                     )
                     _write_cache_kv(past_key_values, layer_index, key_states, value_states)
+                    compressor._prefill_done[layer_index] = True
                     kv_len = key_states.shape[2]
                 attention_mask = _align_attention_mask(
                     attention_mask, q_len=q_len, k_len=kv_len

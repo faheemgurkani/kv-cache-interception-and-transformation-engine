@@ -15,6 +15,7 @@ from compressors.taxonomy import (
     STUB_METHODS,
     active_eval_methods,
     get_method_taxonomy,
+    mechanism_categories,
     taxonomy_categories_covered,
 )
 from eval.reproducibility.manifest import validate_phase14_manifest
@@ -30,6 +31,7 @@ REQUIRED_PAYLOAD_PATHS: tuple[str, ...] = (
     "fidelity.memory.compressed_bytes",
     "fidelity.recurrent.applicable",
     "behavior.task_quality.perplexity",
+    "behavior.task_quality.n_tokens",
     "behavior.retrieval.exact_match_accuracy",
     "behavior.instruction_following.format_compliance_rate",
     "system.latency_throughput.tokens_per_second",
@@ -56,6 +58,7 @@ SMOKE_EXTRA_PATHS: tuple[str, ...] = (
     "system.memory_bandwidth.effective_bandwidth_gbps",
     "system.kernel_cost.compress_decompress_time_ms",
     "cost.online.kernel_cost_measured",
+    "git_sha",
 )
 
 OAKEN_LAYER_NAMES: tuple[str, ...] = (
@@ -190,6 +193,8 @@ def validate_payload_invariants(
         offline = _lookup(payload, "cost.offline.calibration_required")
         if offline is not True:
             errors.append(f"{compressor} should report calibration_required=true")
+        if compressor == "palu" and _lookup(payload, "cost.offline.calibration_time_ms") is None:
+            errors.append("palu calibration_time_ms was not measured (bind_model must record offline cost)")
 
     if execution_platform:
         platform = _lookup(payload, "hardware.execution_platform")
@@ -219,8 +224,10 @@ def validate_taxonomy_coverage(payloads: list[dict[str, Any]]) -> list[str]:
     if extra_stubs:
         errors.append(f"stub methods present: {extra_stubs}")
     covered = taxonomy_categories_covered(tuple(names))
-    required = set(CompressionCategory)
-    if covered != required:
+    required = mechanism_categories() | (
+        {CompressionCategory.BASELINE} if "identity" in names else set()
+    )
+    if not required.issubset(covered):
         errors.append(
             f"taxonomy categories incomplete: have {sorted(c.value for c in covered)}, "
             f"need {sorted(c.value for c in required)}"

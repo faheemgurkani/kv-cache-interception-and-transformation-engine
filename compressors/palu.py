@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import torch
 
 from compressors.base import CompressedKV, KVCompressor, OfflineCostMetadata
@@ -14,6 +16,12 @@ from quantizers.palu import (
     decompress_kv_lowrank,
     reconstruct_kv_from_latent,
 )
+
+
+def _allocator_bytes() -> int | None:
+    if torch.cuda.is_available():
+        return int(torch.cuda.memory_allocated())
+    return None
 
 
 def _iter_self_attn_modules(model):
@@ -77,6 +85,8 @@ class PaluCompressor(KVCompressor):
         self.calibration_seq_len = int(calibration_seq_len)
         self._layer_factors: dict[int, PaluLayerFactors] = {}
         self._model_bound = False
+        self._calibration_time_ms: float | None = None
+        self._calibration_memory_bytes: int | None = None
 
     @property
     def taxonomy(self):
@@ -93,6 +103,8 @@ class PaluCompressor(KVCompressor):
         """Offline G-LRD decomposition of k_proj / v_proj weights (once per model)."""
         if self._model_bound:
             return
+        start = time.perf_counter()
+        mem_before = _allocator_bytes()
         for layer_idx, attn in enumerate(_iter_self_attn_modules(model)):
             k_weight = attn.k_proj.weight.detach().cpu()
             v_weight = attn.v_proj.weight.detach().cpu()
@@ -105,7 +117,16 @@ class PaluCompressor(KVCompressor):
                 group_size=self.group_size,
                 compression_rate=self.compression_rate,
             )
+        self._calibration_time_ms = (time.perf_counter() - start) * 1000.0
+        mem_after = _allocator_bytes()
+        if mem_before is not None and mem_after is not None:
+            self._calibration_memory_bytes = max(0, mem_after - mem_before)
         self._model_bound = True
+
+    def fidelity_rank_capped_by_seq(self, seq_len: int, head_dim: int, layer: int = 0) -> bool:
+        """True when post-hoc SVD rank >= min(seq, d) so reconstruction is algebraically exact."""
+        rank = self.effective_rank(layer, seq_len=seq_len, head_dim=head_dim)
+        return rank >= min(max(seq_len, 1), max(head_dim, 1))
 
     def layer_factors(self, layer: int) -> PaluLayerFactors | None:
         return self._layer_factors.get(layer)
@@ -129,6 +150,8 @@ class PaluCompressor(KVCompressor):
             calibration_required=True,
             calibration_dataset="wikitext-2",
             calibration_tokens=self.calibration_samples * self.calibration_seq_len,
+            calibration_time_ms=self._calibration_time_ms,
+            calibration_memory_bytes=self._calibration_memory_bytes,
         )
 
     def shared_storage_bytes(self) -> int:

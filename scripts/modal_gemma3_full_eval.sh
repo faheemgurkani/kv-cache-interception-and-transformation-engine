@@ -105,8 +105,60 @@ case "$MODE" in
       --preset "$PRESET" --context-lengths "$CONTEXT_LENGTHS" \
       --output "$OUTPUT"
     ;;
+  retry)
+    setup_volumes
+    echo "==> Retry OOM jobs: identity/turboquant/qjl @ ctx=256,512 ($GPU only)"
+    python scripts/run_taxonomy_smoke.py --modal --skip-dummy --sync --no-resume \
+      --preset "$PRESET" --context-lengths 256,512 \
+      --labels identity_baseline,tq_full_b4,qjl_default \
+      --output "${OUTPUT}_retry"
+    ;;
   *)
-    echo "Usage: $0 {setup|scope|full}" >&2
+    echo "Usage: $0 {setup|scope|full|retry}" >&2
     exit 1
     ;;
 esac
+
+if [[ "$MODE" == "full" || "$MODE" == "retry" ]]; then
+  python - <<'PY'
+import json
+import os
+from pathlib import Path
+from eval.paper_collection import audit_paper_collection, write_paper_collection_report
+from eval.kpi_schema import validate_bundle
+from modal_app.merge import write_merged_reports
+
+root = Path("results")
+stem = os.environ.get("OUTPUT", "gemma3_full_eval")
+paths = [p for p in sorted(root.glob(f"{stem}_*.json")) if "_scope" not in p.stem and "_retry" not in p.stem]
+paths += sorted(root.glob(f"{stem}_retry_*.json"))
+payloads = []
+for path in paths:
+    data = json.loads(path.read_text())
+    payloads.extend(data.get("results", data))
+seen = set()
+merged = []
+for item in payloads:
+    key = (item.get("label"), item.get("context_length"), item.get("compressor"))
+    if key in seen:
+        continue
+    seen.add(key)
+    merged.append(item)
+out = root / f"{stem}_merged_latest.json"
+out.write_text(json.dumps({"results": merged}, indent=2))
+write_merged_reports(merged, root, f"{stem}_merged")
+audit = audit_paper_collection(merged, modal=True)
+report_dir = root / f"{stem}_paper"
+report_dir.mkdir(parents=True, exist_ok=True)
+write_paper_collection_report(audit, report_dir / "PAPER_COLLECTION_REPORT.md")
+errors = validate_bundle(merged, require_smoke_extras=True, execution_platform="modal", require_full_taxonomy=True)
+print(f"Merged {len(merged)} jobs -> {out}")
+print(f"Collection OK: {not errors and audit['collection_ok']}")
+if errors:
+    for err in errors[:10]:
+        print(" ", err)
+if audit.get("quality_anomalies"):
+    for err in audit["quality_anomalies"]:
+        print(" anomaly:", err)
+PY
+fi

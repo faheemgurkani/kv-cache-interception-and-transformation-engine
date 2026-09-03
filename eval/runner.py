@@ -180,6 +180,10 @@ class EvaluationRunner:
         input_ids = self.build_context(context_length)
         stride = perplexity_stride or self.eval_config.get("perplexity_stride", 512)
         num_new_tokens = generated_tokens or self.eval_config.get("generated_tokens", 64)
+        attn_window = min(
+            self.eval_config.get("attention_fidelity_tokens", 512),
+            context_length,
+        )
 
         hw_metrics = hardware_metrics_enabled() if collect_hardware_metrics is None else collect_hardware_metrics
         if hw_metrics:
@@ -206,13 +210,21 @@ class EvaluationRunner:
                 "Pass run_fidelity=False or use --skip-fidelity."
             )
 
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         if not run_fidelity:
             fidelity = None
         else:
             fidelity = evaluate_fidelity(self.model_layer, input_ids, self.compressor)
 
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         behavior: BehaviorMetrics | None = None
         if run_behavior:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             # Baselines must run before KVCacheEngine construction (RocketKV patches attention).
             behavior = evaluate_behavior(
                 self.model_layer,
@@ -229,6 +241,8 @@ class EvaluationRunner:
 
         system: SystemMetrics | None = None
         if run_system:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             compressed_bytes = fidelity.memory.compressed_bytes if fidelity else None
             uncompressed_bytes = fidelity.memory.uncompressed_bytes if fidelity else None
             system = evaluate_system(
@@ -255,9 +269,10 @@ class EvaluationRunner:
                 system=system,
             )
 
+        eval_cfg = {**self.eval_config, "attention_fidelity_tokens": attn_window}
         controlled = build_controlled_conditions(
             model_metadata=probe.metadata,
-            eval_config=self.eval_config,
+            eval_config=eval_cfg,
             context_length=context_length,
             compressor=self.compressor,
             tokenizer=self.model_layer.tokenizer,

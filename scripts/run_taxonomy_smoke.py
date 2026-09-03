@@ -73,7 +73,11 @@ def run_dummy(output_dir: Path) -> dict:
 
 def validate_latest_modal_bundle(stem: str) -> None:
     results_dir = PROJECT_ROOT / "results"
-    matches = sorted(results_dir.glob(f"{stem}_*.json"))
+    matches = sorted(
+        p
+        for p in results_dir.glob(f"{stem}_*.json")
+        if p.stem.startswith(stem + "_") and "_scope" not in p.stem
+    )
     if not matches:
         raise SystemExit(f"No merged bundle matching results/{stem}_*.json")
     path = matches[-1]

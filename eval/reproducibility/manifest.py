@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
 
 
 def collect_git_sha(*, cwd: Path | str | None = None) -> str | None:
-    """Best-effort ``git rev-parse HEAD``. Never mutates the repo."""
+    """Best-effort commit pin: env stamp (Modal) then ``git rev-parse HEAD`` (local)."""
+    for key in ("KV_GIT_SHA", "GIT_SHA", "GIT_COMMIT"):
+        raw = os.environ.get(key, "").strip()
+        if raw:
+            return raw
     try:
         proc = subprocess.run(
             ["git", "rev-parse", "HEAD"],

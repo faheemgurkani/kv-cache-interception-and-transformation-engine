@@ -94,6 +94,11 @@ def modal_runtime_env(config: dict | None = None) -> dict[str, str]:
     modal_cfg = os.environ.get("KV_MODAL_CONFIG", "").strip()
     if modal_cfg:
         env["KV_MODAL_CONFIG"] = modal_cfg
+    from eval.reproducibility.manifest import collect_git_sha
+
+    git_sha = collect_git_sha(cwd=project_root())
+    if git_sha:
+        env["KV_GIT_SHA"] = git_sha
     return env
 
 

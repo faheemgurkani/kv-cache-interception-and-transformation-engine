@@ -26,6 +26,11 @@ def test_collect_git_sha_returns_hex():
         assert len(sha) >= 7
 
 
+def test_collect_git_sha_reads_env(monkeypatch):
+    monkeypatch.setenv("KV_GIT_SHA", "abc123def456")
+    assert collect_git_sha() == "abc123def456"
+
+
 def test_palu_offline_cost_includes_bind_timing():
     compressor = PaluCompressor(compression_rate=0.5, group_size=1)
     compressor.bind_model(_fake_gemma_mqa_model())

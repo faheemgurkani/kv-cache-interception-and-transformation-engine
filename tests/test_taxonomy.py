@@ -22,6 +22,13 @@ def test_qjl_modifies_attention():
     assert tax.modifies_attention is True
 
 
+def test_identity_primary_is_baseline_not_quantization():
+    tax = get_method_taxonomy("identity")
+    assert tax is not None
+    assert tax.primary == CompressionCategory.BASELINE
+    assert tax.primary.value == "baseline"
+
+
 def test_taxonomy_to_dict():
     tax = get_method_taxonomy("snapkv")
     payload = tax.to_dict()

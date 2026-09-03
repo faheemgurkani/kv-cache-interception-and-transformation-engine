@@ -99,6 +99,33 @@ def validate_latest_modal_bundle(stem: str) -> None:
         model_name="google/gemma-3-270m",
     )
     try:
+        from eval.cross_dim.correlation import analyze_correlations
+        from eval.cross_dim.plot import save_correlation_heatmap, save_tradeoff_figure
+        from eval.cross_dim.points import extract_cross_dim_point
+        from eval.pareto.analysis import analyze_pareto, extract_pareto_point
+        from eval.pareto.plot import save_pareto_figure
+
+        ctx = payloads[0].get("context_length") if payloads else None
+        pareto_points = [pt for item in payloads if (pt := extract_pareto_point(item)) is not None]
+        if pareto_points:
+            analysis = analyze_pareto(pareto_points, context_length=ctx)
+            (report_dir / f"pareto_ctx{ctx}.json").write_text(
+                __import__("json").dumps(analysis.to_dict(), indent=2)
+            )
+            pdf = save_pareto_figure(analysis, report_dir / f"plot_pareto_ctx{ctx}.pdf")
+            print(f"Pareto PDF: {pdf}")
+        cross_points = [pt for item in payloads if (pt := extract_cross_dim_point(item)) is not None]
+        if cross_points:
+            corr = analyze_correlations(cross_points, context_length=ctx)
+            (report_dir / f"cross_dim_ctx{ctx}.json").write_text(
+                __import__("json").dumps(corr.to_dict(), indent=2)
+            )
+            save_tradeoff_figure(cross_points, report_dir / f"plot_tradeoff_ctx{ctx}.pdf", context_length=ctx)
+            save_correlation_heatmap(corr, report_dir / f"plot_correlation_ctx{ctx}.pdf")
+            print(f"Trade-off / correlation PDFs written under {report_dir}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"Pareto/trade-off PDF export skipped: {exc}")
+    try:
         from eval.cost.benchmark_dimensions import benchmark_dimensions_from_dict
         import csv
 
@@ -179,6 +206,11 @@ def main() -> None:
     parser.add_argument("--model-config", default=DEFAULT_MODEL_CONFIG)
     parser.add_argument("--modal-config", default=DEFAULT_MODAL_CONFIG)
     parser.add_argument(
+        "--methods",
+        default=None,
+        help="Comma-separated compressor subset for --local (e.g. identity,snapkv,palu).",
+    )
+    parser.add_argument(
         "--dummy-output-dir",
         type=Path,
         default=PROJECT_ROOT / "results" / "taxonomy_smoke_dummy",
@@ -201,10 +233,14 @@ def main() -> None:
 
     if args.local:
         print("==> Local live EvaluationRunner taxonomy smoke")
+        methods = [item.strip() for item in args.methods.split(",") if item.strip()] if args.methods else None
+        live_ctx = args.context_length if methods else min(args.context_length, 64)
         live = run_local_live_collection(
             args.local_output_dir,
             model_config_path=args.model_config,
-            context_length=min(args.context_length, 64),
+            context_length=live_ctx,
+            methods=methods,
+            require_full_taxonomy=methods is None,
         )
         print(json.dumps({k: live[k] for k in ("ok", "ok_count", "methods_ok", "report_md")}, indent=2))
         if live["job_errors"]:

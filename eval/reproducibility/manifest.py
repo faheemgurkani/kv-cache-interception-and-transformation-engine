@@ -2,7 +2,25 @@
 
 from __future__ import annotations
 
+import subprocess
+from pathlib import Path
 from typing import Any
+
+
+def collect_git_sha(*, cwd: Path | str | None = None) -> str | None:
+    """Best-effort ``git rev-parse HEAD``. Never mutates the repo."""
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=None if cwd is None else str(cwd),
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, OSError):
+        return None
+    sha = proc.stdout.strip()
+    return sha or None
 
 # Canonical checklist from Phase 14 YAML block.
 PHASE14_FIELDS: tuple[str, ...] = (

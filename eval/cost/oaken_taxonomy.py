@@ -118,7 +118,7 @@ def build_oaken_layers(
         OakenLayerSnapshot(
             layer=OakenCostLayer.OFFLINE_PREPROCESSING.value,
             description=OAKEN_LAYER_DESCRIPTIONS[OakenCostLayer.OFFLINE_PREPROCESSING],
-            measured=offline.calibration_required or offline.calibration_time_ms is not None,
+            measured=(not offline.calibration_required) or offline.calibration_time_ms is not None,
             metrics={
                 "calibration_required": offline.calibration_required,
                 "calibration_dataset": offline.calibration_dataset,

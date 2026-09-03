@@ -92,6 +92,7 @@ def evaluate_system(
     include_baseline: bool = False,
     num_new_tokens: int = 128,
     actual_kv_memory_bytes: int | None = None,
+    uncompressed_kv_memory_bytes: int | None = None,
 ) -> SystemMetrics:
     """Run the requested SYSTEM sub-metrics. Only throughput (TTFT/ITL/tok-s) runs by
     default; the rest are opt-in since each adds its own generate() pass."""
@@ -106,7 +107,14 @@ def evaluate_system(
         else None
     )
     peak_memory = (
-        evaluate_peak_vram(model_layer, input_ids, compressor, num_new_tokens=num_new_tokens)
+        evaluate_peak_vram(
+            model_layer,
+            input_ids,
+            compressor,
+            num_new_tokens=num_new_tokens,
+            uncompressed_kv_bytes=uncompressed_kv_memory_bytes,
+            compressed_kv_bytes=actual_kv_memory_bytes,
+        )
         if run_peak_memory
         else None
     )

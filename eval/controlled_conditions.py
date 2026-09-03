@@ -47,7 +47,14 @@ REQUIRED_FIXED_AXES: tuple[str, ...] = (
     "attention_implementation",
     "evaluation_orchestrator",
     "kv_interception_engine",
+    "git_sha",
+    "paper_contract",
 )
+
+PAPER_TABLE_CONTRACT: dict[str, Any] = {
+    "generation_length": 64,
+    "precision": "float16",
+}
 
 DEFAULT_DECODING_CONFIGURATION: dict[str, Any] = {
     "strategy": "greedy",
@@ -318,6 +325,7 @@ def build_controlled_conditions(
     run_kernel_cost: bool = False,
     run_gpu_utilization: bool = False,
     run_cost: bool = True,
+    git_sha: str | None = None,
 ) -> ControlledInterceptionContract:
     """Build the Phase 7 controlled-conditions contract for one evaluation run."""
     wikitext_cfg = eval_config.get("wikitext", {})
@@ -326,6 +334,17 @@ def build_controlled_conditions(
     stride = perplexity_stride if perplexity_stride is not None else eval_config.get("perplexity_stride", 512)
     gen_len = generation_length if generation_length is not None else eval_config.get("generated_tokens", 64)
     attn_window = eval_config.get("attention_fidelity_tokens", 512)
+    precision = format_model_precision(model_precision)
+    paper_contract = {
+        "generation_length": PAPER_TABLE_CONTRACT["generation_length"],
+        "precision": PAPER_TABLE_CONTRACT["precision"],
+        "actual_generation_length": gen_len,
+        "actual_precision": precision,
+        "deviates": (
+            int(gen_len) != int(PAPER_TABLE_CONTRACT["generation_length"])
+            or (precision is not None and precision.replace("torch.", "") != PAPER_TABLE_CONTRACT["precision"])
+        ),
+    }
 
     fixed: dict[str, Any] = {
         "model": model_metadata,
@@ -351,7 +370,7 @@ def build_controlled_conditions(
         "context_length": context_length,
         "generation_length": gen_len,
         "batch_size": eval_config.get("batch_size", 1),
-        "precision": format_model_precision(model_precision),
+        "precision": precision,
         "decode_loop": "incremental_kv_engine_no_recompression",
         "decoding_configuration": build_decoding_configuration(
             generation_length=gen_len,
@@ -379,6 +398,8 @@ def build_controlled_conditions(
         "perplexity_stride": stride,
         "evaluation_orchestrator": "eval/runner.py",
         "kv_interception_engine": "framework/kv_engine.py",
+        "git_sha": git_sha,
+        "paper_contract": paper_contract,
     }
 
     variable: dict[str, Any] = {

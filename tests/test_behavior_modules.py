@@ -138,7 +138,12 @@ def test_evaluate_behavior_wiring_respects_flags(monkeypatch):
     compressor = MagicMock()
     input_ids = torch.tensor([[1, 2, 3]])
 
-    monkeypatch.setattr("eval.behavior.evaluate_perplexity", lambda *a, **k: 2.0)
+    from eval.behavior.task_quality import PerplexityResult
+
+    monkeypatch.setattr(
+        "eval.behavior.evaluate_perplexity_result",
+        lambda *a, **k: PerplexityResult(perplexity=2.0, n_tokens=4, nll_sum=2.8, prefill_tokens=3),
+    )
     monkeypatch.setattr("eval.behavior.evaluate_perplexity_baseline", lambda *a, **k: 2.1)
     monkeypatch.setattr(
         "eval.behavior.evaluate_retrieval",
@@ -165,6 +170,7 @@ def test_evaluate_behavior_wiring_respects_flags(monkeypatch):
     )
     assert full.perplexity == 2.0
     assert full.perplexity_baseline == 2.1
+    assert full.n_tokens == 4
     assert full.retrieval is not None
     assert full.instruction_following is not None
     assert full.reasoning is not None
@@ -192,6 +198,7 @@ def test_behavior_metrics_to_dict_shape():
     )
     payload = metrics.to_dict()
     assert payload["task_quality"]["perplexity"] == 10.0
+    assert "n_tokens" in payload["task_quality"]
     assert payload["retrieval"]["exact_match_accuracy"] == pytest.approx(2 / 3)
     assert payload["instruction_following"]["format_compliance_rate"] == 0.75
     assert payload["reasoning"]["exact_match_accuracy"] == 0.2

@@ -20,6 +20,7 @@ from compressors.taxonomy import (
     taxonomy_categories_covered,
 )
 from eval.cost.accounting import evaluate_cost
+from eval.reproducibility.manifest import collect_git_sha
 from eval.kpi_schema import (
     GATE_NAMES,
     OAKEN_LAYER_NAMES,
@@ -206,10 +207,13 @@ def _dummy_oaken_layers(calibration_required: bool) -> list[dict[str, Any]]:
 def build_dummy_payload(compressor_name: str, *, label: str, context_length: int = SMOKE_CONTEXT_LENGTH) -> dict[str, Any]:
     """Synthesize a complete EvaluationResult.to_dict() so collection/merge can be tested offline."""
     compressor = get_compressor(compressor_name)
+    if compressor_name == "palu":
+        compressor.bind_model(_fake_gemma_mqa_model())
     taxonomy = get_method_taxonomy(compressor_name)
     assert taxonomy is not None
     cost = evaluate_cost(compressor, context_length=context_length, fidelity=None, system=None)
     identity = compressor_name == "identity"
+    git_sha = collect_git_sha() or "dummy-local"
     payload = {
         "label": label,
         "compressor": compressor_name,
@@ -229,6 +233,10 @@ def build_dummy_payload(compressor_name: str, *, label: str, context_length: int
                 "value_relative_error": 0.0 if identity else 0.05,
                 "key_cosine_similarity": 1.0 if identity else 0.97,
                 "value_cosine_similarity": 1.0 if identity else 0.96,
+                "reconstruction_degenerate": compressor_name == "palu",
+                "reconstruction_degenerate_reason": (
+                    "effective_rank >= min(seq, head_dim) at ctx=128" if compressor_name == "palu" else None
+                ),
             },
             "attention": {
                 "rmse": 0.0 if identity else 0.08,
@@ -251,7 +259,13 @@ def build_dummy_payload(compressor_name: str, *, label: str, context_length: int
             },
         },
         "behavior": {
-            "task_quality": {"perplexity": 14.2, "perplexity_baseline": 14.2},
+            "task_quality": {
+                "perplexity": 14.2 if compressor_name != "snapkv" else 16.8,
+                "perplexity_baseline": 14.2,
+                "n_tokens": 96,
+                "nll_sum": 450.0,
+                "prefill_tokens": context_length,
+            },
             "retrieval": {"needle_depth_frac": 0.5, "context_length": context_length, "num_trials": 5, "exact_match_accuracy": 1.0},
             "reasoning": {"num_trials": 10, "exact_match_accuracy": 0.5},
             "instruction_following": {"num_trials": 6, "format_compliance_rate": 0.8},
@@ -265,7 +279,13 @@ def build_dummy_payload(compressor_name: str, *, label: str, context_length: int
                 "latency_ms_per_token": 25.0,
                 "online_compressed_kv": True,
             },
-            "peak_memory": {"peak_allocated_mb": 1024.0, "peak_reserved_mb": 1100.0},
+            "peak_memory": {
+                "peak_allocated_mb": 1024.0,
+                "peak_reserved_mb": 1100.0,
+                "kv_uncompressed_mb": 2.3,
+                "kv_compressed_mb": 2.3 if identity else 1.15,
+                "weight_dominated": True,
+            },
             "memory_bandwidth": {"effective_bandwidth_gbps": 1.2},
             "kernel_cost": {
                 "compress_time_ms": 0.1,
@@ -296,6 +316,14 @@ def build_dummy_payload(compressor_name: str, *, label: str, context_length: int
                 "attention_implementation": "eager",
                 "evaluation_orchestrator": "eval/runner.py",
                 "kv_interception_engine": "framework/kv_engine.py",
+                "git_sha": git_sha,
+                "paper_contract": {
+                    "generation_length": 64,
+                    "precision": "float16",
+                    "actual_generation_length": 8,
+                    "actual_precision": "bfloat16",
+                    "deviates": True,
+                },
             },
             "variable": {
                 "compressor": compressor_name,
@@ -315,6 +343,7 @@ def build_dummy_payload(compressor_name: str, *, label: str, context_length: int
             "multi_gpu_matrix": False,
             "configured_gpu": None,
         },
+        "git_sha": git_sha,
         "status": "ok",
     }
     # Fill cost fields that dummy evaluate_cost left None so schema/math checks pass.

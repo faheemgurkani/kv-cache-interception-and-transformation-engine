@@ -34,6 +34,8 @@ def run_local_live_collection(
     model_config_path: str | Path | None = None,
     context_length: int = LOCAL_LIVE_CONTEXT,
     generated_tokens: int = LOCAL_LIVE_GENERATED_TOKENS,
+    methods: list[str] | tuple[str, ...] | None = None,
+    require_full_taxonomy: bool = True,
 ) -> dict[str, Any]:
     """Run the full eval runner locally for the taxonomy_smoke job grid."""
     output_dir = Path(output_dir)
@@ -50,6 +52,9 @@ def run_local_live_collection(
     _log(log_path, f"Loading {model_cfg.get('model_name')} from {model_path}")
     model_layer = ModelLayer(model_path=model_path)
     jobs = build_sweep_jobs(context_lengths=[context_length], preset=TAXONOMY_SMOKE_PRESET)
+    if methods:
+        allowed = {name.lower() for name in methods}
+        jobs = [job for job in jobs if job.compressor.lower() in allowed]
 
     from eval.runner import EvaluationRunner
 
@@ -110,7 +115,7 @@ def run_local_live_collection(
                 results,
                 name="taxonomy_smoke_local_live_pareto",
                 context_length=context_length,
-                write_plot=False,
+                write_plot=True,
             )
         except Exception as exc:  # noqa: BLE001
             job_errors.append({"label": "pareto", "compressor": "n/a", "error": str(exc)})
@@ -134,7 +139,7 @@ def run_local_live_collection(
         payloads,
         require_smoke_extras=False,
         execution_platform=None,
-        require_full_taxonomy=True,
+        require_full_taxonomy=require_full_taxonomy,
     )
     for payload in payloads:
         system = payload.get("system") or {}

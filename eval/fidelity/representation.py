@@ -31,6 +31,8 @@ class RepresentationMetrics:
     value_relative_error: float
     key_cosine_similarity: float
     value_cosine_similarity: float
+    reconstruction_degenerate: bool = False
+    reconstruction_degenerate_reason: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -64,8 +66,11 @@ def evaluate_representation(past_key_values, compressor: KVCompressor) -> Repres
     value_rel_errors: list[float] = []
     key_cosines: list[float] = []
     value_cosines: list[float] = []
+    first_key: torch.Tensor | None = None
 
     for layer_idx, (key, value) in enumerate(iter_layer_kv(past_key_values)):
+        if first_key is None:
+            first_key = key
         k_hat, v_hat, key_ref, value_ref = _layer_roundtrip(key, value, compressor, layer_idx)
 
         if hasattr(compressor, "reconstruction_error"):
@@ -85,6 +90,19 @@ def evaluate_representation(past_key_values, compressor: KVCompressor) -> Repres
         raise RuntimeError("No KV tensors found for reconstruction error.")
 
     n = len(key_rmses)
+    degenerate = False
+    degenerate_reason: str | None = None
+    if getattr(compressor, "name", "") == "palu" and hasattr(compressor, "fidelity_rank_capped_by_seq"):
+        if first_key is not None:
+            seq_len = int(first_key.shape[2])
+            head_dim = int(first_key.shape[-1])
+            if compressor.fidelity_rank_capped_by_seq(seq_len, head_dim):  # type: ignore[attr-defined]
+                rank = compressor.effective_rank(0, seq_len=seq_len, head_dim=head_dim)  # type: ignore[attr-defined]
+                degenerate = True
+                degenerate_reason = (
+                    f"effective_rank={rank} >= min(seq={seq_len}, head_dim={head_dim}); "
+                    "post-hoc SVD is algebraically exact — quality is not a Palu win"
+                )
     return RepresentationMetrics(
         key_rmse=sum(key_rmses) / n,
         value_rmse=sum(value_rmses) / n,
@@ -92,6 +110,8 @@ def evaluate_representation(past_key_values, compressor: KVCompressor) -> Repres
         value_relative_error=sum(value_rel_errors) / n,
         key_cosine_similarity=sum(key_cosines) / n,
         value_cosine_similarity=sum(value_cosines) / n,
+        reconstruction_degenerate=degenerate,
+        reconstruction_degenerate_reason=degenerate_reason,
     )
 
 

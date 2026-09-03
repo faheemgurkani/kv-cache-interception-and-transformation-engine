@@ -36,6 +36,7 @@ from compressors.taxonomy import get_method_taxonomy
 from data.loader import build_long_context_ids, load_wikitext2
 from eval.behavior import BehaviorMetrics, evaluate_behavior
 from eval.controlled_conditions import ControlledInterceptionContract, build_controlled_conditions
+from eval.reproducibility.manifest import collect_git_sha
 from eval.cost import CostMetrics, evaluate_cost
 from eval.hardware import HardwareProfile, collect_hardware_profile, hardware_metrics_enabled
 from eval.fidelity import FidelityMetrics, evaluate_fidelity
@@ -66,6 +67,7 @@ class EvaluationResult:
     compatibility_probe: CompatibilityProbe | None = field(default=None, repr=False)
     controlled_conditions: ControlledInterceptionContract | None = field(default=None, repr=False)
     hardware: HardwareProfile | None = field(default=None, repr=False)
+    git_sha: str | None = field(default=None, repr=False)
 
     # --- back-compat accessors (previous Section A/B field names) ---
     @property
@@ -111,6 +113,7 @@ class EvaluationResult:
                 None if self.controlled_conditions is None else self.controlled_conditions.to_dict()
             ),
             "hardware": None if self.hardware is None else self.hardware.to_dict(),
+            "git_sha": self.git_sha,
         }
 
 
@@ -183,7 +186,11 @@ class EvaluationRunner:
             run_peak_memory = True
             run_gpu_utilization = True
 
+        if hasattr(self.compressor, "bind_model"):
+            self.compressor.bind_model(self.model_layer.model)
+
         hardware = collect_hardware_profile(self.model_layer.device)
+        git_sha = collect_git_sha()
 
         probe = run_compatibility_probe(
             self.model_layer,
@@ -223,6 +230,7 @@ class EvaluationRunner:
         system: SystemMetrics | None = None
         if run_system:
             compressed_bytes = fidelity.memory.compressed_bytes if fidelity else None
+            uncompressed_bytes = fidelity.memory.uncompressed_bytes if fidelity else None
             system = evaluate_system(
                 self.model_layer,
                 input_ids,
@@ -235,6 +243,7 @@ class EvaluationRunner:
                 include_baseline=include_baselines,
                 num_new_tokens=num_new_tokens,
                 actual_kv_memory_bytes=compressed_bytes,
+                uncompressed_kv_memory_bytes=uncompressed_bytes,
             )
 
         cost: CostMetrics | None = None
@@ -257,6 +266,7 @@ class EvaluationRunner:
             model_precision=self.model_layer.torch_dtype,
             perplexity_stride=stride,
             generation_length=num_new_tokens,
+            git_sha=git_sha,
             run_fidelity=run_fidelity,
             run_behavior=run_behavior,
             run_perplexity=run_perplexity,
@@ -286,6 +296,7 @@ class EvaluationRunner:
             compatibility_probe=probe,
             controlled_conditions=controlled,
             hardware=hardware,
+            git_sha=git_sha,
         )
 
     def run_all_context_lengths(

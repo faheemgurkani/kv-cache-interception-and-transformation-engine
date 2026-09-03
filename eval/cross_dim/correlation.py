@@ -133,6 +133,7 @@ def analyze_correlations(
     *,
     context_length: int | None = None,
     exclude_compressors: Sequence[str] | None = None,
+    max_perplexity_ratio: float | None = 5.0,
     pair_specs: Sequence[CorrelationPairSpec] | None = None,
 ) -> CrossDimCorrelationAnalysis:
     filtered = list(points)
@@ -141,6 +142,12 @@ def analyze_correlations(
     if exclude_compressors:
         blocked = {c.lower() for c in exclude_compressors}
         filtered = [p for p in filtered if p.compressor.lower() not in blocked]
+    if max_perplexity_ratio is not None:
+        filtered = [
+            p
+            for p in filtered
+            if p.perplexity_ratio is None or p.perplexity_ratio <= max_perplexity_ratio
+        ]
 
     specs = pair_specs or DEFAULT_CORRELATION_PAIRS
     results: list[CorrelationResult] = []

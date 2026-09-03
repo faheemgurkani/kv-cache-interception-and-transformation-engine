@@ -88,7 +88,7 @@ def test_analyze_correlations_export():
         _point("b", ratio=2.0, ppl_ratio=10.0, attn_rmse=8.0, tok_s=5.0),
         _point("c", ratio=1.5, ppl_ratio=100.0, attn_rmse=15.0, tok_s=15.0),
     ]
-    analysis = analyze_correlations(points, context_length=512)
+    analysis = analyze_correlations(points, context_length=512, max_perplexity_ratio=None)
     payload = analysis.to_dict()
     assert payload["point_count"] == 3
     assert len(payload["pairs"]) >= 6

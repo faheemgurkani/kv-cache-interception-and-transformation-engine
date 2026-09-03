@@ -28,6 +28,8 @@ PAPER_SOURCE_MAP: tuple[tuple[str, str, str], ...] = (
     ("FIDELITY / memory", "fidelity.memory", "Phase 2"),
     ("FIDELITY / recurrent", "fidelity.recurrent", "ENGINE §25 (N/A on non-hybrid)"),
     ("BEHAVIOR / perplexity", "behavior.task_quality.perplexity", "Phase 2 · paper tables"),
+    ("BEHAVIOR / n_tokens", "behavior.task_quality.n_tokens", "Phase 2 · PPL token count"),
+    ("Repro / git HEAD", "git_sha", "Phase 14"),
     ("BEHAVIOR / retrieval", "behavior.retrieval", "Phase 11 engine (paper optional)"),
     ("BEHAVIOR / instruction following", "behavior.instruction_following", "Phase 11 engine"),
     ("BEHAVIOR / reasoning", "behavior.reasoning", "Phase 11 opt-in"),
@@ -80,8 +82,32 @@ def paper_quality_anomalies(payloads: list[dict[str, Any]]) -> list[str]:
             if _finite(attn_rmse) and float(attn_rmse) > 1e-2:
                 anomalies.append(f"{label}: identity attention RMSE {attn_rmse} unexpectedly large")
 
+        if compressor == "snapkv" and _finite(identity_ppl) and _finite(ppl) and float(ppl) == float(identity_ppl):
+            anomalies.append(
+                f"{label}: SnapKV PPL {ppl} is bitwise-identical to identity "
+                "(prefill eviction never fired — do not use as a BEHAVIOR point)"
+            )
+
         if compressor == "palu" and _finite(ratio) and float(ratio) < 0.99:
             anomalies.append(f"{label}: Palu measured ratio {ratio} < 1 (cache should not expand)")
+        if compressor == "palu":
+            degenerate = _lookup(payload, "fidelity.representation.reconstruction_degenerate")
+            baseline = _lookup(payload, "behavior.task_quality.perplexity_baseline")
+            if degenerate is True:
+                anomalies.append(
+                    f"{label}: Palu reconstruction_degenerate — rank >= min(seq, d); "
+                    "2× ratio can be real, quality 'win' is not"
+                )
+            elif _finite(ppl) and _finite(baseline) and float(ppl) < float(baseline):
+                anomalies.append(
+                    f"{label}: Palu PPL {ppl} < HF baseline {baseline} without reconstruction_degenerate"
+                )
+            elif _finite(ppl) and _finite(identity_ppl) and float(ppl) < float(identity_ppl):
+                anomalies.append(
+                    f"{label}: Palu PPL {ppl} < identity {identity_ppl} without reconstruction_degenerate"
+                )
+            if _lookup(payload, "cost.offline.calibration_time_ms") is None:
+                anomalies.append(f"{label}: Palu calibration_time_ms is null (bind_model not timed)")
 
         if compressor == "qjl" and _finite(identity_ppl) and _finite(ppl) and float(ppl) > 10.0 * float(identity_ppl):
             anomalies.append(

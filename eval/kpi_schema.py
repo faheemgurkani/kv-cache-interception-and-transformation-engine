@@ -25,6 +25,7 @@ REQUIRED_PAYLOAD_PATHS: tuple[str, ...] = (
     "context_length",
     "fidelity.representation.key_rmse",
     "fidelity.representation.value_rmse",
+    "fidelity.representation.reconstruction_degenerate",
     "fidelity.attention.rmse",
     "fidelity.memory.compression_ratio",
     "fidelity.memory.uncompressed_bytes",
@@ -163,6 +164,9 @@ def validate_payload_invariants(
     ppl = _lookup(payload, "behavior.task_quality.perplexity")
     if not _finite_number(ppl) or float(ppl) <= 0:
         errors.append(f"perplexity must be finite and > 0, got {ppl}")
+    n_tokens = _lookup(payload, "behavior.task_quality.n_tokens")
+    if not _finite_number(n_tokens) or int(n_tokens) <= 0:
+        errors.append(f"n_tokens must be a positive count, got {n_tokens}")
 
     tps = _lookup(payload, "system.latency_throughput.tokens_per_second")
     if not _finite_number(tps) or float(tps) <= 0:

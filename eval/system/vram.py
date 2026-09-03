@@ -20,6 +20,9 @@ class PeakMemoryMetrics:
     peak_process_rss_mb: float | None
     memory_backend: str
     cuda_available: bool
+    kv_uncompressed_mb: float | None = None
+    kv_compressed_mb: float | None = None
+    weight_dominated: bool | None = None
 
     def to_dict(self) -> dict:
         return self.__dict__.copy()
@@ -31,6 +34,8 @@ def evaluate_peak_vram(
     input_ids: torch.Tensor,
     compressor: KVCompressor,
     num_new_tokens: int = 128,
+    uncompressed_kv_bytes: int | None = None,
+    compressed_kv_bytes: int | None = None,
 ) -> PeakMemoryMetrics:
     """Peak memory during compressed-KV generate().
 
@@ -55,6 +60,12 @@ def evaluate_peak_vram(
         tracker.sample()
 
     snap = tracker.snapshot()
+    kv_uncompressed_mb = None if uncompressed_kv_bytes is None else uncompressed_kv_bytes / (1024 * 1024)
+    kv_compressed_mb = None if compressed_kv_bytes is None else compressed_kv_bytes / (1024 * 1024)
+    peak = snap.peak_allocated_mb
+    weight_dominated = None
+    if peak is not None and kv_uncompressed_mb is not None:
+        weight_dominated = kv_uncompressed_mb < 0.10 * float(peak)
     return PeakMemoryMetrics(
         context_length=input_ids.size(1),
         generated_tokens=num_new_tokens,
@@ -63,4 +74,7 @@ def evaluate_peak_vram(
         peak_process_rss_mb=snap.peak_process_rss_mb,
         memory_backend=snap.memory_backend,
         cuda_available=torch.cuda.is_available(),
+        kv_uncompressed_mb=kv_uncompressed_mb,
+        kv_compressed_mb=kv_compressed_mb,
+        weight_dominated=weight_dominated,
     )

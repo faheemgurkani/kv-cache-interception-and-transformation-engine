@@ -79,10 +79,41 @@ presets:
       compression_rate: 0.5
       group_size: 1
 
+  # Full redesigned eval: same 6 active plug-ins, paper gen=64 (ctx grid from CLI).
+  taxonomy_full:
+    - label: identity_baseline
+      name: identity
+    - label: tq_full_b4
+      name: turboquant
+      stage: full
+      bitwidth: 4
+    - label: qjl_default
+      name: qjl
+      bitwidth: 1
+      seed: 42
+    - label: rocketkv_smoke
+      name: rocketkv
+      token_budget: 64
+      hsa_budget: 64
+      window_size: 8
+    - label: snapkv_smoke
+      name: snapkv
+      max_capacity_prompt: 64
+      window_size: 8
+      kernel_size: 5
+    - label: palu_smoke
+      name: palu
+      compression_rate: 0.5
+      group_size: 1
+
 preset_options:
   taxonomy_smoke:
     run_reasoning: true
     run_kernel_cost: true
     run_memory_bandwidth: true
     generated_tokens: 8
-
+  taxonomy_full:
+    run_reasoning: true
+    run_kernel_cost: true
+    run_memory_bandwidth: true
+    generated_tokens: 64

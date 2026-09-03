@@ -19,7 +19,7 @@ import setup_path  # noqa: F401
 from eval.kpi_schema import validate_bundle
 from eval.local_live_smoke import run_local_live_collection
 from eval.paper_collection import audit_paper_collection, write_paper_collection_report
-from eval.taxonomy_smoke import TAXONOMY_SMOKE_PRESET, run_dummy_collection
+from eval.taxonomy_smoke import TAXONOMY_FULL_PRESET, TAXONOMY_SMOKE_PRESET, run_dummy_collection
 from framework.config import PROJECT_ROOT
 from reporting.documentation import export_bundle_documentation
 
@@ -164,9 +164,11 @@ def validate_latest_modal_bundle(stem: str) -> None:
 def run_modal(
     *,
     output: str,
-    context_length: int,
+    context_lengths: list[int],
+    preset: str,
     sync: bool,
     no_resume: bool,
+    labels: str | None = None,
 ) -> None:
     modal = _resolve_modal()
     cmd = [
@@ -174,12 +176,14 @@ def run_modal(
         "run",
         "modal_app/sweep.py::main",
         "--preset",
-        TAXONOMY_SMOKE_PRESET,
+        preset,
         "--context-lengths",
-        str(context_length),
+        ",".join(str(length) for length in context_lengths),
         "--output",
         output,
     ]
+    if labels:
+        cmd.extend(["--labels", labels])
     if sync:
         cmd.append("--sync")
     if no_resume:
@@ -202,6 +206,27 @@ def main() -> None:
     parser.add_argument("--detach", action="store_true", help="Spawn Modal jobs without waiting.")
     parser.add_argument("--no-resume", action="store_true", help="Re-submit jobs even if results exist on the volume.")
     parser.add_argument("--context-length", type=int, default=128)
+    parser.add_argument(
+        "--context-lengths",
+        default=None,
+        help="Comma-separated context lengths for Modal (default: --context-length only).",
+    )
+    parser.add_argument(
+        "--preset",
+        default=TAXONOMY_SMOKE_PRESET,
+        choices=(TAXONOMY_SMOKE_PRESET, TAXONOMY_FULL_PRESET),
+        help="Modal sweep preset (taxonomy_full uses gen=64).",
+    )
+    parser.add_argument(
+        "--skip-validate",
+        action="store_true",
+        help="Skip post-Modal KPI bundle validation (scope tests).",
+    )
+    parser.add_argument(
+        "--labels",
+        default=None,
+        help="Comma-separated job labels for Modal scope tests (e.g. identity_baseline).",
+    )
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     parser.add_argument("--model-config", default=DEFAULT_MODEL_CONFIG)
     parser.add_argument("--modal-config", default=DEFAULT_MODAL_CONFIG)
@@ -256,13 +281,19 @@ def main() -> None:
         print("Local live taxonomy smoke passed.")
 
     if args.modal:
+        if args.context_lengths:
+            ctx_lengths = [int(item.strip()) for item in args.context_lengths.split(",") if item.strip()]
+        else:
+            ctx_lengths = [args.context_length]
         run_modal(
             output=args.output,
-            context_length=args.context_length,
+            context_lengths=ctx_lengths,
+            preset=args.preset,
             sync=not args.detach,
             no_resume=args.no_resume,
+            labels=args.labels,
         )
-        if not args.detach:
+        if not args.detach and not args.skip_validate:
             validate_latest_modal_bundle(args.output)
 
 

@@ -6,8 +6,6 @@
 gpu: a10g
 gpu_fallbacks:
   - a10g
-  - l4
-  - any
 
 timeout_hours: 2
 

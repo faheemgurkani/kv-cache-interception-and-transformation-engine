@@ -32,6 +32,7 @@ from modal_app.merge import flatten_result_payload, write_merged_reports
 from quantizers.palu import truncated_svd_factors
 
 TAXONOMY_SMOKE_PRESET = "taxonomy_smoke"
+TAXONOMY_FULL_PRESET = "taxonomy_full"
 SMOKE_CONTEXT_LENGTH = 128
 
 

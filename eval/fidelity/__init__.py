@@ -77,13 +77,18 @@ def evaluate_fidelity(
     if past_key_values is None:
         raise RuntimeError("Model did not return past_key_values.")
 
+    score_tokens = min(
+        int(eval_config.get("attention_fidelity_tokens", 512)),
+        int(input_ids.size(1)),
+        128,
+    )
     representation = evaluate_representation(past_key_values, compressor)
     attention = evaluate_attention_fidelity(
         model_layer,
         input_ids,
         compressor,
         outputs=outputs,
-        score_tokens=eval_config.get("attention_fidelity_tokens", 512),
+        score_tokens=score_tokens,
     )
     memory = evaluate_memory_from_cache(
         model_layer,
@@ -97,7 +102,13 @@ def evaluate_fidelity(
         model_layer.config,
         device=model_layer.device,
     )
-    del outputs
+    # Drop the large hidden-state tower before BEHAVIOR/SYSTEM begin.
+    if hasattr(outputs, "hidden_states"):
+        try:
+            outputs.hidden_states = None
+        except Exception:  # noqa: BLE001
+            pass
+    del outputs, past_key_values
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     if hasattr(compressor, "reset_state"):

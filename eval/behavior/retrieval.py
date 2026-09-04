@@ -61,7 +61,6 @@ def evaluate_retrieval(
     """Exact-match accuracy for recalling a numeric code inserted at `depth_frac`."""
     if hasattr(compressor, "reset_state"):
         compressor.reset_state()
-    engine = model_layer.make_kv_engine(compressor)
     rng = random.Random(seed)
 
     correct = 0
@@ -69,10 +68,17 @@ def evaluate_retrieval(
         code = "".join(rng.choice(_CODE_DIGITS) for _ in range(5))
         prompt, code_len = _build_prompt(model_layer.tokenizer, context_length, depth_frac, code)
         input_ids = model_layer.tokenizer(prompt, return_tensors="pt").input_ids.to(model_layer.device)
+        if input_ids.shape[1] > context_length:
+            input_ids = input_ids[:, :context_length]
 
         if hasattr(compressor, "reset_state"):
             compressor.reset_state()
-        generated = engine.generate(input_ids, max_new_tokens=max_new_tokens)
+        # Fresh engine per trial so decode-prefix / HF cache state cannot accumulate.
+        trial_engine = model_layer.make_kv_engine(compressor)
+        generated = trial_engine.generate(input_ids, max_new_tokens=max_new_tokens)
+        del trial_engine
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         new_tokens = generated[:, input_ids.shape[1] :]
         completion = model_layer.tokenizer.decode(new_tokens[0], skip_special_tokens=True)
 

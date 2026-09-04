@@ -41,10 +41,32 @@ def unpad(x: torch.Tensor, original_dim: int, dim: int = -1) -> torch.Tensor:
 _HADAMARD_MATRIX_CACHE: dict[tuple[int, str, torch.dtype], torch.Tensor] = {}
 
 
+def _hadamard_fwht_inplace(x: torch.Tensor) -> torch.Tensor:
+    """Matrix-free orthonormal FWHT along the last dimension (power-of-two length)."""
+    n = x.shape[-1]
+    out = x.clone()
+    h = 1
+    leading = out.shape[:-1]
+    while h < n:
+        out = out.reshape(*leading, n // (2 * h), 2, h)
+        a = out[..., 0, :]
+        b = out[..., 1, :]
+        out = torch.stack(((a + b) * (0.5**0.5), (a - b) * (0.5**0.5)), dim=-2)
+        out = out.reshape(*leading, n)
+        h *= 2
+    return out
+
+
 def _hadamard_scipy(x: torch.Tensor, dim: int = -1) -> torch.Tensor:
+    n = x.shape[dim]
+    # Full Hadamard matrix is O(n²) memory — at n≈65536 that is ~16 GiB and OOMs A10G.
+    if n > 512:
+        flat = x.movedim(dim, -1).reshape(-1, n)
+        out = _hadamard_fwht_inplace(flat.clone())
+        return out.reshape(x.movedim(dim, -1).shape).movedim(-1, dim)
+
     import scipy.linalg
 
-    n = x.shape[dim]
     cache_key = (n, str(x.device), x.dtype)
     h = _HADAMARD_MATRIX_CACHE.get(cache_key)
     if h is None:

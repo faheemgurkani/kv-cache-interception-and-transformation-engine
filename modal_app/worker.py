@@ -66,8 +66,14 @@ def ensure_model() -> str:
 )
 def eval_worker(job: dict) -> dict:
     """Run one (compressor × context_length) evaluation on CUDA."""
+    import gc
+
+    import torch
+
     spec = EvalJobSpec.from_dict(job)
     started_at = datetime.now(UTC).isoformat()
+    runner = None
+    model_layer = None
 
     try:
         model_volume.reload()
@@ -83,8 +89,9 @@ def eval_worker(job: dict) -> dict:
 
         compressor = get_compressor(spec.compressor, **spec.get_compressor_kwargs())
 
+        model_layer = ModelLayer(model_path=model_path)
         runner = EvaluationRunner(
-            model_layer=ModelLayer(model_path=model_path),
+            model_layer=model_layer,
             compressor=compressor,
             eval_config=load_eval_config(),
             model_config=load_model_config(),
@@ -92,13 +99,15 @@ def eval_worker(job: dict) -> dict:
         modal_cfg = load_modal_config()
         hw_cfg = modal_cfg.get("hardware") or {}
         collect_hw = hardware_metrics_enabled()
+        # Long-context: skip the extra reasoning generate() pass (still collected at ctx=128).
+        run_reasoning = bool(spec.run_reasoning) and int(spec.context_length) < 256
         result = runner.run(
             spec.context_length,
             run_perplexity=not spec.skip_perplexity,
             run_throughput=not spec.skip_throughput,
             run_retrieval=spec.run_retrieval,
             run_instruction_following=spec.run_instruction_following,
-            run_reasoning=spec.run_reasoning,
+            run_reasoning=run_reasoning,
             run_peak_memory=bool(hw_cfg.get("collect_peak_memory", collect_hw)),
             run_gpu_utilization=bool(hw_cfg.get("collect_gpu_utilization", collect_hw)),
             run_kernel_cost=spec.run_kernel_cost,
@@ -145,7 +154,45 @@ def eval_worker(job: dict) -> dict:
         out_path.write_text(json.dumps(error_payload, indent=2))
         results_volume.commit()
         return error_payload
+    finally:
+        # Warm Modal containers reuse the process across .map inputs; without this,
+        # a second ModelLayer load OOMs on A10G (~22GB) after the first job.
+        try:
+            if runner is not None and getattr(runner, "model_layer", None) is not None:
+                model = getattr(runner.model_layer, "model", None)
+                if model is not None:
+                    try:
+                        model.to("cpu")
+                    except Exception:  # noqa: BLE001
+                        pass
+                    del model
+                del runner.model_layer
+            if model_layer is not None:
+                model = getattr(model_layer, "model", None)
+                if model is not None:
+                    try:
+                        model.to("cpu")
+                    except Exception:  # noqa: BLE001
+                        pass
+                    del model
+                del model_layer
+            if runner is not None:
+                del runner
+        except Exception:  # noqa: BLE001
+            pass
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            try:
+                torch.cuda.ipc_collect()
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                from quantizers.hadamard import _HADAMARD_MATRIX_CACHE
 
+                _HADAMARD_MATRIX_CACHE.clear()
+            except Exception:  # noqa: BLE001
+                pass
 
 @app.function(volumes={RESULTS_MOUNT: results_volume})
 def list_completed_jobs() -> list[str]:

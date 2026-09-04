@@ -187,8 +187,16 @@ class KVCacheEngine:
         try:
             from transformers.cache_utils import DynamicCache
 
-            return DynamicCache(ddp_cache_data=tuple(self._decode_prefix), config=self.model.config)
-        except (ImportError, TypeError):
+            # Do NOT use DynamicCache(ddp_cache_data=...). In current transformers that
+            # constructor calls layer.update() which torch.cats onto existing tensors and
+            # can balloon GPU memory (A10G OOM at ctx≥256 for identity/TQ/QJL).
+            if hasattr(DynamicCache, "from_legacy_cache"):
+                return DynamicCache.from_legacy_cache(tuple(self._decode_prefix))
+            legacy = DynamicCache()
+            for layer_idx, (key_states, value_states) in enumerate(self._decode_prefix):
+                legacy.update(key_states, value_states, layer_idx)
+            return legacy
+        except (ImportError, TypeError, AttributeError, ValueError):
             return tuple(self._decode_prefix)
 
     @torch.no_grad()
@@ -297,7 +305,13 @@ class KVCacheEngine:
         new_layers = self._compress_new_tokens(outputs.past_key_values, prev_seq, prior_layers)
         new_cache = CompressedCache(layers=new_layers)
         self.compressed_cache = new_cache
-        self._last_full_cache = outputs.past_key_values
+        # Only hybrid models need the raw HF cache retained for state merge.
+        from framework.state_interface import hybrid_layer_detected
+
+        if hybrid_layer_detected(outputs.past_key_values):
+            self._last_full_cache = outputs.past_key_values
+        else:
+            self._last_full_cache = None
         self._refresh_decode_prefix(new_layers, prev_seq)
         return outputs.logits, new_cache
 

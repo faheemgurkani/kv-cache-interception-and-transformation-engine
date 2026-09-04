@@ -89,6 +89,15 @@ def evaluate_behavior(
     """Run the requested BEHAVIOR sub-metrics. Retrieval and instruction-following run
     by default (plan recommendation: PPL + retrieval + instruction following); reasoning
     is opt-in since it adds another generate() pass on top of task_quality."""
+    import gc
+
+    import torch
+
+    def _free() -> None:
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
     perplexity_baseline = (
         evaluate_perplexity_baseline(model_layer, input_ids, stride=perplexity_stride)
         if include_baseline and run_task_quality
@@ -106,15 +115,19 @@ def evaluate_behavior(
         else None
     )
     perplexity = ppl_result.perplexity if ppl_result is not None else None
+    _free()
     retrieval = (
         evaluate_retrieval(model_layer, compressor, context_length=context_length or input_ids.size(1))
         if run_retrieval
         else None
     )
+    _free()
     reasoning = evaluate_reasoning(model_layer, compressor) if run_reasoning else None
+    _free()
     instruction_following = (
         evaluate_instruction_following(model_layer, compressor) if run_instruction_following else None
     )
+    _free()
 
     return BehaviorMetrics(
         perplexity=perplexity,

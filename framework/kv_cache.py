@@ -273,10 +273,15 @@ def decompress_to_legacy_cache(
     if template_cache is not None and hybrid_layer_detected(template_cache):
         return merge_decompressed_kv_into_cache(template_cache, layer_pairs)
 
-    legacy = tuple(layer_pairs)
     try:
         from transformers.cache_utils import DynamicCache
 
-        return DynamicCache(ddp_cache_data=legacy, config=model_config)
-    except (ImportError, TypeError):
-        return legacy
+        # Prefer config-aware construction so sliding-window models (Gemma3) get
+        # DynamicSlidingWindowLayer. Avoid ddp_cache_data=... — that path can
+        # torch.cat onto layer buffers and spike GPU memory.
+        cache = DynamicCache(config=model_config)
+        for layer_idx, (key_states, value_states) in enumerate(layer_pairs):
+            cache.update(key_states, value_states, layer_idx)
+        return cache
+    except (ImportError, TypeError, AttributeError, ValueError):
+        return tuple(layer_pairs)

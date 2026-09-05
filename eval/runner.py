@@ -186,9 +186,10 @@ class EvaluationRunner:
         )
 
         hw_metrics = hardware_metrics_enabled() if collect_hardware_metrics is None else collect_hardware_metrics
-        if hw_metrics:
-            run_peak_memory = True
-            run_gpu_utilization = True
+        # Do NOT force run_peak_memory / run_gpu_utilization on here. Callers (Modal
+        # worker) intentionally disable those generate() passes at long context to
+        # fit A10G after FIDELITY+BEHAVIOR; overriding True caused 20GB+ residency
+        # and OOM in SYSTEM throughput for identity/TQ/QJL at ctx=512.
 
         if hasattr(self.compressor, "bind_model"):
             self.compressor.bind_model(self.model_layer.model)
@@ -241,7 +242,25 @@ class EvaluationRunner:
 
         system: SystemMetrics | None = None
         if run_system:
-            if torch.cuda.is_available():
+            import gc
+
+            # Behavior/fidelity can leave the allocator nearly full on 24GB cards;
+            # reload weights so SYSTEM starts from a clean VRAM slate at long ctx.
+            if context_length >= 256 and torch.cuda.is_available():
+                path = self.model_layer.model_path
+                device = self.model_layer.device
+                dtype = self.model_layer.torch_dtype
+                try:
+                    self.model_layer.model.to("cpu")
+                except Exception:  # noqa: BLE001
+                    pass
+                del self.model_layer
+                gc.collect()
+                torch.cuda.empty_cache()
+                self.model_layer = ModelLayer(model_path=path, device=device, torch_dtype=dtype)
+                if hasattr(self.compressor, "reset_state"):
+                    self.compressor.reset_state()
+            elif torch.cuda.is_available():
                 torch.cuda.empty_cache()
             compressed_bytes = fidelity.memory.compressed_bytes if fidelity else None
             uncompressed_bytes = fidelity.memory.uncompressed_bytes if fidelity else None

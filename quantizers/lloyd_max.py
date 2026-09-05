@@ -75,10 +75,26 @@ def compute_gamma(y: torch.Tensor, centroids: torch.Tensor, dim: int = -1) -> to
 
 
 def quantize(x: torch.Tensor, centroids: torch.Tensor) -> torch.Tensor:
-    """Nearest-centroid Lloyd-Max quantization; returns int32 indices."""
+    """Nearest-centroid Lloyd-Max quantization; returns int32 indices.
+
+    Chunks along the leading flattened dimension when the broadcasted distance
+    tensor would be large, avoiding multi-GiB temporary allocations on A10G.
+    """
     c = centroids.to(device=x.device, dtype=x.dtype)
-    diffs = (x.unsqueeze(-1) - c).abs()
-    return diffs.argmin(dim=-1).to(torch.int32)
+    # diffs shape == x.shape + (num_centroids,); bail to chunked path above ~256 MiB.
+    flat = x.reshape(-1, x.shape[-1])
+    nbytes = flat.numel() * c.numel() * x.element_size()
+    if nbytes <= 256 * 1024 * 1024:
+        diffs = (x.unsqueeze(-1) - c).abs()
+        return diffs.argmin(dim=-1).to(torch.int32)
+
+    chunk = max(1, (64 * 1024 * 1024) // max(x.shape[-1] * c.numel() * x.element_size(), 1))
+    parts: list[torch.Tensor] = []
+    for start in range(0, flat.shape[0], chunk):
+        block = flat[start : start + chunk]
+        diffs = (block.unsqueeze(-1) - c).abs()
+        parts.append(diffs.argmin(dim=-1))
+    return torch.cat(parts, dim=0).reshape(x.shape[:-1] + (x.shape[-1],)).to(torch.int32)
 
 
 def dequantize(indices: torch.Tensor, centroids: torch.Tensor) -> torch.Tensor:

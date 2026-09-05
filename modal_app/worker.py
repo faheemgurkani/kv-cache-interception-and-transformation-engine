@@ -99,8 +99,12 @@ def eval_worker(job: dict) -> dict:
         modal_cfg = load_modal_config()
         hw_cfg = modal_cfg.get("hardware") or {}
         collect_hw = hardware_metrics_enabled()
-        # Long-context: skip the extra reasoning generate() pass (still collected at ctx=128).
-        run_reasoning = bool(spec.run_reasoning) and int(spec.context_length) < 256
+        # Long-context: skip extra generate() passes that re-inflate VRAM after
+        # fidelity+behavior on A10G (22GB). Core TTFT/ITL/tok-s still collected.
+        ctx = int(spec.context_length)
+        run_reasoning = bool(spec.run_reasoning) and ctx < 256
+        run_peak = bool(hw_cfg.get("collect_peak_memory", collect_hw)) and ctx < 256
+        run_gpu_util = bool(hw_cfg.get("collect_gpu_utilization", collect_hw)) and ctx < 256
         result = runner.run(
             spec.context_length,
             run_perplexity=not spec.skip_perplexity,
@@ -108,8 +112,8 @@ def eval_worker(job: dict) -> dict:
             run_retrieval=spec.run_retrieval,
             run_instruction_following=spec.run_instruction_following,
             run_reasoning=run_reasoning,
-            run_peak_memory=bool(hw_cfg.get("collect_peak_memory", collect_hw)),
-            run_gpu_utilization=bool(hw_cfg.get("collect_gpu_utilization", collect_hw)),
+            run_peak_memory=run_peak,
+            run_gpu_utilization=run_gpu_util,
             run_kernel_cost=spec.run_kernel_cost,
             run_memory_bandwidth=spec.run_memory_bandwidth,
             collect_hardware_metrics=collect_hw,

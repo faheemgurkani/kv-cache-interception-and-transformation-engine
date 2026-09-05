@@ -137,67 +137,22 @@ class KVCacheEngine:
         self._decode_prefix_len = 0
 
     def _refresh_decode_prefix(self, new_layers: list[CompressedKV], prev_seq: int) -> None:
-        if not new_layers or not is_incremental_compressed(new_layers[0]):
-            self._invalidate_decode_prefix()
-            return
-        new_seq = incremental_seq_length(new_layers)
-        if (
-            self._decode_prefix is not None
-            and self._decode_prefix_len == prev_seq
-            and new_seq >= prev_seq
-        ):
-            self._decode_prefix = append_decompressed_tokens(
-                self._decode_prefix,
-                new_layers,
-                prev_seq,
-                self.compressor,
-            )
-            self._decode_prefix_len = new_seq
-            return
-        self._decode_prefix = decompress_cache(new_layers, self.compressor)
-        self._decode_prefix_len = new_seq
+        # Retaining a GPU-side decompressed prefix doubles KV residency and the
+        # append path torch.cats under already-high VRAM after FIDELITY/BEHAVIOR
+        # (A10G OOM at ctx=512 for identity/TQ/QJL). Always rebuild from compressed
+        # payloads in `_legacy_cache_from_prefix` instead.
+        self._invalidate_decode_prefix()
+        return
 
     def _legacy_cache_from_prefix(self, cache: CompressedCache, device: torch.device):
-        if (
-            self._decode_prefix is None
-            or self._decode_prefix_len == 0
-            or cache.seq_length < self._decode_prefix_len
-        ):
-            self._invalidate_decode_prefix()
-            return decompress_to_legacy_cache(
-                cache.layers,
-                self.compressor,
-                self.model.config,
-                device=device,
-                template_cache=self._last_full_cache,
-            )
-        if cache.seq_length > self._decode_prefix_len:
-            self._decode_prefix = append_decompressed_tokens(
-                self._decode_prefix,
-                cache.layers,
-                self._decode_prefix_len,
-                self.compressor,
-            )
-            self._decode_prefix_len = cache.seq_length
-        from framework.kv_cache import merge_decompressed_kv_into_cache
-        from framework.state_interface import hybrid_layer_detected
-
-        if self._last_full_cache is not None and hybrid_layer_detected(self._last_full_cache):
-            return merge_decompressed_kv_into_cache(self._last_full_cache, self._decode_prefix)
-        try:
-            from transformers.cache_utils import DynamicCache
-
-            # Do NOT use DynamicCache(ddp_cache_data=...). In current transformers that
-            # constructor calls layer.update() which torch.cats onto existing tensors and
-            # can balloon GPU memory (A10G OOM at ctx≥256 for identity/TQ/QJL).
-            if hasattr(DynamicCache, "from_legacy_cache"):
-                return DynamicCache.from_legacy_cache(tuple(self._decode_prefix))
-            legacy = DynamicCache()
-            for layer_idx, (key_states, value_states) in enumerate(self._decode_prefix):
-                legacy.update(key_states, value_states, layer_idx)
-            return legacy
-        except (ImportError, TypeError, AttributeError, ValueError):
-            return tuple(self._decode_prefix)
+        self._invalidate_decode_prefix()
+        return decompress_to_legacy_cache(
+            cache.layers,
+            self.compressor,
+            self.model.config,
+            device=device,
+            template_cache=self._last_full_cache,
+        )
 
     @torch.no_grad()
     def step(
@@ -236,10 +191,9 @@ class KVCacheEngine:
 
         forward_mask = attention_mask
         _uses_layer_types = bool(getattr(self.model.config, "layer_types", None))
-        _needs_native_mask = getattr(self.compressor, "name", "") in {"rocketkv", "qjl"}
-        if _uses_layer_types and _needs_native_mask:
-            # Gemma3 builds per-layer sliding/full masks internally; a flat mask
-            # desynchronizes once RocketKV sparsifies keys during decode.
+        if _uses_layer_types:
+            # Gemma3 builds per-layer sliding/full masks internally; a flat 2D mask
+            # desynchronizes once decode grows past the prefill length (513 vs 512).
             forward_mask = None
 
         outputs = self.model(
@@ -300,6 +254,23 @@ class KVCacheEngine:
             new_cache = CompressedCache(layers=new_layers)
             self.compressed_cache = new_cache
             self._last_full_cache = outputs.past_key_values
+            return outputs.logits, new_cache
+
+        # Gemma3 (and similar) mix sliding_attention + full_attention layers. Sliding
+        # layers keep a fixed key length while full layers grow, so a single
+        # incremental payload cursor (from layer-0 length) desynchronizes: full
+        # layers re-append overlapping token spans until decompress torch.cat OOMs
+        # (~20GB by gen≈64 at ctx=512). Snapshot-compress every step instead.
+        layer_types = getattr(self.model.config, "layer_types", None) or []
+        if any(t == "sliding_attention" for t in layer_types):
+            new_layers = [
+                self.compressor.compress(key, value, layer=layer_idx)
+                for layer_idx, (key, value) in enumerate(iter_layer_kv(outputs.past_key_values))
+            ]
+            new_cache = CompressedCache(layers=new_layers)
+            self.compressed_cache = new_cache
+            self._last_full_cache = None
+            self._invalidate_decode_prefix()
             return outputs.logits, new_cache
 
         new_layers = self._compress_new_tokens(outputs.past_key_values, prev_seq, prior_layers)

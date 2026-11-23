@@ -29,7 +29,7 @@ def test_palu_taxonomy_matches_documentation():
     assert tax.primary == CompressionCategory.PROJECTION
     assert CompressionCategory.MODIFIED_ATTENTION in tax.secondary
     assert tax.modifies_attention is True
-    assert tax.calibration_free is False
+    assert tax.calibration_free is True  # weight-only SVD, no calibration data (audit B5)
 
 
 def test_palu_theoretical_compression_ratio():
@@ -37,12 +37,13 @@ def test_palu_theoretical_compression_ratio():
     assert compressor.theoretical_compression_ratio() == pytest.approx(2.0)
 
 
-def test_palu_offline_cost_wikitext_calibration():
+def test_palu_offline_cost_is_data_free():
+    """Audit B5: bind_model is a weight-only SVD; no dataset or tokens may be claimed."""
     compressor = PaluCompressor(calibration_samples=2048, calibration_seq_len=1024)
     meta = compressor.offline_cost_metadata()
-    assert meta.calibration_required is True
-    assert meta.calibration_dataset == "wikitext-2"
-    assert meta.calibration_tokens == 2048 * 1024
+    assert meta.calibration_required is False
+    assert meta.calibration_dataset is None
+    assert meta.calibration_tokens is None
 
 
 # --- Truncated SVD mathematics (Eq. 4) ----------------------------------------
@@ -199,10 +200,10 @@ def test_palu_memory_payload_uses_low_rank_latent():
 # --- Cost accounting -----------------------------------------------------------
 
 
-def test_palu_cost_block_reports_calibration():
+def test_palu_cost_block_reports_no_calibration():
     compressor = PaluCompressor(compression_rate=0.5)
     cost = evaluate_cost(compressor, context_length=128, fidelity=None, system=None)
-    assert cost.offline.calibration_required is True
+    assert cost.offline.calibration_required is False
     assert cost.compression.theoretical_compression_ratio == pytest.approx(2.0)
 
 

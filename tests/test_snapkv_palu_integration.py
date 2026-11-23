@@ -148,4 +148,4 @@ def test_palu_eval_runner_smoke(model_layer: ModelLayer):
     assert result.taxonomy["primary"] == "projection"
     assert result.fidelity.representation.key_rmse >= 0.0
     assert math.isfinite(result.behavior.perplexity)
-    assert result.cost.offline.calibration_required is True
+    assert result.cost.offline.calibration_required is False  # Palu is weight-only SVD

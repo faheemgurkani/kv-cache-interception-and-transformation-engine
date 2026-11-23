@@ -77,3 +77,47 @@ def test_qjl_attention_aligns_prefill_mask_on_decode():
     assert out.shape == (1, 1, 4, 64)
     assert weights.shape == (1, 4, 1, 8)
     assert torch.isfinite(out).all()
+
+
+def test_ensure_key_payloads_one_payload_per_position():
+    """Regression (audit B3): payloads must align 1:1 with key positions, no duplicates."""
+    from framework.qjl_online import _ensure_key_payloads
+
+    compressor = QJLCompressor(seed=42)
+    key = torch.randn(1, 1, 16, 64)
+    payloads = _ensure_key_payloads(compressor, 0, key)
+
+    assert len(payloads) == 16
+    assert len(compressor.online_key_payloads(0)) == 16  # no hidden duplicates
+
+    batch = compressor.compress_kv(key, layer=0, mode="key")
+    for t in (0, 1, 7, 15):
+        assert torch.equal(payloads[t].sign_bits, batch.sign_bits[:, :, t : t + 1, :])
+        assert torch.allclose(payloads[t].vector_norm, batch.vector_norm[:, :, t : t + 1, :])
+
+    # Extending with later tokens (decode) keeps alignment.
+    key2 = torch.cat([key, torch.randn(1, 1, 3, 64)], dim=2)
+    payloads2 = _ensure_key_payloads(compressor, 0, key2)
+    assert len(payloads2) == 19 and len(compressor.online_key_payloads(0)) == 19
+
+
+def test_qjl_online_attention_matches_exact_with_wide_sketch_mqa():
+    """Regression (audit B3): MQA (1 KV head, 4 Q heads) online path tracks exact attention."""
+    import torch.nn.functional as F
+
+    from framework.qjl_online import _ensure_key_payloads
+
+    torch.manual_seed(0)
+    compressor = QJLCompressor(seed=42, proj_dim=8192)
+    q = torch.randn(1, 4, 12, 64)
+    k = torch.randn(1, 1, 12, 64)
+    v = torch.randn(1, 1, 12, 64)
+    payloads = _ensure_key_payloads(compressor, 0, k)
+    mask = torch.full((1, 1, 12, 12), float("-inf")).triu(1)
+    out, _ = qjl_eager_attention_forward(
+        q, v, payloads, compressor, attention_mask=mask, scaling=64**-0.5, num_key_value_groups=4
+    )
+    scores = torch.matmul(q, k.expand(1, 4, 12, 64).transpose(-2, -1)) * 64**-0.5 + mask
+    exact = torch.matmul(F.softmax(scores, dim=-1), v.expand(1, 4, 12, 64)).transpose(1, 2)
+    rel = ((out - exact).norm() / exact.norm()).item()
+    assert rel < 0.25, rel

@@ -146,12 +146,16 @@ class PaluCompressor(KVCompressor):
         return 1.0 / self.compression_rate
 
     def offline_cost_metadata(self) -> OfflineCostMetadata:
+        # bind_model() is a data-free truncated SVD of k_proj / v_proj weights: no
+        # calibration dataset or tokens are consumed (audit B5). The measured wall time
+        # and allocator delta are a one-off offline *setup* cost, reported as such.
         return OfflineCostMetadata(
-            calibration_required=True,
-            calibration_dataset="wikitext-2",
-            calibration_tokens=self.calibration_samples * self.calibration_seq_len,
+            calibration_required=False,
+            calibration_dataset=None,
+            calibration_tokens=None,
             calibration_time_ms=self._calibration_time_ms,
             calibration_memory_bytes=self._calibration_memory_bytes,
+            setup_required=True,
         )
 
     def shared_storage_bytes(self) -> int:

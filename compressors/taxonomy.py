@@ -85,9 +85,12 @@ METHOD_TAXONOMY: dict[str, MethodTaxonomy] = {
         name="palu",
         primary=CompressionCategory.PROJECTION,
         secondary=(CompressionCategory.MODIFIED_ATTENTION,),
-        description="G-LRD low-rank latent KV cache; dynamic K reconstruction under RoPE.",
+        description=(
+            "G-LRD low-rank latent KV cache; dynamic K reconstruction under RoPE. "
+            "This implementation decomposes k_proj/v_proj weights by SVD (data-free)."
+        ),
         modifies_attention=True,
-        calibration_free=False,
+        calibration_free=True,
         compression_unit="head",
     ),
     "kivi": MethodTaxonomy(

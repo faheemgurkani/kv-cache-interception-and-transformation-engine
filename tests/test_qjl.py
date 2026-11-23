@@ -33,7 +33,7 @@ def test_qjl_decode_scaling():
     norm = x.norm().unsqueeze(0)
     bits = qjl_encode(x, proj)
     restored = qjl_decode(bits, proj, norm)
-    manual = torch.einsum("ji,i->j", proj, bits.float())
+    manual = torch.einsum("ij,i->j", proj, bits.float())  # S^T b (audit B8)
     manual = manual * (math.sqrt(math.pi / 2.0) / proj.shape[0]) * norm
     assert torch.allclose(restored, manual)
 
@@ -202,3 +202,21 @@ def test_qjl_split_seq_payload_matches_token_loop():
         single = compressor.compress_kv(key[:, :, t : t + 1, :], layer=0, mode="key")
         assert torch.equal(part.sign_bits, single.sign_bits)
         assert torch.allclose(part.vector_norm, single.vector_norm)
+
+
+def test_qjl_decode_reconstructs_direction_square_and_wide_sketch():
+    """Audit B8: decode must be S^T b. The old S b gave cos ~0.004 and crashed for m != d."""
+    import torch.nn.functional as F
+
+    torch.manual_seed(0)
+    d = 128
+    x = torch.randn(256, d)
+    cos = {}
+    for m in (d, 8 * d):
+        proj = projection_matrix(d, proj_dim=m, seed=42)
+        x_hat = qjl_decode(qjl_encode(x, proj), proj, x.norm(dim=-1, keepdim=True))
+        assert x_hat.shape == x.shape
+        cos[m] = F.cosine_similarity(x, x_hat, dim=-1).mean().item()
+    assert cos[d] > 0.5, cos  # 1-bit, m = d
+    assert cos[8 * d] > cos[d] + 0.1, cos  # more sketch dims -> better reconstruction
+    assert cos[8 * d] > 0.8, cos

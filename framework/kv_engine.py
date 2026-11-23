@@ -31,6 +31,10 @@ class CompressedCache:
     """Full-model compressed KV state (one entry per layer)."""
 
     layers: list[CompressedKV] = field(default_factory=list)
+    # Tokens processed so far. Differs from ``seq_length`` (tokens *stored*) once an
+    # eviction compressor (SnapKV / RocketKV) has dropped entries; RoPE positions of new
+    # tokens must continue from this logical length, not from the shortened cache.
+    logical_seq_len: int | None = None
 
     @property
     def nbytes(self) -> int:
@@ -88,20 +92,35 @@ class KVCacheEngine:
         past_key_values,
         prev_seq: int,
         prior_layers: list[CompressedKV] | None,
+        new_tokens: int | None = None,
     ) -> list[CompressedKV]:
-        """Compress only newly appended token positions (incremental append)."""
+        """Compress only newly appended token positions (incremental append).
+
+        The append cursor is **per layer**: sliding-window layers (Gemma3) stop growing
+        at the window while full-attention layers keep growing, so one shared cursor
+        (layer 0's length) desynchronised them and forced whole-cache re-quantization
+        (audit B4). Each layer drops the payloads its cache evicted, then appends only
+        the tokens produced by this step; a stored payload is never recomputed.
+        """
         new_layers: list[CompressedKV] = []
         for layer_idx, (key, value) in enumerate(iter_layer_kv(past_key_values)):
             total_seq = key.shape[2]
             if prior_layers is None:
                 key_payloads: list[object] = []
                 value_payloads: list[object] = []
-                start = 0
             else:
                 prior = prior_layers[layer_idx]
                 key_payloads = list(prior.keys)  # type: ignore[arg-type]
                 value_payloads = list(prior.values)  # type: ignore[arg-type]
-                start = prev_seq
+                if new_tokens is not None:
+                    # Tokens this layer's cache evicted (sliding window) since last step.
+                    dropped = max(0, len(key_payloads) + new_tokens - total_seq)
+                    if dropped:
+                        key_payloads = key_payloads[dropped:]
+                        value_payloads = value_payloads[dropped:]
+                if len(key_payloads) > total_seq:  # inconsistent state: rebuild this layer
+                    key_payloads, value_payloads = [], []
+            start = len(key_payloads)
 
             remaining = total_seq - start
             splitter = getattr(self.compressor, "split_seq_payload", None)
@@ -152,10 +171,33 @@ class KVCacheEngine:
             self.model.config,
             device=device,
             template_cache=self._last_full_cache,
+            logical_seq_len=cache.logical_seq_len,
         )
 
     @torch.no_grad()
     def step(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
+        compressed_cache: CompressedCache | None = None,
+        position_ids: torch.Tensor | None = None,
+    ) -> tuple[torch.Tensor, CompressedCache]:
+        cache = compressed_cache or self.compressed_cache
+        prev_stored = cache.seq_length if cache is not None else 0
+        prev_logical = prev_stored
+        if cache is not None and cache.logical_seq_len is not None:
+            prev_logical = cache.logical_seq_len
+        if position_ids is None and prev_logical != prev_stored:
+            # Eviction shortened the cache: HF would infer positions from its length and
+            # mis-rotate the new token relative to the stored (already rotated) keys.
+            position_ids = torch.arange(
+                prev_logical, prev_logical + input_ids.shape[1], device=input_ids.device
+            ).unsqueeze(0)
+        logits, new_cache = self._step_impl(input_ids, attention_mask, compressed_cache, position_ids)
+        new_cache.logical_seq_len = prev_logical + input_ids.shape[1]
+        return logits, new_cache
+
+    def _step_impl(
         self,
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor | None = None,
@@ -232,7 +274,9 @@ class KVCacheEngine:
 
         if getattr(self.compressor, "name", "") == "snapkv":
             new_layers: list[CompressedKV] = []
-            logical_seq = prev_seq + input_ids.shape[1]
+            logical_seq = (
+                cache.logical_seq_len if cache is not None and cache.logical_seq_len is not None else prev_seq
+            ) + input_ids.shape[1]
             for layer_idx, (key, value) in enumerate(iter_layer_kv(outputs.past_key_values)):
                 new_layers.append(
                     self.compressor.wrap_layer_from_kv(  # type: ignore[attr-defined]
@@ -256,24 +300,9 @@ class KVCacheEngine:
             self._last_full_cache = outputs.past_key_values
             return outputs.logits, new_cache
 
-        # Gemma3 (and similar) mix sliding_attention + full_attention layers. Sliding
-        # layers keep a fixed key length while full layers grow, so a single
-        # incremental payload cursor (from layer-0 length) desynchronizes: full
-        # layers re-append overlapping token spans until decompress torch.cat OOMs
-        # (~20GB by gen≈64 at ctx=512). Snapshot-compress every step instead.
-        layer_types = getattr(self.model.config, "layer_types", None) or []
-        if any(t == "sliding_attention" for t in layer_types):
-            new_layers = [
-                self.compressor.compress(key, value, layer=layer_idx)
-                for layer_idx, (key, value) in enumerate(iter_layer_kv(outputs.past_key_values))
-            ]
-            new_cache = CompressedCache(layers=new_layers)
-            self.compressed_cache = new_cache
-            self._last_full_cache = None
-            self._invalidate_decode_prefix()
-            return outputs.logits, new_cache
-
-        new_layers = self._compress_new_tokens(outputs.past_key_values, prev_seq, prior_layers)
+        new_layers = self._compress_new_tokens(
+            outputs.past_key_values, prev_seq, prior_layers, new_tokens=input_ids.shape[1]
+        )
         new_cache = CompressedCache(layers=new_layers)
         self.compressed_cache = new_cache
         # Only hybrid models need the raw HF cache retained for state merge.
@@ -293,10 +322,20 @@ class KVCacheEngine:
         max_new_tokens: int,
         attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """Manual greedy loop with KV compression on every step."""
+        """Manual greedy loop with KV compression on every step.
+
+        Always starts from an empty cache. ``step()`` falls back to ``self.compressed_cache``
+        when it is given none, so an engine reused across prompts (reasoning / instruction
+        following) used to prefill each new prompt *on top of the previous trial's KV*
+        (audit B7); a stateful compressor would also carry stale per-layer state.
+        """
         generated = input_ids
         attn = attention_mask
         cache: CompressedCache | None = None
+        self.compressed_cache = None
+        self._last_full_cache = None
+        if hasattr(self.compressor, "reset_state"):
+            self.compressor.reset_state()  # type: ignore[attr-defined]
         self._invalidate_decode_prefix()
 
         for _ in range(max_new_tokens):

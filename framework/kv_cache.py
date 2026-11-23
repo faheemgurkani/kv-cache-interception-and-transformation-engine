@@ -258,8 +258,15 @@ def decompress_to_legacy_cache(
     model_config,
     device: torch.device | None = None,
     template_cache=None,
+    logical_seq_len: int | None = None,
 ):
-    """Rebuild past_key_values from compressed layers for the next forward pass."""
+    """Rebuild past_key_values from compressed layers for the next forward pass.
+
+    ``logical_seq_len`` is the number of tokens the model has processed. Sliding-window
+    layers (Gemma3) store only the last ``window - 1`` tokens but derive masks and
+    ``get_seq_length()`` from a cumulative counter; rebuilding through ``update()`` alone
+    would reset it to the stored length and corrupt masks once the window has filled.
+    """
     from framework.state_interface import hybrid_layer_detected
 
     layer_pairs = []
@@ -282,6 +289,17 @@ def decompress_to_legacy_cache(
         cache = DynamicCache(config=model_config)
         for layer_idx, (key_states, value_states) in enumerate(layer_pairs):
             cache.update(key_states, value_states, layer_idx)
+        if logical_seq_len is not None:
+            for layer in getattr(cache, "layers", []):
+                if getattr(layer, "is_sliding", False) and hasattr(layer, "cumulative_length"):
+                    # Only once the window has filled does HF's mask sizing depend on how many
+                    # tokens were seen. A sliding layer that is merely short because an
+                    # eviction compressor dropped tokens must keep cumulative_length == its
+                    # stored length, or the model-built mask outgrows the stored keys.
+                    window = getattr(layer, "sliding_window", None)
+                    stored = layer.keys.shape[-2] if getattr(layer, "keys", None) is not None else 0
+                    if window is not None and stored >= window - 1:
+                        layer.cumulative_length = int(logical_seq_len)
         return cache
     except (ImportError, TypeError, AttributeError, ValueError):
         return tuple(layer_pairs)

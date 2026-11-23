@@ -36,6 +36,9 @@ def qjl_decode(
     device = bits.device
     projection = projection.to(device)
     b = bits.to(projection.dtype)
-    r_hat = torch.einsum("ji,...i->...j", projection, b)
+    # S is [m, d] and b is [..., m]: reconstruction is S^T b (contract over the sketch axis).
+    # The previous "ji,...i->...j" computed S b, which is only shape-compatible for square S
+    # and returns an unrelated direction (cos(x, x_hat) ~ 0.004); non-square S crashed (audit B8).
+    r_hat = torch.einsum("ij,...i->...j", projection, b)
     scale = math.sqrt(math.pi / 2.0) / projection.shape[0]
     return r_hat * scale * norm_r.to(device)

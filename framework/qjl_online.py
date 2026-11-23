@@ -29,10 +29,12 @@ def _ensure_key_payloads(
     """Ensure one QJL payload per key position along the sequence axis."""
     payloads = compressor.online_key_payloads(layer_idx)
     seq_len = key_states.shape[2]
-    if len(payloads) < seq_len:
-        for token_idx in range(len(payloads), seq_len):
-            slice_k = key_states[:, :, token_idx : token_idx + 1, :]
-            payloads.append(compressor.compress_key_token(layer_idx, slice_k))
+    # compress_key_token() already appends to this same per-layer list; appending its
+    # return value again duplicated every payload ([t0, t0, t1, t1, ...]) and scored
+    # each key against the wrong token's sketch.
+    for token_idx in range(len(payloads), seq_len):
+        slice_k = key_states[:, :, token_idx : token_idx + 1, :]
+        compressor.compress_key_token(layer_idx, slice_k)
     return payloads[:seq_len]
 
 

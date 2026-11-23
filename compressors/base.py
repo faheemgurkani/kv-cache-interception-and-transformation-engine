@@ -29,6 +29,9 @@ class OfflineCostMetadata:
     calibration_tokens: int | None = None
     calibration_time_ms: float | None = None
     calibration_memory_bytes: int | None = None
+    # A one-off, data-free offline setup step exists (e.g. Palu's weight SVD). It is not
+    # calibration (no data consumed) but its time should still be measured and reported.
+    setup_required: bool = False
 
     def to_dict(self) -> dict:
         return self.__dict__.copy()

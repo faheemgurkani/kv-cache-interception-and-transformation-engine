@@ -82,25 +82,12 @@ def enable_snapkv_online(model, compressor: SnapKVCompressor) -> None:
 
                 q_len = query_states.shape[2]
                 kv_len = key_states.shape[2]
-                prefill_done = compressor._prefill_done.get(layer_index, False)
-                # Prefill-only: fire once the cache first reaches capacity.
-                # Token-by-token PPL never has q_len == kv_len except t=0, so the
-                # old conjunct skipped eviction and SnapKV PPL matched identity.
-                should_evict = kv_len >= compressor.max_capacity_prompt and (
-                    q_len == kv_len or not prefill_done
-                )
-                if should_evict:
-                    key_states, value_states = snap_kv(
-                        query_states,
-                        key_states,
-                        value_states,
-                        window_size=compressor.window_size,
-                        max_capacity_prompt=compressor.max_capacity_prompt,
-                        kernel_size=compressor.kernel_size,
-                    )
-                    _write_cache_kv(past_key_values, layer_index, key_states, value_states)
-                    compressor._prefill_done[layer_index] = True
-                    kv_len = key_states.shape[2]
+                # Prefill-only compression, applied AFTER attention: prompt tokens attend
+                # over the full, causal K/V (as in the SnapKV paper); eviction only decides
+                # what stays in the cache for decode. Evicting before attention (the old
+                # behaviour) made every prefill query see the kept set with a mis-sliced
+                # mask, leaking future tokens into earlier logits (audit B2).
+                should_evict = q_len == kv_len and kv_len >= compressor.max_capacity_prompt
                 attention_mask = _align_attention_mask(
                     attention_mask, q_len=q_len, k_len=kv_len
                 )
@@ -118,6 +105,18 @@ def enable_snapkv_online(model, compressor: SnapKVCompressor) -> None:
                     **call_kwargs,
                     **kwargs,
                 )
+
+                if should_evict:
+                    kept_key, kept_value = snap_kv(
+                        query_states,
+                        key_states,
+                        value_states,
+                        window_size=compressor.window_size,
+                        max_capacity_prompt=compressor.max_capacity_prompt,
+                        kernel_size=compressor.kernel_size,
+                    )
+                    _write_cache_kv(past_key_values, layer_index, kept_key, kept_value)
+                    compressor._prefill_done[layer_index] = True
 
                 attn_output = attn_output.reshape(*input_shape, -1).contiguous()
                 attn_output = attn_module.o_proj(attn_output)

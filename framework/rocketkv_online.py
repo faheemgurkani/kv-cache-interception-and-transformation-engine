@@ -151,33 +151,47 @@ def enable_rocketkv_online(model, compressor: RocketKVCompressor) -> None:
                         layer_index,
                     )
 
-                key_states, value_states, kept_indices = apply_online_kv_sparsity(
-                    compressor,
-                    layer_index,
-                    query_states,
-                    key_states,
-                    value_states,
-                )
-                _write_sparse_cache(
-                    past_key_values,
-                    layer_index,
-                    key_states,
-                    value_states,
-                )
-                attention_mask = align_attention_mask(
-                    attention_mask,
-                    kept_indices,
-                    key_states.shape[2],
-                    query_seq_len=query_states.shape[2],
-                )
-                if attention_mask is not None and attention_mask.dim() == 4:
-                    q_len = query_states.shape[2]
-                    k_len = key_states.shape[2]
-                    if attention_mask.shape[-2] != q_len or attention_mask.shape[-1] != k_len:
-                        attention_mask = attention_mask[..., -q_len:, :k_len]
-                    if attention_mask.shape[-1] < k_len:
-                        key_states = key_states[..., : attention_mask.shape[-1], :]
-                        value_states = value_states[..., : attention_mask.shape[-1], :]
+                q_len = query_states.shape[2]
+                if q_len > 1:
+                    # Prefill / multi-token step: attend over the full, causal K/V and apply
+                    # stage-1 eviction only to what is *stored* for later decode. Sparsifying
+                    # before attention let early queries see future tokens through a
+                    # mis-sliced mask (audit B2). Stage 2 (HSA) only acts on q_len == 1.
+                    stored_key, stored_value, _ = apply_online_kv_sparsity(
+                        compressor,
+                        layer_index,
+                        query_states,
+                        key_states,
+                        value_states,
+                    )
+                    _write_sparse_cache(past_key_values, layer_index, stored_key, stored_value)
+                else:
+                    key_states, value_states, kept_indices = apply_online_kv_sparsity(
+                        compressor,
+                        layer_index,
+                        query_states,
+                        key_states,
+                        value_states,
+                    )
+                    _write_sparse_cache(
+                        past_key_values,
+                        layer_index,
+                        key_states,
+                        value_states,
+                    )
+                    attention_mask = align_attention_mask(
+                        attention_mask,
+                        kept_indices,
+                        key_states.shape[2],
+                        query_seq_len=q_len,
+                    )
+                    if attention_mask is not None and attention_mask.dim() == 4:
+                        k_len = key_states.shape[2]
+                        if attention_mask.shape[-2] != q_len or attention_mask.shape[-1] != k_len:
+                            attention_mask = attention_mask[..., -q_len:, :k_len]
+                        if attention_mask.shape[-1] < k_len:
+                            key_states = key_states[..., : attention_mask.shape[-1], :]
+                            value_states = value_states[..., : attention_mask.shape[-1], :]
 
                 attention_interface = resolve_attention_interface(
                     attn_module, model.config, attn_ops

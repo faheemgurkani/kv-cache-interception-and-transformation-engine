@@ -1,3 +1,49 @@
+# Engine and Evaluation Frameworks Redesign Plan
+
+## Part 0 — Post-audit status and reframe engine work (2026-11-24)
+
+> **Read this first.** Part 0 corrects the 2026-08-19 verdict below and lists the engine work that the adopted reframe needs. Master status for all work packages (R0–R16) lives in [`RESEARCH_REDESIGN_PLAN.md` → Part 0](RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24); this section only details the engine items (E1–E8), which map onto those IDs.
+
+### 0.1 Correction to the 2026-08-19 verdict
+
+The 2026-08-19 audit below says the redesign is "implemented, hardened, and tested" and that "all five shortlist models run end-to-end eval". Two corrections:
+
+1. **"Run end-to-end eval" means the reference tests pass**, not that valid results exist. Only Gemma3-270M has a measured bundle (18 jobs), and the Gemma3 post-overhaul audit found it unusable. Falcon-H1 and TinyDeepSeek have no result files.
+2. **"Hardened" was premature.** The Oct-2026 audit ([`audits/GEMMA3_POST_OVERHAUL_AUDIT.md`](audits/GEMMA3_POST_OVERHAUL_AUDIT.md)) found eight critical/high engine and eval bugs (B1–B8, S1, P1) after that verdict. All are fixed locally and committed (#201–#204); Modal verification is pending.
+
+The compatibility work itself (adapters, gates, hybrid state interface, MLA expanded path) remains correct and is the foundation the reframe needs.
+
+### 0.2 Engine work packages for the reframe
+
+Legend: ✅ done · 🟡 partial · ❌ not started · ⛔ blocked.
+
+| ID | Maps to | Item | Status | Detail |
+|---|---|---|---|---|
+| **E1** | R1, R2 | Audit fixes (engine, eval, provenance, Modal guard) | ✅ local / ⛔ Modal | Committed #201–#204. GPU verification blocked while the Modal workspace is paused (`audit_verify` preset) |
+| **E2** | R5 | Long-context support (≥ 2–4K) | ❌ | `configs/model_*.yaml` cap `context_lengths` at 512. Common ceiling across the shortlist is ~4K (`max_position_embeddings`: OLMo2 4096, Falcon-H1 16384, Gemma3 32768, Qwen3-0.6B 40960, TinyDeepSeek 163840), so 4K needs ctx ≤ 4096 − generated tokens on OLMo2. Runtime risks: QJL decompresses the whole per-token cache every decode step (audit test notes; lazy key decode not implemented), TurboQuant runs at ~0.08 tok/s at 512. Needs a feasibility probe before grid design |
+| **E3** | R6 | GDN hybrid (e.g. a Qwen3.5 sub-2B checkpoint) | ❌ | Installed `transformers` 5.12.1 includes `qwen3_5` (and `qwen3_next`), so Gate A is plausible. Needs: state-interface support for GDN recurrent + conv state (`framework/state_interface.py`), an attention adapter for its full-attention layers (`framework/model_adapter.py`), capability manifest, memory accounting, and Gates A–C, following the Falcon-H1 pattern (§19–27 below) |
+| **E4** | R7 | Native MLA latent interception (TinyDeepSeek Gate C) | ❌ | Promoted from "optional future work" to **required for hypothesis H3** (expanded vs native). Native cache per token per layer = `kv_lora_rank` 256 + RoPE 32 = 288 elements vs 384 expanded. If not built, the MLA result is reported as an expanded-cache disclosure only |
+| **E5** | R8 | Rank statistics in `eval/cross_dim/` | ❌ | Add Spearman and Kendall τ, bootstrap CIs, per-architecture grouping, cross-architecture ranking agreement (C2), and held-out prediction (C3). Today: Pearson only (`eval/cross_dim/correlation.py`) |
+| **E6** | R9 | Claimed-vs-realized savings export | 🟡 | `eval/fidelity/memory.py` already reports `kv_compression_ratio` and the total-state `compression_ratio` for hybrids. Missing: a per-compressor × per-architecture × per-context table/CLI |
+| **E7** | R10 | Calibration-cost break-even | ❌ | Inputs exist (`cost.offline`, `cost.online`, `eval/cost/accounting.py`); no amortization/break-even calculation |
+| **E8** | R11 | Budgets × seeds grid presets | ❌ | New presets in `configs/modal_sweeps.yaml` per compressor budget and seed; reuse `resolve_kpi_plan` gating rules |
+
+### 0.3 Model matrix under the reframe
+
+| Model | Class | Engine support | Valid results |
+|---|---|---|---|
+| OLMo2-1B | MHA | ✅ Gates A–C | ❌ (legacy OLMo2 Phase-5 bundles are invalid per audit) |
+| Qwen3-0.6B | GQA | ✅ Gates A–C | ❌ (identity smoke only) |
+| Gemma3-270M | MQA + sliding/global | ✅ Gates A–C | ❌ (18-job bundle unusable per audit) |
+| TinyDeepSeek-0.5B | MLA | 🟡 Gates A–B; Gate C fails (expanded KV) | ❌ |
+| Falcon-H1-0.5B | Attention + Mamba-2 hybrid | ✅ Gates A–C | ❌ |
+| Qwen3.5 sub-2B (planned) | Attention + Gated DeltaNet hybrid | ❌ (E3) | ❌ |
+| Qwen3-1.7B (legacy) | GQA | ✅ | ⤵ Historical only; not in the reframe grid |
+
+---
+
+## Original plan (2026-08-18/19)
+
 Yes. Based on everything you have provided, the right way to approach this is **not to redesign KVBench around the five models**. The existing engine should remain the default path, and we should add **model-specific compatibility layers and narrowly scoped evaluation extensions** around it.
 
 The five-model target matrix is:
@@ -19,6 +65,8 @@ This is particularly important because the current evaluation framework has **th
 ---
 
 ## Implementation verification audit (2026-08-19, hardened)
+
+> ⤵ **Partly superseded (2026-11-24)** by [Part 0](#part-0--post-audit-status-and-reframe-engine-work-2026-11-24): "all five run end-to-end eval" means reference tests pass, not valid results; "hardening complete" predates the Oct-2026 audit bugs. Compatibility findings below remain valid.
 
 **Executive verdict:** The **full §1–36 redesign is implemented, hardened, and tested**. All five shortlist models run end-to-end eval. TinyDeepSeek Gate C fails by design (expanded KV). **Documentation synced** (`CLAUDE.md`, eval correspondence, `model_qwen3.yaml` manifest).
 
@@ -57,7 +105,7 @@ This is particularly important because the current evaluation framework has **th
 
 | Item | Status |
 | ---- | ------ |
-| TinyDeepSeek native latent (Tier 3) | Open research; Gate C fail by design |
+| TinyDeepSeek native latent (Tier 3) | Open research; Gate C fail by design. **2026-11-24: promoted to required for H3 → E4 in Part 0** |
 | Unified five-model CI sweep | Optional (~2–50 min/model); no single orchestrator yet |
 | `StateAdapter` naming in §36 | Doc alias for `state_interface` + `state_compression` |
 | **Oaken cost in paper / result tables** | 📝 **Engine done; reporting deferred** — see [`RESEARCH_REDESIGN_PLAN.md` → Post-sweep reminder — Oaken cost](RESEARCH_REDESIGN_PLAN.md#post-sweep-reminder--oaken-cost-phases-3-26-27). After each sweep: pull `cost` + `oaken_layers` from job JSON; add **§COST** + `oaken2025` cite at paper rewrite; optional `--kernel-cost` subset for compress/decompress/attention split |

@@ -1,6 +1,90 @@
 # KVBench: Complete Research Improvement Roadmap
 
+## Part 0 — Reframe adoption and master status (2026-11-24)
+
+> **This part is the single source of truth for project status.** Everything below Part 0 is the Phase 1–33 roadmap as of 2026-08-20. It stays valid for the **engine and evaluation infrastructure**, but its **research direction and paper plan are superseded where §0.3 says so**. Where Part 0 and a later section disagree, Part 0 wins.
+
+### 0.1 Decision
+
+On 2026-11-24 the project **adopted the reframe** in [`RESEARCH_REFRAME_AND_PRIOR_ART.md`](RESEARCH_REFRAME_AND_PRIOR_ART.md) (formerly `MISC_Research.md`), after the literature re-validation in [`literature/FRAMING_VALIDATION_2026-11-24.md`](literature/FRAMING_VALIDATION_2026-11-24.md).
+
+| | Before (Phases 15–23, 2026-08-20) | After (adopted) |
+|---|---|---|
+| Research question | "How should KV-cache transformations be evaluated under controlled conditions?" | "Do KV-cache compression results transfer across attention architectures (MHA, GQA, MQA + sliding window, MLA, attention-SSM hybrid), and what does a compression ratio actually buy once full inference state and offline cost are counted?" |
+| Headline | KVBench (the instrument) | Ranking transfer (C2), supported by claimed-vs-realized savings (C1) and conditional proxy validity (C3) |
+| KVBench's role | Primary contribution | Supporting artifact that makes the test valid |
+| Evidence | Existing 2 × 27 Phase-5 bundles; "no new GPU jobs" | Clean re-run on one commit; ≥ 2–4K context; budgets × seeds; rank statistics with CIs |
+
+**Ownership of facts (to avoid duplication):**
+
+| Topic | Authoritative document |
+|---|---|
+| Framing, contributions C1–C3, hypotheses H1–H6, evidence requirements, venue verdict, prior art | [`RESEARCH_REFRAME_AND_PRIOR_ART.md`](RESEARCH_REFRAME_AND_PRIOR_ART.md) |
+| Work packages, their status, and which Phase 1–33 items still apply | **This Part 0** |
+| Engine work-package detail (E1–E8) | [`ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md` → Part 0](ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#part-0--post-audit-status-and-reframe-engine-work-2026-11-24) |
+| Bug fixes and validity of measured results | [`audits/GEMMA3_POST_OVERHAUL_AUDIT.md`](audits/GEMMA3_POST_OVERHAUL_AUDIT.md) |
+| Snapshot of doc/plan/result misalignment that triggered this update | [`audits/DOCS_PLANS_RESULTS_ALIGNMENT_AUDIT.md`](audits/DOCS_PLANS_RESULTS_ALIGNMENT_AUDIT.md) (resolution appendix at its end) |
+| Known implementation limits | [`methodology/CURRENT_STATE.md`](methodology/CURRENT_STATE.md) |
+
+### 0.2 Work packages
+
+Legend: ✅ done · 🟡 partial · ❌ not started · ⛔ blocked · ⤵ superseded.
+
+| ID | Work package | Status | Evidence / next step |
+|---|---|---|---|
+| **R0** | Adopt reframe; align all plans and docs | ✅ 2026-11-24 | This Part 0; banners in affected docs |
+| **R1** | Fix audit bugs B1–B8, S1–S4, P1, P2, F1, R1 | ✅ local, committed (#201–#204) | `audits/GEMMA3_POST_OVERHAUL_AUDIT.md` |
+| **R2** | Verify audit fixes on Modal (`audit_verify` preset, ctx 128, ≤ 3 jobs) | ⛔ | Last log entry (2026-10-02): Modal workspace paused. Resume, then run the preset |
+| **R3** | Re-measure legacy Qwen3-1.7B / OLMo2-1B sweeps (audit item L1) | ⤵ | Superseded by R13. Legacy Qwen3-1.7B is not in the reframe grid; OLMo2-1B (`allenai/OLMo-2-0425-1B`) is re-run as the MHA shortlist model. Legacy numbers stay historical only |
+| **R4** | Freeze hypotheses H1–H6 before any grid run | 🟡 drafted | Drafts in [`RESEARCH_REFRAME_AND_PRIOR_ART.md` §5.1](RESEARCH_REFRAME_AND_PRIOR_ART.md#51-hypotheses-draft); thresholds still to fix |
+| **R5** | Long-context support ≥ 2–4K (configs, VRAM/runtime feasibility, QJL decode cost) | ❌ | Engine E2 |
+| **R6** | GDN hybrid model (e.g. Qwen3.5 sub-2B) through Gates A–C | ❌ | Engine E3; transformers support to verify first |
+| **R7** | Native MLA latent interception (TinyDeepSeek Gate C) | ❌ | Engine E4. Required for H3; if not done, the MLA claim becomes a disclosure only |
+| **R8** | Rank statistics: Spearman/Kendall, bootstrap CIs, held-out prediction | ❌ | Engine E5; `eval/cross_dim/correlation.py` is Pearson-only today |
+| **R9** | Claimed-vs-realized savings table (nominal KV ratio vs total-state ratio) | 🟡 | Engine E6; metrics exist in `eval/fidelity/memory.py`, no table/export |
+| **R10** | Calibration-cost break-even calculation | ❌ | Engine E7; `eval/cost/` has the inputs |
+| **R11** | Grid design: configs × budgets × seeds (Phase 8 un-frozen) | ❌ | Engine E8 + `configs/modal_sweeps.yaml` presets |
+| **R12** | C2 pilot: 3 architectures × 4 compressors × 3 seeds at 2K | ❌ | Needs R2, R5, R8. Decides early whether rankings move |
+| **R13** | Full clean-commit grid (5–6 models) | ❌ | Needs R2, R4, R5, R6, R11; only when the user explicitly approves a full sweep |
+| **R14** | Real long-context retrieval task (RULER/NIAH-style) | 🟡 | Synthetic needle task exists (`eval/behavior/retrieval.py`); needs ≥ 2K and a RULER-style variant |
+| **R15** | Bibliography: add 2025–2026 competitors | 🟡 | Survey done (reframe doc §7–8); `reference.bib` lacks Rethinking, SCBench, KVPress, KV-CoRE, KVDiagnosis, Marconi, KVzip, Hold Onto That Thought, Oaken, RIFT, JSSA, EdgeLLM-Nano, Shin. 46 PDFs in `literature/papers/` |
+| **R16** | Paper rewrite to the reframe | ❌ | After R13. Title, abstract and contributions per reframe doc §2–3; Phase 15–33 specs apply only as marked in §0.3. `CITATION.cff` was neutralized on 2026-11-24 (software title, three-branch abstract); set the paper title there when R16 lands |
+
+### 0.3 Phase 1–33 re-evaluation under the reframe
+
+| Phase | Was (2026-08-20) | Now | Note |
+|---|---|---|---|
+| 1–4, 6, 7, 9, 10, 14 | ✅ engine + docs | ✅ **Kept** (supporting artifact) | Infrastructure for the transfer study |
+| 2 (BEHAVIOR) | ✅ | ✅ Kept, **protocol changed** | Post-audit PPL protocol (prefill + 64 compressed decode steps); not comparable with pre-2026-10-01 PPL. EdgeLLM-Nano (LCDF) published the same idea; cite it |
+| 5 | ⏸ not planned | ⏸ Still not planned | — |
+| 8 Multiple budgets | ⏸ not planned | 🔓 **Un-frozen** → R11 | Budgets × seeds are an evidence requirement |
+| 11 Workloads | ⏸ deferred | 🔓 **Partly un-frozen** → R14 | A RULER/NIAH-style long-context task only; broad workload matrix still out |
+| 12 Scaling | ⏸ deferred | 🔓 **Partly un-frozen** → R5 | Context ≥ 2–4K required; batch/concurrency scaling optional (only to locate the "ratio ≠ speed" crossover) |
+| 13 Serving engine | ⏸ not planned | ⏸ Still not planned | — |
+| 15 Research question | 📝 spec | ⤵ **Superseded** | Use reframe doc §2.1 |
+| 16 Problem statement | 📝 spec | ⤵ **Revised** | Problem = the untested transfer assumption (Agrawal & Mayer state it explicitly), not metric decoupling |
+| 17 Novelty | 📝 spec | ⤵ **Superseded** | The canonical novelty sentence is retired; novelty = transfer + full-state accounting |
+| 18 What KVBench is | 📝 spec | ✅ Kept | Terminology still valid |
+| 19 Domain positioning | 📝 spec | ⤵ **Revised** | Small-model scale is a design choice (all five architecture classes exist as sub-2B checkpoints) |
+| 20 Related Work | 📝 spec | ⤵ **Revised** | Use the four-section outline with 2026 additions in reframe doc §10 |
+| 21 Introduction | 📝 spec | ⤵ **Revised** | Narrative around the transfer question |
+| 22 Contributions | 📝 spec | ⤵ **Superseded** | C1–C3 of the reframe; engine/protocol become the supporting artifact |
+| 23 Results narrative (F1–F7) | 📝 spec | ⤵ **Superseded** | Replaced by hypotheses H1–H6. F4 ("offline does not predict online") is **retired in blanket form** (contradicted by KV-CoRE, KVDiagnosis, Hold Onto That Thought); restate as conditional (H4) |
+| 24 Cross-dimensional analysis | ✅ | 🟡 **Kept, extend** → R8 | Pearson with a fixed \|r\| < 0.5 rule is insufficient |
+| 25 Trade-off figure | ✅ | ✅ Kept | Regenerate from the new grid |
+| 26–27 Cost / calibration | ✅ engine | 🟡 Kept, extend → R10 | Add break-even |
+| 28 Workload discussion | 📝 spec | ⤵ **Superseded** | Scope is now ≥ 2K context with a real retrieval task |
+| 29–31 Literature / bib | ✅ docs | 🟡 Kept, extend → R15 | |
+| 32 Conceptual model | ✅ docs | ✅ Kept | |
+| 33 One-sentence identity | 📝 spec | ⤵ **Superseded** | Use the reframe title/question (reframe doc §2.3) |
+
+**Superseded blanket statements below Part 0.** The phrases "no new GPU jobs", "no new experiments", "existing Phase-5 bundles support …" and "ctx 128–512 / batch 1 / 64 tokens is sufficient for the paper" appear in many Phase 8–33 subsections. All of them are void: the existing bundles are invalid (audit) and the reframe requires new experiments. Phase-level banners mark the main ones.
+
+---
+
 ## Completeness record — Phases 1–33 (verified 2026-08-20)
+
+> **Historical (2026-08-20).** Engine/doc completeness below is still accurate for infrastructure. Research direction, paper plan and "no work for current scope" statements are superseded by [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24).
 
 Tracks **engine** (code + tests), **documentation** (in-repo docs), and **paper** (`docs/research_paper_writeup/conference_101719.tex`). Phases **5**, **8**, **11**, **12**, and **13** are flagged **not planned / future extension** — design reference only.
 
@@ -62,6 +146,8 @@ Authoritative metric definitions: [`docs/methodology/METHODOLOGY.md`](methodolog
 ---
 
 ## Paper alignment guide — codebase ↔ `conference_101719.tex`
+
+> ⤵ **Partly superseded (2026-11-24).** Terminology mapping (Section A/B → FIDELITY/BEHAVIOR/SYSTEM) and the Oaken cost reminder still apply. Framing rows (question, novelty, contributions, results narrative, scope) and every "no re-run required" note are superseded by [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24).
 
 **Purpose:** Document exactly what the paper still says vs. what the engine/docs now implement, so a later rewrite stays aligned. **Do not edit the `.tex` file until revised experimental results are ready** — this section is the specification for that pass.
 
@@ -912,6 +998,8 @@ Your methodology can explicitly say:
 
 # Phase 8: Add Multiple Compression Budgets ⏸ **Not planned**
 
+> 🔓 **Un-frozen (2026-11-24).** Budgets × seeds are now an evidence requirement → work package R11 in [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24). The "not planned" text below is historical.
+
 > **Status (2026-08-19):** Out of scope. This section is **design reference only** — do **not** implement, schedule, or follow up on Phase 8. Current method-specific budget sweeps (TurboQuant bitwidth/stages, RocketKV token budgets) in existing results are sufficient for the paper; proceed from Phase 7 directly to Phase 9+.
 
 Don't only test one compression setting.
@@ -1100,6 +1188,8 @@ The important thing is to measure actual:
 
 # Phase 11: Add a Realistic Workload Dimension ⏸ **Future extension — not planned**
 
+> 🔓 **Partly un-frozen (2026-11-24).** A RULER/NIAH-style long-context retrieval task is now required → R14 in [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24). The broader workload matrix stays out of scope.
+
 > **Status (2026-08-19):** **Out of scope for current paper and engine roadmap.** This section is **design reference only** — do **not** implement LongBench/RULER/C4 integration, expand sweep grids with new workload types, or add BEHAVIOR task results to the paper for this submission. The **current setup is sufficient:** WikiText-2 PPL + throughput in the paper; synthetic retrieval/instruction/reasoning in the engine (default/off) for legible failure modes without external benchmark dependency.
 
 ### Feasibility snapshot (why deferred)
@@ -1164,6 +1254,8 @@ Recent research strongly suggests workload characteristics matter.
 ---
 
 # Phase 12: Add Workload Scaling ⏸ **Future extension — not planned**
+
+> 🔓 **Partly un-frozen (2026-11-24).** Context ≥ 2–4K is now required (below ~1K the hybrid and sliding-window effects are degenerate) → R5 in [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24). Batch/concurrency scaling remains optional.
 
 > **Status (2026-08-19):** **Out of scope.** Do **not** implement 2K–32K context sweeps, batch/concurrency grids, or generation-length matrices for this paper. Context **128 / 256 / 512**, batch **1**, **64** generated tokens (`configs/model.yaml`, `configs/eval.yaml`) are the controlled case-study grid — explicitly noted as future work in `METHODOLOGY.md` §9 and `ROADMAP.md`.
 
@@ -1354,6 +1446,8 @@ making direct comparison difficult.
 
 # Phase 15: Redefine the Main Research Question 📝 **Paper only**
 
+> ⤵ **Superseded (2026-11-24).** The research question is now the transfer question in [`RESEARCH_REFRAME_AND_PRIOR_ART.md` §2.1](RESEARCH_REFRAME_AND_PRIOR_ART.md#21-central-research-question). Kept below as history.
+
 > **Status (2026-08-20):** **Paper-writeup phase only** — no engine or test changes required. The codebase already implements the *answer* to the reframed question (controlled interception + FIDELITY/BEHAVIOR/SYSTEM + `controlled_conditions`). This section is the **rewrite specification** for `docs/research_paper_writeup/conference_101719.tex` so the manuscript states the question explicitly instead of implying a compressor horse-race.
 
 This is probably the **single most important conceptual change**.
@@ -1437,6 +1531,8 @@ into:
 
 # Phase 16: Reframe the Core Problem Statement 📝 **Paper only**
 
+> ⤵ **Revised (2026-11-24).** The problem is the untested assumption that compression results transfer across architectures (see [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24) §0.3).
+
 > **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. The empirical case studies already *demonstrate* the problem cascade below (e.g., QJL moderate FIDELITY / catastrophic BEHAVIOR; TurboQuant high compression / low SYSTEM throughput). Phase 16 makes that problem **explicit in prose and optionally as a figure** in the `.tex` rewrite.
 
 This is the heart of the revised paper.
@@ -1502,6 +1598,8 @@ KVBench (instrument)
 ---
 
 # Phase 17: Reframe the Novelty 📝 **Paper only**
+
+> ⤵ **Superseded (2026-11-24).** Novelty = cross-architecture transfer + full-state accounting ([reframe doc §3](RESEARCH_REFRAME_AND_PRIOR_ART.md#3-three-contributions-each-with-a-measurable-claim)). The canonical novelty sentence below is retired.
 
 > **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. Novelty is **controlled interception + multi-branch evaluation under matched conditions**, not “first KV benchmark” or new compression algorithms.
 
@@ -1616,6 +1714,8 @@ Secondary acceptable (Title/subtitle):
 
 # Phase 19: Reframe the Domain Positioning 📝 **Paper only**
 
+> ⤵ **Revised (2026-11-24).** Small-model scale is positioned as a design choice; see [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24) §0.3.
+
 > **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. Positions KVBench within **LLM inference systems / inference-engineering**, not generic ML benchmarking or algorithm-only KV compression. The paper already touches this (L54 serving pressure, L58 SLM testbed, SYSTEM metrics) but does not state the **domain ladder** explicitly.
 
 Your research belongs under:
@@ -1696,6 +1796,8 @@ with a specific focus on **KV-cache optimization and evaluation**.
 ---
 
 # Phase 20: Completely Restructure Related Work 📝 **Paper only**
+
+> ⤵ **Revised (2026-11-24).** Use the four-section outline with 2025–2026 additions in [reframe doc §10](RESEARCH_REFRAME_AND_PRIOR_ART.md#10-related-work-outline).
 
 > **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. The `.tex` Related Work (L62–81) already surveys many methods but uses **algorithm-family subsections** (Quantization / Low-rank / Eviction / Benchmarking / Positioning) and buries the **evaluation gap → KVBench** narrative in a short positioning paragraph. Phase 20 restructures into **four thematic sections** ending with *What is still missing?* so Related Work mirrors the problem cascade (Phases 16, 21) and domain positioning (Phase 19).
 
@@ -1857,6 +1959,8 @@ Add before rewrite if not already in `reference.bib`:
 
 # Phase 21: Rewrite the Introduction Around This Story 📝 **Paper only**
 
+> ⤵ **Revised (2026-11-24).** The Introduction is built around the transfer question; see [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24) §0.3.
+
 > **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. The current Intro (L52–60) already contains strong material (KV bottleneck L54, fragmentation L56, SLM testbed L58, contributions L60) but reads as **“compression is useful → we built a comparator.”** Phase 21 reorders into a **seven-paragraph methodology/systems narrative** so the paper opens as an **inference evaluation** contribution, not a compressor horse-race.
 
 ### Narrative shift
@@ -1940,6 +2044,8 @@ This makes the paper read as a **research methodology / LLM inference-systems** 
 ---
 
 # Phase 22: Rewrite the Contributions 📝 **Paper only**
+
+> ⤵ **Superseded (2026-11-24).** Contributions are C1–C3 of the [reframe doc §3](RESEARCH_REFRAME_AND_PRIOR_ART.md#3-three-contributions-each-with-a-measurable-claim); the engine and protocol are the supporting artifact.
 
 > **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. The current contributions block (L60) lists three items centered on **dual Section A/B protocol** and a **$2{\times}27$-job study** as co-primary outputs. Phase 22 replaces this with a **five-contribution taxonomy** (methodology-first) and specifies **how many bullets to show in Intro** vs Conclusion given page budget and experimental support.
 
@@ -2074,6 +2180,8 @@ Use these as **building blocks**; merge for Intro if page-limited (see packaging
 
 # Phase 23: Change the Results Narrative 📝 **Paper only**
 
+> ⤵ **Superseded (2026-11-24).** Findings F1–F7 are replaced by hypotheses H1–H6 ([reframe doc §5.1](RESEARCH_REFRAME_AND_PRIOR_ART.md#51-hypotheses-draft)). F4 ("offline does not predict online") is retired in blanket form. "No new GPU jobs" is void: the Phase-5 bundles are invalid (audit).
+
 > **Status (2026-08-20):** **Paper-writeup phase only** — no engine changes. The Experiments section (L319+) reports results **method-by-method** (“TurboQuant achieved…”, “QJL achieved…”), which reads as a **leaderboard**. Discussion (L608–621) already states the right **decoupling** claims but uses method-centric paragraph titles. Phase 23 reframes both sections around **seven research questions (findings)** that the case studies **answer**, supporting Phase 15/22’s “demonstrations, not horse-race” framing.
 
 ### Narrative shift
@@ -2166,6 +2274,8 @@ Use these as **building blocks**; merge for Intro if page-limited (see packaging
 ---
 
 # Phase 24: Add Cross-Dimensional Analysis ✅ **Done**
+
+> 🟡 **Kept, extension required (2026-11-24).** Pearson plus a fixed \|r\| < 0.5 rule is not sufficient evidence; add Spearman/Kendall, bootstrap CIs and held-out prediction → R8 in [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24).
 
 > **Status (2026-08-20):** **Implementation complete** — `eval/cross_dim/` computes Pearson correlations across six predefined metric pairs from job JSON or `EvaluationResult` lists. CLI: `scripts/analyze_cross_dim.py`. Reporter: `ResultReporter.save_cross_dim()`. Tests: `tests/test_cross_dim_analysis.py`. Paper appendix / Discussion citation deferred.
 
@@ -2291,6 +2401,8 @@ This communicates **no config dominates all three axes** more directly than a si
 
 # Phase 26: Add an Explicit "Offline Does Not Mean Cheap" Discussion ✅ **Done (engine) · 📝 Paper pending**
 
+> 🟡 **Kept, extension required (2026-11-24).** Add a calibration-cost break-even calculation → R10 in [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24). "No new GPU jobs" below is void.
+
 > **Status (2026-08-20):** **Engine complete** — `eval/cost/oaken_taxonomy.py` exports five Oaken-inspired layers on every `EvaluationResult.cost` as `oaken_layers`. **Paper deferred** — `.tex` still conflates “Section A offline” with zero-cost offline; no Oaken citation or five-layer Discussion paragraph yet.
 
 ### Problem (paper today vs target)
@@ -2354,6 +2466,8 @@ This communicates **no config dominates all three axes** more directly than a si
 
 # Phase 27: Add Calibration as a Benchmark Dimension ✅ **Done (engine) · 📝 Paper pending**
 
+> 🟡 **Kept, extension required (2026-11-24).** Feeds the break-even calculation (R10 in [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24)).
+
 > **Status (2026-08-20):** **Engine complete** — Phase 27 columns exported as `cost.benchmark_dimensions` on every job; CSV via `ResultReporter` + `scripts/export_method_benchmark_table.py`. **Paper deferred** — `.tex` mentions TurboQuant Lloyd-Max “offline on Gaussian samples” (L181) but no cross-method calibration comparison table.
 
 ### Phase 27 column spec ↔ engine
@@ -2410,6 +2524,8 @@ This communicates **no config dominates all three axes** more directly than a si
 ---
 
 # Phase 28: Add a Workload-Aware Discussion 📝 **Paper only · engine scoped**
+
+> ⤵ **Superseded (2026-11-24).** Workload scope is now ≥ 2K context with a real retrieval task (R5, R14 in [Part 0](#part-0--reframe-adoption-and-master-status-2026-11-24)).
 
 > **Status (2026-08-20):** **Paper-writeup + scope documentation only** — no new workload integration (Phase **11 deferred**). The engine already runs synthetic BEHAVIOR tasks (`eval/behavior/`) but the **paper correctly reports WikiText-2 PPL + throughput only**. Phase 28 adds the **Discussion / future-work framing** so reviewers do not treat WikiText as universal.
 
@@ -2690,7 +2806,7 @@ python scripts/audit_bibliography.py --json results/bibliography_audit.json
 | Pareto + cross-dim | `eval/pareto/`, `eval/cross_dim/` (Phases 9, 24–25) |
 | Research findings | Phase 23 F1–F7 narrative spec |
 
-**Canonical doc:** [`docs/architecture/SYSTEM_DESIGN.md` §Phase 32](../architecture/SYSTEM_DESIGN.md#phase-32-conceptual-model-end-to-end-story)
+**Canonical doc:** [`docs/architecture/SYSTEM_DESIGN.md` §Phase 32](architecture/SYSTEM_DESIGN.md#phase-32-conceptual-model-end-to-end-story)
 
 ### Paper change log — section by section (`conference_101719.tex`)
 
@@ -2713,6 +2829,8 @@ python scripts/audit_bibliography.py --json results/bibliography_audit.json
 ---
 
 # Phase 33: The new paper narrative in one sentence 📝 **Paper only**
+
+> ⤵ **Superseded (2026-11-24).** Use the reframe title and question ([reframe doc §2.3](RESEARCH_REFRAME_AND_PRIOR_ART.md#23-title-direction)).
 
 > **Status (2026-08-20):** **Paper-writeup phase only** — canonical identity sentence for Abstract, Conclusion, and reviewer elevator pitch. Aligns with Phases 15 (research question), 17 (novelty), 22 (contributions), and 32 (conceptual model).
 

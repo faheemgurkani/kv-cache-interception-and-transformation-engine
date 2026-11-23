@@ -332,10 +332,10 @@ Compare merged CSV to the relevant `PHASE5_EVAL_RESULTS.md`. Identity baseline P
 
 Documented in [CURRENT_STATE.md](../methodology/CURRENT_STATE.md):
 
-- Single model family per published sweep / dataset / ctx ≤512 per run — not a multi-benchmark study yet
+- Single dataset / ctx ≤512 per run in current configs; ≥ 2–4K is required by the adopted reframe (R5). All legacy published sweeps are invalidated by the Oct-2026 audit ([GEMMA3_POST_OVERHAUL_AUDIT.md](../audits/GEMMA3_POST_OVERHAUL_AUDIT.md)); reproduce only on a commit at or after #204
 - TurboQuant online speed ~0.08 tok/s @ ctx=512 (implementation overhead)
-- QJL / RocketKV PPL catastrophic under this pipeline on some configs — faithful implementation, not paper-matched quality
-- FIDELITY metrics do not always predict BEHAVIOR/PPL (by design)
+- Legacy QJL / RocketKV catastrophic PPL predates audit fixes B2/B3/B6/B8 and should not be reproduced as a reference value
+- Whether FIDELITY predicts BEHAVIOR is an open, conditional question (hypothesis H4), not a design premise
 
 ---
 

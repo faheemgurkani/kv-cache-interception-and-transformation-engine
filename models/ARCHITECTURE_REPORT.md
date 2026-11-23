@@ -1,14 +1,16 @@
 # Architecture Matrix — Downloaded Model Report
 
+> **Status note (2026-11-24).** "✅ FULLY SUPPORTED" below means compatibility gates and reference tests pass, not that valid study results exist (none do yet; see [`docs/audits/GEMMA3_POST_OVERHAUL_AUDIT.md`](../docs/audits/GEMMA3_POST_OVERHAUL_AUDIT.md)). All five shortlist models now pass Gates A–B and four pass Gate C (the 2026-08-18 "3 of 5" line below is outdated). Current status and planned models: [`docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#part-0--post-audit-status-and-reframe-engine-work-2026-11-24`](../docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#part-0--post-audit-status-and-reframe-engine-work-2026-11-24).
+
 Deep-probed 2026-08-21 by loading each checkpoint with `AutoModelForCausalLM.from_pretrained(..., attn_implementation="eager")`, running a real forward pass (`"The quick brown fox jumps"`, `use_cache=True`), and inspecting: measured parameter count + dtype breakdown, the actual decoder-layer/attention-module class and attributes (not just `config.json` field names), the `rotary_emb` module's real buffers, the live `past_key_values` cache-layer class and tensor shapes, **and** whether the repo's own `framework/model_adapter.py::load_attention_ops` / `framework/kv_cache.py::iter_layer_kv` actually accept the model. `transformers==5.8.1` (this repo's `.venv`).
 
-**Code-grounded status (2026-08-18):** 3 of 5 models pass all compatibility gates (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`). Full audit: [`docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md` § audit](../docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#implementation-verification-audit-2026-08-18).
+**Code-grounded status (2026-08-18):** 3 of 5 models pass all compatibility gates (`olmo2_1b`, `qwen3_0.6b`, `gemma3_270m`). Full audit: [`docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md` § audit](../docs/ENGINE_AND_EVALUATION_FRAMEWORKS_REDESIGN_PLAN.md#implementation-verification-audit-2026-08-18--superseded).
 
 ## Directory layout
 
-- `models/legacy/` — `qwen3_1.7b` (primary/default, `configs/model.yaml`) and `olmo1b` (`allenai/OLMo-1B-hf`, 2024 OLMo-1 generation) — the models the existing published FIDELITY/BEHAVIOR/SYSTEM results were run against, kept for reproducibility. Not covered in the tables below (unchanged since the OLMo slot swap; conformance detail was recorded in the previous version of this report and in `docs/methodology/CURRENT_STATE.md`/`docs/architecture/SLM_COMPATIBILITY.md`).
+- `models/legacy/` — `qwen3_1.7b` (default in `configs/model.yaml`; legacy Phase-5 results ran on it) and `olmo1b` (`allenai/OLMo-1B-hf`, 2024 OLMo-1 generation; **no results ran on it** — correction 2026-11-24: the legacy OLMo2 results ran on `allenai/OLMo-2-0425-1B`, i.e. `models/olmo2_1b`). Legacy results are invalidated by the Oct-2026 audit. Not covered in the tables below (unchanged since the OLMo slot swap; conformance detail was recorded in the previous version of this report and in `docs/methodology/CURRENT_STATE.md`/`docs/architecture/SLM_COMPATIBILITY.md`).
 - `models/` (top level) — the 5-model architecture-matrix shortlist, deep-probed below: `olmo2_1b` (MHA), `qwen3_0.6b` (GQA), `gemma3_270m` (MQA + local/global), `tinydeepseek_0.5b` (MLA), `falcon_h1_0.5b` (Hybrid attention + Mamba2).
-- Deleted entirely: `granite_4.0_350m`, `qwen3.5_0.8b`, `minicpm4_0.5b` — superseded candidate-probe downloads; findings remain only in `docs/architecture/SLM_COMPATIBILITY.md`/`docs/methodology/CURRENT_STATE.md` as historical record, not present on disk.
+- Deleted entirely: `granite_4.0_350m`, `qwen3.5_0.8b`, `minicpm4_0.5b` — superseded candidate-probe downloads (a Qwen3.5 GDN-hybrid checkpoint will need re-downloading for E3); findings remain only in `docs/architecture/SLM_COMPATIBILITY.md`/`docs/methodology/CURRENT_STATE.md` as historical record, not present on disk.
 
 ---
 

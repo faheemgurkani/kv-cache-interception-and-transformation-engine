@@ -1,5 +1,7 @@
 # OLMo 2 1B — Complete Phase-5 Results, Metrics & Logs
 
+> ⚠️ **Historical — invalidated by the Oct-2026 audit (banner added 2026-11-24). Do not cite.** Invalid here: TurboQuant `full`-stage value metrics and PPL (B8), all QJL results incl. the August ProdQJL re-sweep (B3, B8), RocketKV `generate()`-based metrics (B6), SYSTEM baselines (S1), and any reasoning / instruction-following numbers (B7). Probably still valid: TurboQuant key metrics, the `wht_quant` ablation, byte accounting. The legacy PPL protocol (token-stepped, whole window) is not comparable with the post-audit protocol. These legacy runs are not re-measured; the clean grid replaces them (R3 → R13 in [Part 0](../../RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24)). See [audit](../../audits/GEMMA3_POST_OVERHAUL_AUDIT.md) §L1.
+
 **Generated (UTC):** 2026-08-02T19:37:51.206658+00:00
 **Model:** `allenai/OLMo-2-0425-1B` (`Olmo2ForCausalLM`, MHA 16/16, 16 layers, head_dim 128, FP16, eager attn)
 **Hardware:** Modal NVIDIA A10G

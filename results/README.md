@@ -1,15 +1,17 @@
 # Results
 
+> ⚠️ **Historical (2026-11-24).** All Phase-5 bundles listed here (Qwen3-1.7B, OLMo2-1B) and the Gemma3 `gemma3_full_eval_*` bundles were invalidated by the Oct-2026 audit ([`docs/audits/GEMMA3_POST_OVERHAUL_AUDIT.md`](../docs/audits/GEMMA3_POST_OVERHAUL_AUDIT.md)). Do not cite them. New results will come from the clean-commit grid (R13 in [`docs/RESEARCH_REDESIGN_PLAN.md` → Part 0](../docs/RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24)).
+
 Published **summary** evaluation bundles for the KV Cache Interception and Transformation Engine (KVBench Phase-5 sweeps) live here.
 
 | Path | Contents |
 |---|---|
 | `phase5_modal_baseline/` | Qwen3 identity baseline (merged CSV/JSON + `manifest.json`) |
 | `phase5_modal_sweep_128_256_512/` | Qwen3 TurboQuant grid |
-| `phase5_modal_qjl/` | Qwen3 QJL (canonical; ProdQJL Aug 2026) |
+| `phase5_modal_qjl/` | Qwen3 QJL (ProdQJL Aug 2026; invalid — audit B3/B8) |
 | `phase5_modal_qjl_prodqjl/` | Qwen3 QJL ProdQJL re-run bundle (`jobs/`, `logs/`, manifest) |
 | `phase5_modal_rocketkv/` | Qwen3 RocketKV |
-| `olmo2_phase5_qjl/` | OLMo 2 QJL (canonical; ProdQJL Aug 2026) |
+| `olmo2_phase5_qjl/` | OLMo 2 QJL (ProdQJL Aug 2026; invalid — audit B3/B8) |
 | `olmo2_phase5_qjl_prodqjl/` | OLMo 2 QJL ProdQJL re-run bundle |
 | `olmo2_phase5_*` | Other OLMo 2 1B bundles + `olmo2_phase5_summary.json` / inventory CSV |
 

@@ -181,9 +181,9 @@ After Phases 1–28, the engine implements this pipeline (paper figure + narrati
       current paper grid = WikiText PPL + tok/s only (Phase 28 scope).
 ```
 
-**Analysis exports:** `scripts/analyze_pareto.py` (F7), `scripts/analyze_cross_dim.py` (F1–F4 weak predictors), `scripts/export_method_benchmark_table.py` (Phase 27).
+**Analysis exports:** `scripts/analyze_pareto.py` (F7), `scripts/analyze_cross_dim.py` (Pearson today; rank statistics with CIs planned for hypotheses H1/H4, E5), `scripts/export_method_benchmark_table.py` (Phase 27).
 
-**Literature map:** [`docs/literature/LITERATURE_ALIGNMENT.md`](../literature/LITERATURE_ALIGNMENT.md) · **One-sentence identity (Phase 33):** see that doc.
+**Literature map:** [`docs/literature/LITERATURE_ALIGNMENT.md`](../literature/LITERATURE_ALIGNMENT.md) · **Research framing (adopted 2026-11-24):** [`docs/RESEARCH_REFRAME_AND_PRIOR_ART.md`](../RESEARCH_REFRAME_AND_PRIOR_ART.md) (supersedes the Phase 33 one-sentence identity).
 
 ## Non-goals
 

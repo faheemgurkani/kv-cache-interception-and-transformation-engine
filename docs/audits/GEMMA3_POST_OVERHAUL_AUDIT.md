@@ -35,7 +35,7 @@ grid must be re-run on **one clean SHA** (only when the user says so).
 | P2 | low | FIXED (local) | `seed` missing from Phase-14 manifest | `tests/test_provenance.py` |
 | F1 | med | FIXED (local) | Attention-fidelity window (128 cap) not recorded; differs across rows | `tests/test_fidelity_window.py` |
 | R1 | med | FIXED (local) | Retrieval prompt 129/251/491 tokens vs labelled 128/256/512; n=5 trials | `tests/test_retrieval_prompt.py`; Modal pending |
-| L1 | high | PARTIALLY ASSESSED | Legacy Qwen3-1.7B / OLMo2-1B results: check for B1 and B3 contamination | legacy TQ PPL inspected (below); rest open |
+| L1 | high | PARTIALLY ASSESSED → superseded | Legacy Qwen3-1.7B / OLMo2-1B results: check for B1 and B3 contamination | legacy TQ PPL inspected (below). 2026-11-24: re-measurement superseded by the clean reframe grid (R3 → R13); legacy numbers stay historical and invalid |
 
 ---
 
@@ -184,3 +184,4 @@ Record each targeted run here.
 - 2026-10-01: B1–B8, S1–S4, P1, P2, F1, R1 fixed locally; L1 partially assessed (see sections); B3 fixed locally + regression tests; Modal profile switched; `audit_verify` preset added; Modal compute blocked by paused workspace.
 - 2026-10-02: Modal profile re-confirmed: active = `faheemgurkani` (workspace `faheemgurkani`, `ac-51iKyqdATyYGN9iriAVw4P`, user `us-Fk5WNt4gN0R9PGZn6BYidR`). **No compute has ever run on any profile from this effort** (the workspace is paused; only volume creation/upload happened). Added `modal_app/settings.py::assert_expected_modal_profile` (called from `modal_runtime_env`, i.e. on every Modal launch); it raises unless the active profile is `faheemgurkani` (`$MODAL_PROFILE` or `~/.modal.toml`; override with `KV_MODAL_PROFILE`). Test: `tests/test_modal_profile_guard.py`. Still paused as of this entry.
 - 2026-10-02: every `scripts/modal_*.sh` now runs `scripts/modal_assert_profile.py` first (aborts unless active profile is faheemgurkani); `scripts/modal_*.py` go through `modal_app`, whose launch path is guarded.
+- 2026-11-24: all fixes committed and pushed as #201–#204 (HEAD `b452849`); the 2026-10-01 "uncommitted" entry is obsolete. Modal verification (R2) still pending. Project adopted the reframe ([`../RESEARCH_REFRAME_AND_PRIOR_ART.md`](../RESEARCH_REFRAME_AND_PRIOR_ART.md)); the "re-run the whole grid on one clean SHA" requirement is now work package R13 in [`../RESEARCH_REDESIGN_PLAN.md` → Part 0](../RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24). L1 re-measurement superseded by R13.

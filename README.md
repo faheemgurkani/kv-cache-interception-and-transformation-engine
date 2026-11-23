@@ -16,7 +16,9 @@ The engine is **not** a single-algorithm reproduction. It fixes the model, incre
 - **BEHAVIOR** *(does the model still behave correctly after KV transformation?)* — sliding-window perplexity, needle-in-haystack retrieval, and instruction-following compliance by default; synthetic reasoning accuracy opt-in — all measured through real compressed-KV decoding, not a single forward pass.
 - **SYSTEM** *(does the compression actually make inference better?)* — TTFT, inter-token latency, decode/end-to-end latency, tokens/sec, peak VRAM, actual KV memory, compress/decompress time, and (best-effort) memory bandwidth and GPU utilization. A method with a higher compression ratio can still lose here if it adds enough per-step compute.
 
-FIDELITY does not reliably predict BEHAVIOR — that gap is the central finding this framework is built to surface — and SYSTEM exists as its own branch because a compression ratio win on paper can be a runtime loss in practice.
+SYSTEM exists as its own branch because a compression-ratio win on paper can be a runtime loss in practice. Whether cheap FIDELITY metrics predict BEHAVIOR is treated as an open, conditional question to be measured, not assumed.
+
+**Research question (adopted 2026-11-24):** do published KV-cache compression results transfer across attention architectures (MHA, GQA, MQA + sliding window, MLA, attention-SSM hybrid), and what does a compression ratio actually buy once the full inference state and offline cost are counted? The engine is the instrument that makes this test controlled. See [docs/RESEARCH_REFRAME_AND_PRIOR_ART.md](docs/RESEARCH_REFRAME_AND_PRIOR_ART.md); status in [docs/RESEARCH_REDESIGN_PLAN.md → Part 0](docs/RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24).
 
 **License:** [Apache-2.0](LICENSE) · **Status:** research manuscript in preparation · **Contributions:** welcome ([CONTRIBUTING.md](CONTRIBUTING.md)) · **Roadmap:** [ROADMAP.md](ROADMAP.md)
 
@@ -24,9 +26,11 @@ FIDELITY does not reliably predict BEHAVIOR — that gap is the central finding 
 
 ## Why this project?
 
-Published KV-compression methods are hard to compare: protocols differ, and offline tensor/attention metrics often fail to predict online decode quality. The interception-and-transformation engine makes that gap measurable under one incremental loop on resource-constrained SLMs (~1B-scale), where full factorial sweeps are feasible on a single GPU. **KVBench** is the name we use for this standardized evaluation framework and its empirical study.
+Almost all KV-compression evaluations use dense GQA transformers at 7–8B and implicitly assume the results transfer to other attention designs. Small models (≤ ~1.7B) are where MHA, GQA, MQA + sliding window, MLA and attention-SSM hybrids all exist as open checkpoints, so a controlled cross-architecture comparison is feasible there. The interception-and-transformation engine holds the model, input, decode loop and metrics fixed so that only the compressor and the architecture vary. **KVBench** is the name we use for this evaluation framework and its empirical study.
 
 ## Main results @ context length 512
+
+> ⚠️ **Not valid — do not cite (2026-11-24).** The October 2026 audit found evaluation bugs that invalidate most numbers below: the `tq_full_b4` PPL and value metrics (B8), all QJL results (B3, B8), RocketKV `generate()`-based metrics (B6) and the old SYSTEM baselines (S1). Fixes are committed; a clean re-run on the five-architecture shortlist is pending. Details: [docs/audits/GEMMA3_POST_OVERHAUL_AUDIT.md](docs/audits/GEMMA3_POST_OVERHAUL_AUDIT.md). The tables are kept only as a historical record.
 
 ### Qwen3-1.7B (GQA) · WikiText-2 · Modal A10G
 
@@ -46,7 +50,7 @@ Published KV-compression methods are hard to compare: protocols differ, and offl
 | QJL | `qjl_default` | 359 | 43× | 1.85× | 0.58 |
 | RocketKV | `rocketkv_r256` | 8.77 | **1.05×** | **1.99×** | 14.76 |
 
-**Takeaway:** offline fidelity does **not** predict online quality, and rankings can flip across attention layouts (GQA vs MHA). Full tables: [docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md](docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md), [docs/results/olmo2_1b/RESULTS_COMPLETE.md](docs/results/olmo2_1b/RESULTS_COMPLETE.md).
+**Historical takeaway (pre-audit, superseded):** these runs suggested that offline fidelity did not predict online quality and that rankings could flip between GQA and MHA. The first claim is now treated as conditional (published work reports both outcomes); the second motivates the cross-architecture study above. Historical tables: [docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md](docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md), [docs/results/olmo2_1b/RESULTS_COMPLETE.md](docs/results/olmo2_1b/RESULTS_COMPLETE.md).
 
 ## Compressors (plug-ins)
 
@@ -137,19 +141,22 @@ Record `git rev-parse HEAD` when citing results. Use `--no-resume` on Modal afte
 
 | Doc | Contents |
 |---|---|
+| [RESEARCH_REFRAME_AND_PRIOR_ART.md](docs/RESEARCH_REFRAME_AND_PRIOR_ART.md) | **Adopted research framing**, hypotheses, prior-art survey, publication verdict |
+| [RESEARCH_REDESIGN_PLAN.md → Part 0](docs/RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24) | **Master status**: work packages and what is done / not done |
+| [GEMMA3_POST_OVERHAUL_AUDIT.md](docs/audits/GEMMA3_POST_OVERHAUL_AUDIT.md) | Oct-2026 evaluation audit: bugs, fixes, which results are invalid |
 | [SYSTEM_DESIGN.md](docs/architecture/SYSTEM_DESIGN.md) | Architecture (high-level) |
 | [ENGINE_INTERNALS.md](docs/architecture/ENGINE_INTERNALS.md) | Complete implementation walkthrough + generalizing to other model architectures |
 | [MODEL_ARCHITECTURE_MATRIX.md](docs/architecture/MODEL_ARCHITECTURE_MATRIX.md) | Current 5-model architecture-matrix shortlist (MHA/GQA/MQA/MLA/Hybrid), engine-support status, adoption plan |
 | [SLM_COMPATIBILITY.md](docs/architecture/SLM_COMPATIBILITY.md) | Historical: original 6-candidate SLM compatibility probe |
 | [METHODOLOGY.md](docs/methodology/METHODOLOGY.md) | Experimental methodology |
 | [MATHEMATICS_AND_ALGORITHMS.md](docs/methodology/MATHEMATICS_AND_ALGORITHMS.md) | Equations and pseudocode |
-| [PHASE5_EVAL_RESULTS.md](docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md) | Qwen3 Phase-5 summary |
-| [RESULTS_COMPLETE.md](docs/results/qwen3_1.7b/RESULTS_COMPLETE.md) | Qwen3 full metrics |
-| [OLMo2 RESULTS_COMPLETE.md](docs/results/olmo2_1b/RESULTS_COMPLETE.md) | OLMo 2 full metrics + logs |
-| [shortlist_5model_eval/](docs/results/shortlist_5model_eval/) | Live eval-framework run against the 5-model shortlist |
+| [PHASE5_EVAL_RESULTS.md](docs/results/qwen3_1.7b/PHASE5_EVAL_RESULTS.md) | Qwen3-1.7B Phase-5 summary (historical; invalidated by audit) |
+| [RESULTS_COMPLETE.md](docs/results/qwen3_1.7b/RESULTS_COMPLETE.md) | Qwen3-1.7B full metrics (historical; invalidated by audit) |
+| [OLMo2 RESULTS_COMPLETE.md](docs/results/olmo2_1b/RESULTS_COMPLETE.md) | OLMo 2 full metrics + logs (historical; invalidated by audit) |
+| [shortlist_5model_eval/](docs/results/shortlist_5model_eval/) | Engine-compatibility runs against the 5-model shortlist (plumbing checks, not study results) |
 | [REPRODUCIBILITY.md](docs/reproducibility/REPRODUCIBILITY.md) | Reproduction guide (local + Modal) |
 | [ROADMAP.md](ROADMAP.md) | Planned work |
-| [research paper write-up](docs/research_paper_writeup/conference_101719.tex) | KVBench manuscript (title unchanged) |
+| [research paper write-up](docs/research_paper_writeup/conference_101719.tex) | KVBench manuscript (pre-reframe draft; rewrite pending, R16) |
 
 ## Citation
 

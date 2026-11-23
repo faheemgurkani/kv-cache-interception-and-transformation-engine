@@ -1,5 +1,7 @@
 # Phase 5 Evaluation Results
 
+> ⚠️ **Historical — invalidated by the Oct-2026 audit (banner added 2026-11-24). Do not cite.** Invalid here: TurboQuant `full`-stage value metrics and PPL (B8), all QJL results incl. the August ProdQJL re-sweep (B3, B8), RocketKV `generate()`-based metrics (B6), SYSTEM baselines (S1), and any reasoning / instruction-following numbers (B7). Probably still valid: TurboQuant key metrics, the `wht_quant` ablation, byte accounting. The legacy PPL protocol (token-stepped, whole window) is not comparable with the post-audit protocol. These legacy runs are not re-measured; the clean grid replaces them (R3 → R13 in [Part 0](../../RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24)). See [audit](../../audits/GEMMA3_POST_OVERHAUL_AUDIT.md) §L1.
+
 Case-study numbers for the **KV Cache Interception and Transformation Engine** on Qwen3-1.7B. Methods are compared under one pipeline — not as standalone paper reproductions.
 
 Qwen3-1.7B · WikiText-2 test · ctx **128 / 256 / 512** · Modal A10G · July 2026 (post-fix sweeps).

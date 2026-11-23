@@ -389,6 +389,8 @@ Legacy Phase-5 bundles (`section_a_fidelity` / `section_b_inference`) and new th
 
 Compute Pearson correlations across metric axes and export trade-off figures from the same job JSON / `EvaluationResult` lists used for Pareto analysis.
 
+> **2026-11-24:** Pearson alone is not sufficient evidence under the adopted reframe. Spearman/Kendall τ, bootstrap CIs, per-architecture grouping, cross-architecture ranking agreement and held-out prediction are planned (E5 / R8 in [`RESEARCH_REDESIGN_PLAN.md` → Part 0](../RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24)). The "Phase 23 finding" column below refers to the retired F1–F7 findings; the corresponding hypotheses are now H4 (proxy validity) and H6 (ratio vs speed) in [`RESEARCH_REFRAME_AND_PRIOR_ART.md` §5.1](../RESEARCH_REFRAME_AND_PRIOR_ART.md#51-hypotheses-draft).
+
 | Pair | Metrics | Phase 23 finding |
 |---|---|---|
 | Theoretical ↔ measured compression | `cost.compression.theoretical_compression_ratio` ↔ `fidelity.memory.compression_ratio` | F2 |
@@ -443,6 +445,8 @@ Every run exports a top-level `hardware` block (`EvaluationResult.hardware`) plu
 
 ## 7. Phase 5 sweep design
 
+> **Historical.** This is the 2026-07/08 legacy grid (Qwen3-1.7B, OLMo2-1B); its bundles are invalid per the Oct-2026 audit. The reframe grid (5–6 architectures × configs × budgets × seeds, ≥ 2–4K context) is being designed as R11/R13 in [`RESEARCH_REDESIGN_PLAN.md` → Part 0](../RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24).
+
 | Preset | Jobs | Configs × contexts |
 |---|---|---|
 | `baseline` | 3 | identity × {128,256,512} |
@@ -460,10 +464,11 @@ Result bundles: `results/phase5_modal_*/` with `jobs/*.json`, merged CSV/JSON, `
 
 See [CURRENT_STATE.md](CURRENT_STATE.md):
 
-- Single model, single dataset, ctx ≤ 512
-- FIDELITY does not always predict BEHAVIOR/PPL
+- No valid measured results yet: the legacy bundles and the Gemma3 bundle were invalidated by the Oct-2026 audit ([GEMMA3_POST_OVERHAUL_AUDIT.md](../audits/GEMMA3_POST_OVERHAUL_AUDIT.md)); a clean re-run is pending
+- Single dataset (WikiText-2) and ctx ≤ 512 in current configs; ≥ 2–4K is required by the reframe (R5)
+- Whether FIDELITY predicts BEHAVIOR is an open, conditional question (hypothesis H4), not a settled "does not predict"
 - TurboQuant online throughput dominated by per-step compress/decompress
-- QJL/RocketKV catastrophic PPL on Qwen3-1.7B under this pipeline reflects measured behavior, not implementation shortcuts (post-audit)
+- Legacy QJL/RocketKV catastrophic PPL on Qwen3-1.7B is **not** trustworthy: it predates audit fixes B2/B3/B6/B8
 - BEHAVIOR's retrieval/reasoning/instruction-following are synthetic in-repo generators, not external benchmarks — legible failure modes, not benchmark-scale coverage
 - SYSTEM's peak memory and utilization now work on MPS/CPU (MPS allocator polling + process RSS; process CPU % when NVML unavailable)
 
@@ -473,4 +478,4 @@ See [CURRENT_STATE.md](CURRENT_STATE.md):
 
 **Recommended first evaluation run** (the order the original TurboQuant Phase 1 validation actually used, before Phase 5's full sweep grid existed — still a reasonable order for smoke-testing a new compressor or model): (1) Memory Compression, (2) Attention Preservation, (3) Perplexity (WikiText-2), (4) Throughput — i.e. cheapest/fastest-to-compute FIDELITY metrics first, BEHAVIOR next, SYSTEM last.
 
-**Long-context scaling (future work, not yet implemented):** context lengths currently top out at 512 (`configs/model.yaml`). The most valuable follow-up sweep is running all three branches (FIDELITY/memory, BEHAVIOR/perplexity+retrieval, SYSTEM/throughput+VRAM+bandwidth) at 4K/8K/16K/32K — this is where KV compression matters most, and where needle-in-haystack retrieval becomes a real test of "does compression lose buried information" rather than a near-trivial short-context check. Tracked in `ROADMAP.md` ("Longer contexts (2K–8K) within SLM VRAM budgets").
+**Long-context scaling (required by the adopted reframe, not yet implemented — R5 / E2):** context lengths currently top out at 512 (`configs/model.yaml`); the shortlist's common ceiling is ~4K (OLMo2-1B `max_position_embeddings` = 4096). The most valuable follow-up sweep is running all three branches (FIDELITY/memory, BEHAVIOR/perplexity+retrieval, SYSTEM/throughput+VRAM+bandwidth) at 4K/8K/16K/32K — this is where KV compression matters most, and where needle-in-haystack retrieval becomes a real test of "does compression lose buried information" rather than a near-trivial short-context check. Tracked as R5 in [`RESEARCH_REDESIGN_PLAN.md` → Part 0](../RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24).

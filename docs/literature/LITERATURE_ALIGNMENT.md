@@ -1,5 +1,7 @@
 # Literature alignment — Phase 29
 
+> **2026-11-24.** This Phase-29 map predates the adopted reframe and misses the main 2025–2026 competitors (Rethinking MLSys'25, SCBench ICLR'25, KVPress, KV-CoRE, KVDiagnosis, Marconi, KVzip, Hold Onto That Thought, RIFT, JSSA, EdgeLLM-Nano, Shin, and others). The authoritative prior-art survey is [`../RESEARCH_REFRAME_AND_PRIOR_ART.md` §7–8 and §10](../RESEARCH_REFRAME_AND_PRIOR_ART.md); the evidence behind it is [`FRAMING_VALIDATION_2026-11-24.md`](FRAMING_VALIDATION_2026-11-24.md) with PDFs in [`papers/`](papers/). Adding the missing bib entries is R15 in [`../RESEARCH_REDESIGN_PLAN.md` → Part 0](../RESEARCH_REDESIGN_PLAN.md#part-0--reframe-adoption-and-master-status-2026-11-24). Rows below remain valid as bib/engine touchpoints; the "F1/F4", "F6" and Phase 28/33 references are superseded.
+
 Maps **recent KV-cache papers** to KVBench **engine capabilities** and **paper rewrite targets**. These papers **shape methodology and positioning**; most are **not implemented** as compressors.
 
 **Staging BibTeX** (merge into `reference.bib` at paper rewrite): [`staging_entries.bib`](staging_entries.bib)  
@@ -26,7 +28,7 @@ Maps **recent KV-cache papers** to KVBench **engine capabilities** and **paper r
 
 | Role | Papers | KVBench response |
 | ---- | ------ | ---------------- |
-| **Behavioral evaluation gap** | Pitfalls, SCOPE | Three-branch BEHAVIOR; F1/F4 findings |
+| **Behavioral evaluation gap** | Pitfalls, SCOPE | Three-branch BEHAVIOR; conditional proxy validity (H4; F1/F4 retired) |
 | **Serving / system benchmarks** | `kvbench2026serving`, Oaken, TurboAttention | Phase 30: controlled interception vs serving stack |
 | **Workload realism** | Cache in the Wild, CacheBlend, R-KV, Short-RL | Phase 28 scope sentence; F6 unanswered |
 | **Cost / calibration** | Oaken, TurboQuant Lloyd-Max | Phase 26 Oaken layers + Phase 27 table |

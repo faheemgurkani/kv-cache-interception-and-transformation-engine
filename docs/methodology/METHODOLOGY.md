@@ -304,8 +304,8 @@ Runs through `KVCacheEngine`, i.e. compressed KV actually driving autoregressive
 
 | Metric | Module | Protocol | Default |
 |---|---|---|---|
-| Perplexity (baseline) | `eval/behavior/task_quality.py` | Sliding-window NLL, stride 512, standard HF forward | on (`include_baselines`) |
-| Perplexity (compressed) | `eval/behavior/task_quality.py` | Token-by-token `engine.step`, single persistent cache, explicit mask + position_ids | **on** |
+| Perplexity (baseline) | `eval/behavior/task_quality.py` | One standard HF forward; NLL over the **same positions** as the compressed run (the last `DEFAULT_PPL_DECODE_TOKENS = 64`; ≤ half the sequence for short inputs) | on (`include_baselines`) |
+| Perplexity (compressed) | `eval/behavior/task_quality.py` | Prefill `seq_len − 64` tokens via `engine.step` (logits unscored except the last), compress, then teacher-force the last 64 tokens one `engine.step` at a time reading the compressed cache; explicit mask + logical position_ids. Same protocol for every compressor (audit B1; see `docs/audits/GEMMA3_POST_OVERHAUL_AUDIT.md`). **Not comparable with PPL from before 2026-10-01.** | **on** |
 | Retrieval | `eval/behavior/retrieval.py` | Needle-in-haystack: unique numeric code embedded at a controlled depth in a synthetic filler context; exact-match accuracy on recall via `engine.generate` | **on** (default) |
 | Instruction following | `eval/behavior/instruction_following.py` | Yes/no format-constrained prompts; fraction of completions that are a single word from the allowed set, checked structurally (not content-correctness) | **on** (default) |
 | Reasoning | `eval/behavior/reasoning.py` | Synthetic multi-step add/subtract chains; exact-match accuracy on the final integer | opt-in (`--reasoning`) |

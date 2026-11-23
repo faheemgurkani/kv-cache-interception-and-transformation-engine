@@ -53,5 +53,6 @@ docs/
     qwen3_1.7b/                    — legacy model, primary published results
     olmo2_1b/                      — legacy model, second published results
     shortlist_5model_eval/         — current 5-model shortlist, live eval-framework run
+  audits/                          — post-overhaul audit checklists (Gemma3 run: bugs found, fixes, verification log)
   research_paper_writeup/          — arXiv manuscript source (unchanged)
 ```

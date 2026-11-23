@@ -118,7 +118,7 @@ Three branches instead of an offline/online split — `eval/runner.py` (`Evaluat
 
 **FIDELITY** (`eval/fidelity/`, single offline forward pass): tensor RMSE/relative-error/cosine similarity (`representation.py`), QK^T score MSE/RMSE/cosine/max-error + attention-output RMSE + attention-distribution KL divergence (`attention.py`), compression ratio + actual bytes + metadata overhead (`memory.py`), hybrid recurrent exact-preservation (`recurrent.py`).
 
-**BEHAVIOR** (`eval/behavior/`, through `KVCacheEngine`): sliding-window perplexity (`task_quality.py`, on by default), needle-in-haystack retrieval (`retrieval.py`, on by default), instruction-following format compliance (`instruction_following.py`, on by default), synthetic arithmetic reasoning (`reasoning.py`, opt-in).
+**BEHAVIOR** (`eval/behavior/`, through `KVCacheEngine`): perplexity with compressed KV driving a 64-token teacher-forced decode after prefill (`task_quality.py`, on by default), needle-in-haystack retrieval (`retrieval.py`, on by default), instruction-following format compliance (`instruction_following.py`, on by default), synthetic arithmetic reasoning (`reasoning.py`, opt-in).
 
 **SYSTEM** (`eval/system/`, through `KVCacheEngine`): TTFT + inter-token latency (mean/p50/p99) + tokens/sec + end-to-end latency (`latency_throughput.py`, on by default), peak device/process memory (`vram.py`, opt-in; CUDA/MPS/CPU), analytical KV-bandwidth (`memory_bandwidth.py`, opt-in), compress/decompress vs. rest-of-forward-pass time including RocketKV `compress_layer_from_kv` (`kernel_cost.py`, opt-in), NVML GPU util or process CPU util fallback (`gpu_utilization.py`, opt-in).
 

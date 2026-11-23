@@ -40,6 +40,7 @@ def _fake_result_payload(**overrides) -> dict:
                 "generation_length": 64,
                 "batch_size": 1,
                 "precision": "float16",
+                "seed": 0,
                 "dataset": {
                     "name": "Salesforce/wikitext",
                     "config": "wikitext-2-raw-v1",
@@ -109,7 +110,7 @@ def test_extract_phase14_manifest_maps_documented_paths():
     assert manifest["batch_size"] == 1
     assert manifest["precision"] == "float16"
     assert manifest["compression_method"] == "turboquant"
-    assert manifest["seed"] == 42
+    assert manifest["seed"] == {"evaluation": 0, "compressor": 42}
     assert manifest["dataset"]["config"] == "wikitext-2-raw-v1"
     assert manifest["hardware"]["device_type"] == "cpu"
     assert manifest["compression_ratio"]["measured"] == 4.0
@@ -266,7 +267,7 @@ def test_runner_to_dict_satisfies_phase14_harness():
         assert manifest[field] is not None, field
 
     assert manifest["compression_method"] == "turboquant"
-    assert manifest["seed"] == 42
+    assert manifest["seed"] == {"evaluation": 0, "compressor": 42}
     assert manifest["precision"] is not None
     assert manifest["context_length"] == 128
     assert manifest["generation_length"] == 8

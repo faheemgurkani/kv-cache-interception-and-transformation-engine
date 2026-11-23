@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Pull evaluation JSON payloads from Modal results volume to results/modal_volume_olmo2/
 set -euo pipefail
+"$(dirname "$0")/../.venv/bin/python" "$(dirname "$0")/modal_assert_profile.py" || exit 1
 cd "$(dirname "$0")/.."
 OUT="${1:-results/modal_volume_olmo2}"
 mkdir -p "$OUT"

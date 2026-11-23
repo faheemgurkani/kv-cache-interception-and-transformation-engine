@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Modal smoke eval: one job @ ctx=128 to verify preset wiring before full sweeps.
 set -euo pipefail
+"$(dirname "$0")/../.venv/bin/python" "$(dirname "$0")/modal_assert_profile.py" || exit 1
 cd "$(dirname "$0")/.."
 source .venv/bin/activate 2>/dev/null || true
 

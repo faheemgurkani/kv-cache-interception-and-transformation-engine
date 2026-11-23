@@ -192,3 +192,37 @@ def filter_existing_jobs(
     completed_stems: set[str],
 ) -> list[EvalJobSpec]:
     return [job for job in jobs if job.result_stem not in completed_stems]
+
+
+def resolve_kpi_plan(spec: EvalJobSpec, modal_cfg: dict, collect_hw: bool) -> dict[str, Any]:
+    """Decide which opt-in KPI passes actually run for one job and record why.
+
+    Gating (``kpi_gating.skip_extra_passes_ctx_ge`` in the modal config) is an OOM
+    workaround and is OFF by default, so every method gets the same KPI set. The returned
+    dict is stored verbatim as ``payload["kpi_effective"]`` (audit S4).
+    """
+    hw_cfg = modal_cfg.get("hardware") or {}
+    ctx = int(spec.context_length)
+    gate = (modal_cfg.get("kpi_gating") or {}).get("skip_extra_passes_ctx_ge")
+    gated = gate is not None and ctx >= int(gate)
+    want_peak = bool(hw_cfg.get("collect_peak_memory", collect_hw))
+    want_gpu = bool(hw_cfg.get("collect_gpu_utilization", collect_hw))
+    plan = {
+        "gating_skip_extra_passes_ctx_ge": gate,
+        "gated": gated,
+        "run_reasoning": bool(spec.run_reasoning) and not gated,
+        "run_peak_memory": want_peak and not gated,
+        "run_gpu_utilization": want_gpu and not gated,
+        "include_baselines": not gated,
+    }
+    plan["skipped"] = [
+        name
+        for name, requested, effective in (
+            ("reasoning", bool(spec.run_reasoning), plan["run_reasoning"]),
+            ("peak_memory", want_peak, plan["run_peak_memory"]),
+            ("gpu_utilization", want_gpu, plan["run_gpu_utilization"]),
+            ("baselines", True, plan["include_baselines"]),
+        )
+        if requested and not effective
+    ]
+    return plan

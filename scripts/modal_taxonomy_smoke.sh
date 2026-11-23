@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Dummy-local taxonomy smoke, then Gemma3-270M Modal coverage of every active compressor.
 set -euo pipefail
+"$(dirname "$0")/../.venv/bin/python" "$(dirname "$0")/modal_assert_profile.py" || exit 1
 cd "$(dirname "$0")/.."
 source .venv/bin/activate 2>/dev/null || true
 

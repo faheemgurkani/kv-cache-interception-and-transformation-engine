@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Launch RocketKV Modal sweep (3 configs × 3 context lengths = 9 jobs).
 set -euo pipefail
+"$(dirname "$0")/../.venv/bin/python" "$(dirname "$0")/modal_assert_profile.py" || exit 1
 cd "$(dirname "$0")/.."
 
 PRESET=rocketkv \

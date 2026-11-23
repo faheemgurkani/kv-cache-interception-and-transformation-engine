@@ -11,7 +11,7 @@ import modal
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from modal_app.image import MODEL_MOUNT, RESULTS_MOUNT, cuda_image, model_volume, results_volume
-from modal_app.job_spec import EvalJobSpec
+from modal_app.job_spec import EvalJobSpec, resolve_kpi_plan
 from modal_app.settings import gpu_spec, load_modal_config, reference_gpu_label, secret_name, timeout_seconds
 
 app = modal.App("kv-cache-engine-eval", image=cuda_image)
@@ -99,12 +99,13 @@ def eval_worker(job: dict) -> dict:
         modal_cfg = load_modal_config()
         hw_cfg = modal_cfg.get("hardware") or {}
         collect_hw = hardware_metrics_enabled()
-        # Long-context: skip extra generate() passes that re-inflate VRAM after
-        # fidelity+behavior on A10G (22GB). Core TTFT/ITL/tok-s still collected.
-        ctx = int(spec.context_length)
-        run_reasoning = bool(spec.run_reasoning) and ctx < 256
-        run_peak = bool(hw_cfg.get("collect_peak_memory", collect_hw)) and ctx < 256
-        run_gpu_util = bool(hw_cfg.get("collect_gpu_utilization", collect_hw)) and ctx < 256
+        # Which opt-in passes run is decided (and recorded) by resolve_kpi_plan; gating is
+        # OFF by default (audit S4) and only an explicit OOM workaround.
+        kpi_effective = resolve_kpi_plan(spec, modal_cfg, collect_hw)
+        run_reasoning = kpi_effective["run_reasoning"]
+        run_peak = kpi_effective["run_peak_memory"]
+        run_gpu_util = kpi_effective["run_gpu_utilization"]
+        include_baselines = kpi_effective["include_baselines"]
         result = runner.run(
             spec.context_length,
             run_perplexity=not spec.skip_perplexity,
@@ -117,13 +118,14 @@ def eval_worker(job: dict) -> dict:
             run_kernel_cost=spec.run_kernel_cost,
             run_memory_bandwidth=spec.run_memory_bandwidth,
             collect_hardware_metrics=collect_hw,
-            include_baselines=True,
+            include_baselines=include_baselines,
             generated_tokens=spec.generated_tokens,
         )
 
         payload = result.to_dict()
         payload["label"] = spec.label
         payload["job"] = spec.to_dict()
+        payload["kpi_effective"] = kpi_effective
         payload["model_name"] = load_model_config().get("model_name")
         payload["model_path"] = str(model_path)
         payload["modal_gpu"] = gpu_spec(modal_cfg)

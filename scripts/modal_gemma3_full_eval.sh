@@ -6,6 +6,7 @@
 #   bash scripts/modal_gemma3_full_eval.sh full     # 18-job grid + KPI audit
 #   bash scripts/modal_gemma3_full_eval.sh setup    # volume + model upload only
 set -euo pipefail
+"$(dirname "$0")/../.venv/bin/python" "$(dirname "$0")/modal_assert_profile.py" || exit 1
 cd "$(dirname "$0")/.."
 source .venv/bin/activate 2>/dev/null || true
 

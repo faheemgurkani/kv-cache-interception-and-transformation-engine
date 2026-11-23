@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Download configured model (configs/model.yaml) into Modal Volume (run once).
 set -euo pipefail
+"$(dirname "$0")/../.venv/bin/python" "$(dirname "$0")/modal_assert_profile.py" || exit 1
 cd "$(dirname "$0")/.."
 
 resolve_modal() {

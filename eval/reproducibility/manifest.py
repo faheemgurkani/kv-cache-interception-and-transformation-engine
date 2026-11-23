@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 from pathlib import Path
@@ -26,6 +27,61 @@ def collect_git_sha(*, cwd: Path | str | None = None) -> str | None:
         return None
     sha = proc.stdout.strip()
     return sha or None
+
+def _git(args: list[str], cwd: Path | str | None) -> str | None:
+    try:
+        proc = subprocess.run(
+            ["git", *args],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=None if cwd is None else str(cwd),
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, OSError):
+        return None
+    return proc.stdout
+
+
+def collect_git_state(*, cwd: Path | str | None = None) -> dict[str, Any]:
+    """Commit + working-tree state, so a recorded SHA cannot silently hide local edits.
+
+    ``git_sha`` alone is HEAD at submission time; Modal mounts the *working tree*, so
+    uncommitted fixes ran under the wrong SHA in the Gemma3 bundle (audit P1).
+    Returns ``{"sha", "dirty", "dirty_file_count", "diff_sha256"}`` (``dirty``/``diff_sha256``
+    are ``None`` when git is unavailable, e.g. inside a container without ``.git``; the
+    submitting process stamps them through ``KV_GIT_DIRTY`` / ``KV_GIT_DIFF_SHA256``).
+    """
+    sha = collect_git_sha(cwd=cwd)
+    env_dirty = os.environ.get("KV_GIT_DIRTY", "").strip()
+    env_diff = os.environ.get("KV_GIT_DIFF_SHA256", "").strip()
+    if env_dirty:
+        return {
+            "sha": sha,
+            "dirty": env_dirty == "1",
+            "dirty_file_count": None,
+            "diff_sha256": env_diff or None,
+        }
+    status = _git(["status", "--porcelain"], cwd)
+    if status is None:
+        return {"sha": sha, "dirty": None, "dirty_file_count": None, "diff_sha256": None}
+    lines = [line for line in status.splitlines() if line.strip()]
+    if not lines:
+        return {"sha": sha, "dirty": False, "dirty_file_count": 0, "diff_sha256": None}
+    digest = hashlib.sha256()
+    digest.update((_git(["diff", "HEAD"], cwd) or "").encode())
+    for line in sorted(lines):
+        digest.update(line.encode())
+        if line.startswith("??"):  # untracked files are invisible to `git diff`
+            path = Path(cwd or ".") / line[3:].strip()
+            if path.is_file():
+                digest.update(path.read_bytes())
+    return {
+        "sha": sha,
+        "dirty": True,
+        "dirty_file_count": len(lines),
+        "diff_sha256": digest.hexdigest(),
+    }
+
 
 # Canonical checklist from Phase 14 YAML block.
 PHASE14_FIELDS: tuple[str, ...] = (
@@ -72,7 +128,10 @@ def extract_phase14_manifest(payload: dict[str, Any]) -> dict[str, Any]:
         },
         "calibration": offline,
         "dataset": fixed.get("dataset"),
-        "seed": budget.get("seed"),
+        # Two independent seeds: the synthetic-task generators (fixed, recorded under
+        # controlled_conditions.fixed.seed) and the compressor's own randomness (None for
+        # deterministic methods such as identity / SnapKV / RocketKV / Palu).
+        "seed": {"evaluation": fixed.get("seed"), "compressor": budget.get("seed")},
         "precision": fixed.get("precision"),
         "compression_budget": budget,
     }
@@ -89,7 +148,8 @@ def validate_phase14_manifest(
     manifest = extract_phase14_manifest(payload)
 
     for field in PHASE14_FIELDS:
-        if manifest.get(field) is None:
+        value = manifest.get(field)
+        if value is None or (field == "seed" and value.get("evaluation") is None):
             errors.append(f"missing Phase 14 field: {field}")
 
     controlled = payload.get("controlled_conditions") or {}

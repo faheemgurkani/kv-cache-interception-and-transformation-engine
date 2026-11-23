@@ -5,6 +5,7 @@
 #   KV_MODAL_CONFIG=configs/modal_gemma3.yaml \
 #   bash scripts/modal_setup_shortlist_model.sh
 set -euo pipefail
+"$(dirname "$0")/../.venv/bin/python" "$(dirname "$0")/modal_assert_profile.py" || exit 1
 cd "$(dirname "$0")/.."
 source .venv/bin/activate 2>/dev/null || true
 

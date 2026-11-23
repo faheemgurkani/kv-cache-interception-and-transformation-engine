@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Launch detached parallel eval sweep on Modal A10G GPUs.
 set -euo pipefail
+"$(dirname "$0")/../.venv/bin/python" "$(dirname "$0")/modal_assert_profile.py" || exit 1
 cd "$(dirname "$0")/.."
 
 PRESET="${PRESET:-turboquant}"

@@ -106,6 +106,21 @@ presets:
       compression_rate: 0.5
       group_size: 1
 
+  # Targeted audit verification (docs/audits/GEMMA3_POST_OVERHAUL_AUDIT.md). NOT a sweep:
+  # a handful of jobs at one ctx, used only to confirm fixes land on Modal.
+  audit_verify:
+    - label: identity_baseline
+      name: identity
+    - label: qjl_default
+      name: qjl
+      bitwidth: 1
+      seed: 42
+    - label: qjl_wide
+      name: qjl
+      bitwidth: 1
+      seed: 42
+      proj_dim: 16384
+
 preset_options:
   taxonomy_smoke:
     run_reasoning: true
@@ -117,3 +132,9 @@ preset_options:
     run_kernel_cost: true
     run_memory_bandwidth: true
     generated_tokens: 64
+  audit_verify:
+    run_reasoning: false
+    run_kernel_cost: false
+    run_memory_bandwidth: false
+    run_instruction_following: false
+    generated_tokens: 8

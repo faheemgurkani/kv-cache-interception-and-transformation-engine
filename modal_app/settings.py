@@ -94,11 +94,25 @@ def modal_runtime_env(config: dict | None = None) -> dict[str, str]:
     modal_cfg = os.environ.get("KV_MODAL_CONFIG", "").strip()
     if modal_cfg:
         env["KV_MODAL_CONFIG"] = modal_cfg
-    from eval.reproducibility.manifest import collect_git_sha
+    assert_expected_modal_profile()
+    from eval.reproducibility.manifest import collect_git_state
 
-    git_sha = collect_git_sha(cwd=project_root())
-    if git_sha:
-        env["KV_GIT_SHA"] = git_sha
+    git = collect_git_state(cwd=project_root())
+    if git["sha"]:
+        env["KV_GIT_SHA"] = git["sha"]
+    if git["dirty"] is not None:
+        env["KV_GIT_DIRTY"] = "1" if git["dirty"] else "0"
+    if git["dirty"]:
+        import sys
+
+        print(
+            f"[kvbench] WARNING: working tree is dirty ({git['dirty_file_count']} files, diff "
+            f"{(git['diff_sha256'] or '')[:12]}); Modal runs the working tree, not commit "
+            f"{(git['sha'] or '?')[:7]}. The job JSON records git_state.dirty=true.",
+            file=sys.stderr,
+        )
+    if git["diff_sha256"]:
+        env["KV_GIT_DIFF_SHA256"] = git["diff_sha256"]
     return env
 
 
@@ -120,3 +134,35 @@ def volume_names(config: dict | None = None) -> tuple[str, str]:
         volumes.get("model", "kv-engine-qwen3"),
         volumes.get("results", "kv-engine-results"),
     )
+
+
+REQUIRED_MODAL_PROFILE = "faheemgurkani"  # faheemgurkani@gmail.com; override with KV_MODAL_PROFILE
+
+
+def active_modal_profile() -> str | None:
+    """Profile the Modal CLI/SDK will use: $MODAL_PROFILE, else the ``active = true`` entry."""
+    import tomllib
+
+    env = os.environ.get("MODAL_PROFILE", "").strip()
+    if env:
+        return env
+    path = Path(os.environ.get("MODAL_CONFIG_PATH", "") or Path.home() / ".modal.toml")
+    try:
+        data = tomllib.loads(path.read_text())
+    except (OSError, tomllib.TOMLDecodeError):
+        return None
+    for name, section in data.items():
+        if isinstance(section, dict) and section.get("active"):
+            return name
+    return None
+
+
+def assert_expected_modal_profile() -> None:
+    """Refuse to launch Modal work from the wrong account (runs must use faheemgurkani)."""
+    required = os.environ.get("KV_MODAL_PROFILE", "").strip() or REQUIRED_MODAL_PROFILE
+    active = active_modal_profile()
+    if active != required:
+        raise RuntimeError(
+            f"Active Modal profile is {active!r}, expected {required!r}. "
+            f"Run: .venv/bin/python -m modal profile activate {required}"
+        )

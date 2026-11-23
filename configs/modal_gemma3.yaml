@@ -16,6 +16,12 @@ hardware:
   collect_peak_memory: true
   collect_gpu_utilization: true
 
+# Long-context KPI gating is OFF (null): every method runs reasoning / peak VRAM / GPU util /
+# uncompressed baseline. Set an int ctx (e.g. 256) only if A10G OOMs again; the job JSON records
+# what was skipped under `kpi_effective`. See docs/audits/GEMMA3_POST_OVERHAUL_AUDIT.md (S4).
+kpi_gating:
+  skip_extra_passes_ctx_ge: null
+
 volumes:
   model: kv-engine-gemma3
   results: kv-engine-results-gemma3

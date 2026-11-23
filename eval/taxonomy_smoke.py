@@ -318,6 +318,7 @@ def build_dummy_payload(compressor_name: str, *, label: str, context_length: int
                 "evaluation_orchestrator": "eval/runner.py",
                 "kv_interception_engine": "framework/kv_engine.py",
                 "git_sha": git_sha,
+                "seed": 0,
                 "paper_contract": {
                     "generation_length": 64,
                     "precision": "float16",

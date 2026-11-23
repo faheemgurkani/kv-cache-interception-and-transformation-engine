@@ -35,6 +35,10 @@ class MemoryMetrics:
     compressed_kv_bytes: int | None = None
     kv_compression_ratio: float | None = None
     total_visible_state_bytes: int | None = None
+    # Ratio if shared, model-side metadata (Lloyd-Max table, QJL projection, Palu A/B factors)
+    # is charged to the cache. Equals ``compression_ratio`` for every method except Palu,
+    # whose factors replace k_proj/v_proj weights and are excluded from ``compression_ratio``.
+    compression_ratio_including_shared: float | None = None
 
 
 def process_memory_mb() -> float:
@@ -107,6 +111,8 @@ def evaluate_memory_from_cache(
     ratio = visible_bytes / compressed_total_bytes if compressed_total_bytes > 0 else 1.0
     kv_ratio = attn_bytes / compressed_kv_bytes if compressed_kv_bytes > 0 else 1.0
     effective_bits = effective_bits_per_element(compressed_total_bytes * 8, num_elements)
+    with_shared_bytes = payload_bytes + shared_metadata_bytes + recurrent_bytes
+    ratio_including_shared = visible_bytes / with_shared_bytes if with_shared_bytes > 0 else 1.0
 
     return MemoryMetrics(
         context_length=input_ids.size(1),
@@ -122,4 +128,5 @@ def evaluate_memory_from_cache(
         compressed_kv_bytes=compressed_kv_bytes,
         kv_compression_ratio=kv_ratio if caps.has_recurrent_state else None,
         total_visible_state_bytes=visible_bytes,
+        compression_ratio_including_shared=ratio_including_shared,
     )

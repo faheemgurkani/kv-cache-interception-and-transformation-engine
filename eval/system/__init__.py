@@ -105,7 +105,7 @@ def evaluate_system(
 
     throughput_baseline = (
         evaluate_throughput_baseline(model_layer, input_ids, num_new_tokens=num_new_tokens)
-        if include_baseline and run_throughput and input_ids.size(1) < 256
+        if include_baseline and run_throughput
         else None
     )
     _free()

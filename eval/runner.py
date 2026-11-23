@@ -36,10 +36,10 @@ from compressors.taxonomy import get_method_taxonomy
 from data.loader import build_long_context_ids, load_wikitext2
 from eval.behavior import BehaviorMetrics, evaluate_behavior
 from eval.controlled_conditions import ControlledInterceptionContract, build_controlled_conditions
-from eval.reproducibility.manifest import collect_git_sha
+from eval.reproducibility.manifest import collect_git_sha, collect_git_state
 from eval.cost import CostMetrics, evaluate_cost
 from eval.hardware import HardwareProfile, collect_hardware_profile, hardware_metrics_enabled
-from eval.fidelity import FidelityMetrics, evaluate_fidelity
+from eval.fidelity import FidelityMetrics, attention_fidelity_window, evaluate_fidelity
 from eval.system import SystemMetrics, evaluate_system
 from framework.config import load_eval_config, load_model_config
 from framework.model import ModelLayer
@@ -68,6 +68,7 @@ class EvaluationResult:
     controlled_conditions: ControlledInterceptionContract | None = field(default=None, repr=False)
     hardware: HardwareProfile | None = field(default=None, repr=False)
     git_sha: str | None = field(default=None, repr=False)
+    git_state: dict | None = field(default=None, repr=False)
 
     # --- back-compat accessors (previous Section A/B field names) ---
     @property
@@ -114,6 +115,7 @@ class EvaluationResult:
             ),
             "hardware": None if self.hardware is None else self.hardware.to_dict(),
             "git_sha": self.git_sha,
+            "git_state": self.git_state,
         }
 
 
@@ -180,10 +182,7 @@ class EvaluationRunner:
         input_ids = self.build_context(context_length)
         stride = perplexity_stride or self.eval_config.get("perplexity_stride", 512)
         num_new_tokens = generated_tokens or self.eval_config.get("generated_tokens", 64)
-        attn_window = min(
-            self.eval_config.get("attention_fidelity_tokens", 512),
-            context_length,
-        )
+        attn_window = attention_fidelity_window(self.eval_config, context_length)
 
         hw_metrics = hardware_metrics_enabled() if collect_hardware_metrics is None else collect_hardware_metrics
         # Do NOT force run_peak_memory / run_gpu_utilization on here. Callers (Modal
@@ -196,6 +195,7 @@ class EvaluationRunner:
 
         hardware = collect_hardware_profile(self.model_layer.device)
         git_sha = collect_git_sha()
+        git_state = collect_git_state()
 
         probe = run_compatibility_probe(
             self.model_layer,
@@ -331,6 +331,7 @@ class EvaluationRunner:
             controlled_conditions=controlled,
             hardware=hardware,
             git_sha=git_sha,
+            git_state=git_state,
         )
 
     def run_all_context_lengths(

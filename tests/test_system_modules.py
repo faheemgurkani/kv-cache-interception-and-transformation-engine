@@ -176,35 +176,34 @@ def test_system_metrics_to_dict_shape():
     assert payload["actual_kv_memory_bytes"] == 8192
 
 
-def test_memory_bandwidth_mocked_engine_accumulates_two_x_nbytes():
-    """Verify read+write accounting: total_bytes_moved += 2 * cache.nbytes per step."""
+def test_memory_bandwidth_counts_prior_cache_read_and_appended_write():
+    """Audit S3: read = cache stored before the step; write = bytes appended by the step."""
     compressor = IdentityCompressor()
     model_layer = MagicMock()
     model_layer.device = torch.device("cpu")
 
-    nbytes_per_step = 512
-    steps = 3
+    sizes = iter([512, 520, 528])  # prefill writes 512, then 8 bytes appended per decode step
     call_count = {"n": 0}
 
     class FakeCache:
-        def __init__(self):
-            self.nbytes = nbytes_per_step
+        def __init__(self, nbytes):
+            self.nbytes = nbytes
 
     def fake_step(step_input, compressed_cache=None, **kwargs):
         call_count["n"] += 1
-        vocab = 128
-        logits = torch.zeros(step_input.shape[0], 1, vocab)
-        return logits, FakeCache()
+        return torch.zeros(step_input.shape[0], 1, 128), FakeCache(next(sizes))
 
     fake_engine = MagicMock()
     fake_engine.step = fake_step
     model_layer.make_kv_engine.return_value = fake_engine
 
     input_ids = torch.tensor([[1, 2, 3, 4]])
-    metrics = evaluate_memory_bandwidth(model_layer, input_ids, compressor, num_new_tokens=steps)
+    metrics = evaluate_memory_bandwidth(model_layer, input_ids, compressor, num_new_tokens=3)
 
-    assert call_count["n"] == steps
-    assert metrics.total_kv_bytes_moved == 2 * nbytes_per_step * steps
+    assert call_count["n"] == 3
+    assert metrics.kv_bytes_read == 0 + 512 + 520
+    assert metrics.kv_bytes_written == 512 + 8 + 8
+    assert metrics.total_kv_bytes_moved == metrics.kv_bytes_read + metrics.kv_bytes_written
     assert metrics.effective_bandwidth_gbps == pytest.approx(
         metrics.total_kv_bytes_moved / metrics.elapsed_seconds / 1e9,
         rel=1e-6,

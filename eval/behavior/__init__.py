@@ -99,7 +99,9 @@ def evaluate_behavior(
             torch.cuda.empty_cache()
 
     perplexity_baseline = (
-        evaluate_perplexity_baseline(model_layer, input_ids, stride=perplexity_stride)
+        evaluate_perplexity_baseline(
+            model_layer, input_ids, max_length=context_length, stride=perplexity_stride
+        )
         if include_baseline and run_task_quality
         else None
     )

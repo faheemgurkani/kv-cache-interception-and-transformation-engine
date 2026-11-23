@@ -150,10 +150,13 @@ def build_decoding_configuration(
     perplexity_stride: int,
 ) -> dict[str, Any]:
     """Decoding axis — KVCacheEngine uses deterministic greedy decode."""
+    from eval.behavior.task_quality import default_ppl_decode_tokens
+
     cfg = dict(DEFAULT_DECODING_CONFIGURATION)
     cfg["generation_length"] = generation_length
     cfg["perplexity_stride"] = perplexity_stride
-    cfg["perplexity_scoring"] = "sliding_window_teacher_forcing"
+    cfg["perplexity_scoring"] = "prefill_then_compressed_decode_teacher_forcing"
+    cfg["perplexity_decode_tokens"] = default_ppl_decode_tokens()
     return cfg
 
 
@@ -255,6 +258,11 @@ def extract_compression_budget(compressor: KVCompressor) -> dict[str, Any]:
             budget[attr] = getattr(compressor, attr)
 
     return budget
+
+
+# Seed of the synthetic task generators (retrieval / reasoning / instruction following use
+# random.Random(seed=0) by default). Decoding is greedy, so this is the only eval randomness.
+DEFAULT_EVAL_SEED = 0
 
 
 @dataclass(frozen=True)
@@ -399,6 +407,14 @@ def build_controlled_conditions(
         "evaluation_orchestrator": "eval/runner.py",
         "kv_interception_engine": "framework/kv_engine.py",
         "git_sha": git_sha,
+        "seed": DEFAULT_EVAL_SEED,
+        "seeds": {
+            "retrieval": DEFAULT_EVAL_SEED,
+            "reasoning": DEFAULT_EVAL_SEED,
+            "instruction_following": DEFAULT_EVAL_SEED,
+            "decoding": "greedy (no sampling)",
+            "data_order": "deterministic (WikiText-2 test split, in order)",
+        },
         "paper_contract": paper_contract,
     }
 

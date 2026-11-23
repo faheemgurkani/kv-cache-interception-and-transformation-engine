@@ -22,11 +22,13 @@ from framework.config import load_eval_config
 from framework.model import ModelLayer
 
 __all__ = [
+    "ATTENTION_FIDELITY_MAX_TOKENS",
     "AttentionMetrics",
     "FidelityMetrics",
     "MemoryMetrics",
     "RecurrentMetrics",
     "RepresentationMetrics",
+    "attention_fidelity_window",
     "evaluate_attention_fidelity",
     "evaluate_fidelity",
     "evaluate_memory_from_cache",
@@ -59,6 +61,15 @@ class FidelityMetrics:
         }
 
 
+# Upper bound on the QK^T scoring window: scoring is O(window^2) per layer and OOMs at long context.
+ATTENTION_FIDELITY_MAX_TOKENS = 128
+
+
+def attention_fidelity_window(eval_config: dict, seq_len: int) -> int:
+    """Window actually used for attention fidelity; also what ``controlled_conditions`` records."""
+    return min(int(eval_config.get("attention_fidelity_tokens", 512)), int(seq_len), ATTENTION_FIDELITY_MAX_TOKENS)
+
+
 @torch.no_grad()
 def evaluate_fidelity(
     model_layer: ModelLayer,
@@ -77,11 +88,7 @@ def evaluate_fidelity(
     if past_key_values is None:
         raise RuntimeError("Model did not return past_key_values.")
 
-    score_tokens = min(
-        int(eval_config.get("attention_fidelity_tokens", 512)),
-        int(input_ids.size(1)),
-        128,
-    )
+    score_tokens = attention_fidelity_window(eval_config, int(input_ids.size(1)))
     representation = evaluate_representation(past_key_values, compressor)
     attention = evaluate_attention_fidelity(
         model_layer,

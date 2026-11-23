@@ -40,6 +40,9 @@ class AttentionMetrics:
     output_rmse: float | None
     distribution_kl_divergence: float | None
     per_layer: list[LayerAttentionMetrics]
+    # Trailing query/key window the scores were computed on (audit F1). Rows with different
+    # windows are not comparable.
+    score_tokens: int | None = None
 
     def to_dict(self) -> dict:
         payload = asdict(self)
@@ -194,6 +197,7 @@ def evaluate_attention_fidelity(
 
         scores_fp = attention_scores(query, key_exp, score_head_dim)
         scores_quant = None
+        layer_value_hat = None
 
         if hasattr(compressor, "attention_fidelity"):
             # Distortion-only hook: no raw quantized score tensor is returned, so
@@ -207,6 +211,19 @@ def evaluate_attention_fidelity(
                 num_kv_heads,
                 layer=layer_idx,
             )
+        elif getattr(compressor, "name", None) == "palu":
+            # Palu's per-tensor compress_kv is a pass-through (low-rank needs the whole
+            # sequence), so the generic branch measured an identity transform and reported
+            # perfect fidelity (audit B5). Use the real whole-layer round trip instead,
+            # the same path the representation metric uses.
+            layer_key_hat, layer_value_hat = compressor.decompress(
+                compressor.compress(key, value, layer=layer_idx)
+            )
+            key_hat_exp = expand_kv_heads(layer_key_hat.to(device=query.device), num_q_heads, num_kv_heads)
+            if score_tokens > 0 and key_hat_exp.shape[-2] > score_tokens:
+                key_hat_exp = key_hat_exp[..., -score_tokens:, :]
+            scores_quant = attention_scores(query, key_hat_exp, score_head_dim)
+            mse, rmse, cosine, layer_max = _score_distortion(scores_fp, scores_quant)
         elif hasattr(compressor, "estimate_attention_scores"):
             key_payload = compressor.compress_kv(key, layer=layer_idx, mode="key")
             scores_quant = compressor.estimate_attention_scores(query, key_payload, score_head_dim)
@@ -223,8 +240,12 @@ def evaluate_attention_fidelity(
         output_rmse: float | None = None
         kl: float | None = None
         if scores_quant is not None:
-            value_payload = compressor.compress_kv(value, layer=layer_idx, mode="value")
-            value_hat = compressor.decompress_kv(value_payload, mode="value").to(device=query.device)
+            if layer_value_hat is not None:
+                value_payload = None
+                value_hat = layer_value_hat.to(device=query.device)
+            else:
+                value_payload = compressor.compress_kv(value, layer=layer_idx, mode="value")
+                value_hat = compressor.decompress_kv(value_payload, mode="value").to(device=query.device)
             value_hat_exp = expand_kv_heads(value_hat, num_q_heads, num_kv_heads)
             if score_tokens > 0 and value_hat_exp.shape[-2] > score_tokens:
                 value_hat_exp = value_hat_exp[..., -score_tokens:, :]
@@ -272,4 +293,5 @@ def evaluate_attention_fidelity(
         output_rmse=(output_rmse_sum / output_layers) if output_layers else None,
         distribution_kl_divergence=(kl_sum / output_layers) if output_layers else None,
         per_layer=per_layer,
+        score_tokens=min(int(score_tokens), int(input_ids.shape[1])) if score_tokens > 0 else int(input_ids.shape[1]),
     )

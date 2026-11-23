@@ -42,6 +42,7 @@ class OfflineCostMetrics:
     calibration_tokens: int | None = None
     calibration_time_ms: float | None = None
     calibration_memory_bytes: int | None = None
+    setup_required: bool = False
 
     def to_dict(self) -> dict:
         return self.__dict__.copy()
@@ -111,6 +112,7 @@ def evaluate_cost(
         calibration_tokens=offline_meta.calibration_tokens,
         calibration_time_ms=offline_meta.calibration_time_ms,
         calibration_memory_bytes=offline_meta.calibration_memory_bytes,
+        setup_required=offline_meta.setup_required,
     )
 
     kernel = system.kernel_cost if system else None

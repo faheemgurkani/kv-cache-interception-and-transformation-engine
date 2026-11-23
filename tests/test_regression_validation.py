@@ -21,17 +21,14 @@ QWEN3_06 = Path(__file__).resolve().parent.parent / "models" / "qwen3_0.6b"
 QWEN3_17 = Path(__file__).resolve().parent.parent / "models" / "legacy" / "qwen3_1.7b"
 CONFIG_ROOT = Path(__file__).resolve().parent.parent / "configs"
 
-# Published Phase-5 identity baselines (CUDA Modal, ctx=128). Local MPS runs may drift on
-# perplexity/throughput; compression and attention fidelity should remain in-family.
+# Published Phase-5 identity baselines (CUDA Modal, ctx=128). Attention fidelity should remain
+# in-family. The published *perplexities* (OLMo2 10.99, Qwen3-1.7B 14.2054) were produced with
+# the pre-2026-10-01 whole-window protocol and are no longer comparable: perplexity is now
+# measured on the last 64 tokens under compressed decode (audit B1), so identity is checked
+# against the uncompressed baseline scored on the *same* positions instead.
 PHASE5_IDENTITY_BASELINES: dict[str, dict[str, float]] = {
-    "model_olmo2_1b.yaml": {
-        "perplexity": 10.99,
-        "attention_cosine_min": 0.99,
-    },
-    "model_qwen3.yaml": {
-        "perplexity": 14.2054,
-        "attention_cosine_min": 0.85,
-    },
+    "model_olmo2_1b.yaml": {"attention_cosine_min": 0.99},
+    "model_qwen3.yaml": {"attention_cosine_min": 0.85},
 }
 
 
@@ -128,6 +125,7 @@ def _assert_phase5_baseline_drift(model_path: Path, config_name: str) -> None:
         run_behavior=True,
         run_perplexity=True,
         run_system=False,
+        include_baselines=True,
         perplexity_stride=64,
     )
     assert result.fidelity is not None and result.behavior is not None
@@ -135,8 +133,10 @@ def _assert_phase5_baseline_drift(model_path: Path, config_name: str) -> None:
     assert result.fidelity.attention.cosine_similarity >= baseline["attention_cosine_min"]
     assert result.fidelity.recurrent.applicable is False
     ppl = result.behavior.perplexity
-    assert ppl is not None
-    assert ppl == pytest.approx(baseline["perplexity"], rel=0.35)
+    base_ppl = result.behavior.perplexity_baseline
+    assert ppl is not None and base_ppl is not None
+    # Identity through the engine must reproduce the uncompressed forward on the same positions.
+    assert ppl == pytest.approx(base_ppl, rel=0.05)
 
 
 @pytest.mark.skipif(not OLMO2.exists(), reason="OLMo2-1B not downloaded")

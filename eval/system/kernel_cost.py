@@ -26,8 +26,12 @@ class KernelCostMetrics:
     compress_time_ms: float
     decompress_time_ms: float
     compress_decompress_time_ms: float
+    # Legacy name, kept for schema stability. It is NOT an attention-kernel time: it is
+    # everything in the step loop except compress/decompress (model forward incl. MLP and
+    # norms, cache rebuild, sampling, Python overhead). Prefer ``non_compression_time_ms``.
     attention_execution_time_ms: float
     compress_decompress_overhead_frac: float
+    non_compression_time_ms: float | None = None
 
     def to_dict(self) -> dict:
         return self.__dict__.copy()
@@ -148,4 +152,5 @@ def evaluate_kernel_cost(
         compress_decompress_time_ms=compress_decompress_ms,
         attention_execution_time_ms=max(total_ms - compress_decompress_ms, 0.0),
         compress_decompress_overhead_frac=(compress_decompress_ms / total_ms) if total_ms > 0 else 0.0,
+        non_compression_time_ms=max(total_ms - compress_decompress_ms, 0.0),
     )
